@@ -2,12 +2,13 @@
 ## Title: EUI AddonSkins
 ## Notes: A collection of addon skins using the official EllesmereUI skinning API.
 ## Author: Smarre
-## Version: 0.4.0
+## Version: 0.4.1
 ## Dependencies: EllesmereUI, EllesmereUIBlizzardSkin
 ## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides
 ## SavedVariables: EUIAddonSkinsDB
 
 Core.lua
+Accent.lua
 Widgets.lua
 Skins\ForeverCompanion.lua
 Skins\ForeverDungeonJournal.lua

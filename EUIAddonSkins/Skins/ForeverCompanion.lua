@@ -136,6 +136,7 @@ local function Window(f)
     -- Already-built options windows carry a content icon directly on the root.
     local headAlpha = f.headIcon and f.headIcon:GetAlpha()
     S.Shell(f)
+    ns.AttachAccent(S, f)
     if headAlpha then f.headIcon:SetAlpha(headAlpha) end
     if f.NineSlice then S.FadeNineSlice(f.NineSlice) end
     if f.Bg then f.Bg:SetAlpha(0) end

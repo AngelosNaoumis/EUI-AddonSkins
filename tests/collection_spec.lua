@@ -28,6 +28,12 @@ local function region(path, layer)
 end
 local function frame(kind)
     local f = {kind = kind or 'Frame', children = {}, regions = {}, hooks = {}}
+    function f:CreateTexture()
+        local t = {SetPoint = function() end, SetHeight = function() end,
+            SetColorTexture = function(self, ...) self.color = {...} end,
+            SetAlpha = function(self, a) self.alpha = a end}
+        return t
+    end
     function f:GetObjectType() return self.kind end
     function f:IsProtected() return self.protected end
     function f:GetChildren() return table.unpack(self.children) end
@@ -56,7 +62,7 @@ function S.Shell(f) shells = shells + 1; for _, r in ipairs(f.regions) do r:SetA
 function S.Panel(f) for _, r in ipairs(f.regions) do r:SetAlpha(0) end end
 function S.EditBox(f) edits = edits + 1; assert(not f.protected) end
 for _, key in ipairs({'Font', 'Button', 'StateButtonLabel', 'Checkbox', 'Dropdown', 'ScrollBar', 'CloseButton', 'FadeNineSlice', 'PageButton'}) do S[key] = function(f) if key == 'CloseButton' then f.euiClose = true end end end
-for _, file in ipairs({'Widgets.lua', 'Skins/ForeverDungeonJournal.lua', 'Skins/RXPGuides.lua'}) do
+for _, file in ipairs({'Accent.lua', 'Widgets.lua', 'Skins/ForeverDungeonJournal.lua', 'Skins/RXPGuides.lua'}) do
     assert(loadfile('EUIAddonSkins/' .. file))('EUIAddonSkins', ns)
 end
 RXP = nil; ForeverDungeonJournal_NS = nil
@@ -91,7 +97,7 @@ assert(modules.RXPGuides.available())
 modules.RXPGuides.install(S, modules.RXPGuides); flush()
 assert(guide.BottomFrame.borderColor[1] == 0.2 and step.borderColor[1] == 0.2 and step.number.borderColor[1] == 0.2, 'legacy border tint missing')
 guide.protected = true
-step:SetBackdrop({edgeFile = 'old'}); flush()
+step:SetBackdrop({edgeFile = 'old'}); assert(step.borderColor[1] == 0.2, 'white border visible before queued refresh'); flush()
 assert(step.borderColor[1] == 0.2, 'reused step backdrop became white on a protected guide root')
 guide.protected = false
 assert(guideCreates == 0, 'skin must not create lazy guide windows')
@@ -140,7 +146,7 @@ assert(targetUpdates == 0, 'target updates must wait until combat ends')
 combat = false
 combatEvents.hooks.OnEvent(); flush()
 assert(targetUpdates > 0 and target.borderColor[1] == 0.2 and target.title.borderColor[1] == 0.2)
-target:UpdateVisuals(); flush(); assert(target.borderColor[1] == 0.2, 'target tint lost after native redraw')
+target:UpdateVisuals(); assert(target.borderColor[1] == 0.2, 'target border flashed before deferred refresh'); flush(); assert(target.borderColor[1] == 0.2, 'target tint lost after native redraw')
 RXP.settings.profile.hideActiveTargetsBackground = true
 function target:UpdateVisuals() targetUpdates = targetUpdates + 1; self:SetBackdrop(nil) end
 modules.RXPGuides.refresh(); flush()

@@ -82,7 +82,13 @@ end, function(S, module)
         if f.GetBackdrop and f.SetBackdropBorderColor then
             local backdrop = f:GetBackdrop()
             if backdrop and backdrop.edgeFile then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
-            H.Hook(f, "SetBackdrop", refresh)
+            -- Native SetBackdrop resets border color to white. Correct it in
+            -- the same call stack, before the client can draw another frame.
+            H.Hook(f, "SetBackdrop", function()
+                if InCombatLockdown and InCombatLockdown() then return end
+                local current = f:GetBackdrop()
+                if current and current.edgeFile then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
+            end)
         end
     end
     local function Scan(f)
@@ -106,6 +112,7 @@ end, function(S, module)
         end
         TintBackdrop(f)
         TintBackdrop(f.title)
+        ns.AttachAccent(S, f)
         local r, g, b = S.GetAccentColor()
         H.Font(f.title and f.title.text, r, g, b)
     end
@@ -117,9 +124,11 @@ end, function(S, module)
             -- Secure children may make the guide root implicitly protected. Tint
             -- only the known visual containers, without entering action buttons.
             for _, key in ipairs({"BottomFrame", "GuideName", "Footer"}) do TintBackdrop(legacy[key]) end
+            ns.AttachAccent(S, legacy.GuideName)
             for _, step in pairs(legacy.CurrentStepFrame and legacy.CurrentStepFrame.framePool or {}) do
                 TintBackdrop(step)
                 TintBackdrop(step.number)
+                ns.AttachAccent(S, step)
             end
             H.Hook(legacy, "UpdateVisuals", refresh)
             H.Fade(legacy.GuideName and legacy.GuideName.bg)
@@ -129,6 +138,7 @@ end, function(S, module)
         local window = addon.v2 and addon.v2.state and addon.v2.state.guideWindow or _G.RXPV2GuideWindow
         if window then
             Scan(window.frame)
+            ns.AttachAccent(S, window.upperFrame or window.frame)
             H.Fade(window.banner)
             H.Hook(window, "UpdateTheme", refresh)
             H.Hook(window, "UpdateSubTheme", refresh)
@@ -137,6 +147,14 @@ end, function(S, module)
             H.Font(window.title, r, g, b)
             if window.closebutton and H.Allowed(window.closebutton) then S.CloseButton(window.closebutton) end
         end
+        -- Active V2 steps are widgets kept outside the main guide window.
+        local state = addon.v2 and addon.v2.state
+        for _, player in pairs(state and state.player or {}) do
+            local active = player.activeStepFrame
+            for _, child in pairs(active and active.children or {}) do ns.AttachAccent(S, child.frame) end
+        end
+        local party = state and state.activePartyStepFrame
+        if party then ns.AttachAccent(S, party.frame) end
         ApplyTargets()
         local importer = addon.guideImporter
         if importer then

@@ -7,6 +7,12 @@ local function texture(kind)
 end
 local function frame(kind, name, parent)
     local f = { kind = kind or "Frame", regions = {}, children = {}, scripts = {}, hooks = {} }
+    function f:CreateTexture()
+        local t = {SetPoint = function() end, SetHeight = function() end,
+            SetColorTexture = function(self, ...) self.color = {...} end,
+            SetAlpha = function(self, a) self.alpha = a end}
+        return t
+    end
     function f:GetObjectType() return self.kind end
     function f:IsForbidden() return self.forbidden end
     function f:IsProtected() return self.protected end
@@ -75,6 +81,7 @@ local chunk = assert(loadfile("EUIAddonSkins/Core.lua"))
 local integration = assert(loadfile("EUIAddonSkins/Skins/ForeverCompanion.lua"))
 local ns = {}
 chunk("EUIAddonSkins", ns)
+assert(loadfile("EUIAddonSkins/Accent.lua"))("EUIAddonSkins", ns)
 integration("EUIAddonSkins", ns)
 assert(calls.registration == 1 and not calls.Shell, "must wait for API dispatch")
 callback(skin)
@@ -129,6 +136,7 @@ ForeverCompanionAPI = nil
 EllesmereUI = { RegisterSkin = function(_, fn) callback = fn; fn(skin) end }
 local collection = {}
 chunk("EUIAddonSkins", collection)
+assert(loadfile("EUIAddonSkins/Accent.lua"))("EUIAddonSkins", collection)
 local coreEvents = lastCreated
 integration("EUIAddonSkins", collection)
 callback(skin)

@@ -77,6 +77,7 @@ function ns.CreateSkinHelper(S, module)
                 end
             end
             S.Shell(f, options)
+            ns.AttachAccent(S, f)
             for region, alpha in pairs(icons) do region:SetAlpha(alpha) end
             -- BackdropTemplate backgrounds are separate from the engine's new shell.
             if f.SetBackdrop then f:SetBackdrop(nil) end

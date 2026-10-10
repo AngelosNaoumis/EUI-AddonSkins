@@ -4,7 +4,7 @@ A modular collection of World of Warcraft addon skins using the official
 EllesmereUI skinning API. Each skin activates only when its target addon is installed
 and loaded. You do not need Forever Companion to use EUI AddonSkins.
 
-Version **0.4.0** includes optional skins for **Forever Companion**,
+Version **0.4.1** includes optional skins for **Forever Companion**,
 **Forever Dungeon Journal** and **RestedXP Guides**. Each integration is a separate module.
 
 ## Requirements
@@ -39,7 +39,11 @@ inactive. Enable or disable each skin independently. Enabling applies live when
 possible; disabling needs `/reload` to remove visuals already installed.
 The previous single `EUIAddonSkins` EUI toggle is replaced by these entries;
 the new toggles default to enabled.
-Theme and accent changes update the skinned elements live.
+Theme and accent changes update the skinned elements live. Window accent lines
+follow **Show Accent Bar** in Blizzard Skins+ > Window Skins, including its separate
+custom color, linked global accent and visibility switch. This preference is read
+from EUI without changing its saved settings. Guide instruction/rarity colors
+remain semantic and are not recolored by the accent-line preference.
 
 ## Included skins
 
@@ -65,7 +69,7 @@ RestedXP uses session copies of its native themes to retain its layout, window
 opacity/visibility behavior and existing click actions. Saved theme choices,
 registered theme definitions, guide data, map-pin colors, navigation arrows and
 auction value indicators are preserved. Legacy guide/step borders receive a
-muted EUI-style tint after native redraws. Their background insets match the
+muted EUI-style tint synchronously during native redraws, avoiding a white flash. Their background insets match the
 1-pixel border, removing the transparent gap left by RXP's original thicker art. Active Targets receives matching
 backdrop borders and title styling; its secure action buttons are left intact,
 and visual updates wait until combat ends. Hidden target backgrounds stay hidden. No guide window is created until RXP
@@ -88,7 +92,9 @@ and restart the game.
 
 Lua syntax and integration behavior are tested in a simulated WoW environment,
 including missing targets, load-on-demand activation, independent EUI toggles,
-live enabling, queued refresh cancellation and both master switches.
+live enabling, queued refresh cancellation and both master switches. Accent tests
+cover linked/custom colors, hidden bars, late windows and disabled skins; border
+regressions assert the correct color before the deferred refresh runs.
 Regression checks cover legacy border redraws, protected guide roots, lazy Active
 Targets, combat deferral, hidden backgrounds and unnamed numeric-texture close
 buttons without replacing their click actions.
