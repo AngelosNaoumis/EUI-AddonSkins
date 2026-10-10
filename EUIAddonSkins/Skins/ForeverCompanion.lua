@@ -1,7 +1,7 @@
 -- Standalone integration. No Forever Companion files or gameplay handlers are replaced.
-local ADDON = ...
-local EUI, API = _G.EllesmereUI, _G.ForeverCompanionAPI
-local S, installed, registered
+local ADDON, ns = ...
+local API
+local S, installed
 local unpack = unpack or table.unpack
 local roots = setmetatable({}, { __mode = "k" })
 local seen = setmetatable({}, { __mode = "k" })
@@ -226,37 +226,13 @@ local function Install(skin)
     end) end
 end
 
-local function Register()
-    if registered or not (EUI and EUI.RegisterSkin and API) then return end
-    registered = true
-    EUI.RegisterSkin(ADDON, Install)
-end
-
-Register()
-local events = CreateFrame("Frame")
-events:RegisterEvent("PLAYER_LOGIN")
-events:SetScript("OnEvent", function(self)
-    self:UnregisterEvent("PLAYER_LOGIN")
-    EUIAddonSkinsDB = EUIAddonSkinsDB or {}
-    Register()
-    if not registered then
-        Print("Skin API saknas. Uppdatera EllesmereUI och aktivera Blizzard Skins+.")
+-- The collection loads this module only when its target API is present.
+ns.RegisterModule("ForeverCompanion", "Forever Companion", function()
+    return _G.ForeverCompanionAPI ~= nil
+end, function(skin, module)
+    API = _G.ForeverCompanionAPI
+    Install(skin)
+    module.refresh = function()
+        for f in pairs(roots) do Queue(f) end
     end
 end)
-
-SLASH_EUIADDONSKINS1 = "/euiskins"
-SLASH_EUIADDONSKINS2 = "/fcskin"
-SlashCmdList.EUIADDONSKINS = function(msg)
-    local command = (msg or ""):lower():match("^%s*(%S*)")
-    EUIAddonSkinsDB = EUIAddonSkinsDB or {}
-    if command == "off" or command == "on" then
-        EUIAddonSkinsDB.disabled = command == "off"
-        Print((command == "off" and "Avstängt." or "Aktiverat.") .. " Kör /reload för att tillämpa.")
-    elseif command == "refresh" then
-        for f in pairs(roots) do Queue(f) end
-        Print("Uppdatering begärd.")
-    else
-        Print("v0.1.0 | " .. (Enabled() and installed and "aktivt" or "inaktivt")
-            .. " | /fcskin on, off, refresh. Kräver EllesmereUI Blizzard Skins+ och dess skin API.")
-    end
-end

@@ -22,7 +22,8 @@ local function frame(kind, name, parent)
     if name then _G[name] = f end
     return f
 end
-CreateFrame = function(kind, name, parent) return frame(kind, name, parent) end
+local lastCreated
+CreateFrame = function(kind, name, parent) lastCreated = frame(kind, name, parent); return lastCreated end
 DEFAULT_CHAT_FRAME = { AddMessage = function() end }
 SlashCmdList = {}
 geterrorhandler = function() return function(err) errors[#errors + 1] = err end end
@@ -70,8 +71,11 @@ ForeverCompanionAPI = {
     CreateOptionsButton = function(parent) local f = frame("Button", nil, parent); f.icon = texture(); return f end,
     VirtualList = function() return { Layout = function() end, Refresh = function() end } end,
 }
-local chunk = assert(loadfile("EUIAddonSkins/Skin.lua"))
-chunk("EUIAddonSkins")
+local chunk = assert(loadfile("EUIAddonSkins/Core.lua"))
+local integration = assert(loadfile("EUIAddonSkins/Skins/ForeverCompanion.lua"))
+local ns = {}
+chunk("EUIAddonSkins", ns)
+integration("EUIAddonSkins", ns)
 assert(calls.registration == 1 and not calls.Shell, "must wait for API dispatch")
 callback(skin)
 local api = ForeverCompanionAPI
@@ -114,7 +118,38 @@ assert(#errors == 0, table.concat(errors, "\n"))
 -- Missing API must leave FC unchanged and expose a usable status command.
 EllesmereUI = nil
 local original = api.CreateWindow
-chunk("EUIAddonSkins")
+local missingNS = {}
+chunk("EUIAddonSkins", missingNS)
+integration("EUIAddonSkins", missingNS)
 assert(api.CreateWindow == original)
 SlashCmdList.EUIADDONSKINS("")
-print("PASS: syntax, registration, preserved nil returns/clicks, lazy rows, coalescing, restricted frames, theme updates, toggles, missing API")
+-- Missing target must be harmless and must not block other skin modules.
+EUIAddonSkinsDB = {}
+ForeverCompanionAPI = nil
+EllesmereUI = { RegisterSkin = function(_, fn) callback = fn end }
+local collection = {}
+chunk("EUIAddonSkins", collection)
+local coreEvents = lastCreated
+integration("EUIAddonSkins", collection)
+callback(skin)
+assert(not collection.modules[1].attempted, "absent target must stay dormant")
+local otherRuns = 0
+collection.RegisterModule("OtherAddon", "Other Addon", function() return true end,
+    function() otherRuns = otherRuns + 1 end)
+assert(otherRuns == 1 and collection.modules[2].active, "unrelated skin blocked by missing FC")
+-- Load-on-demand target activates once, including after PLAYER_LOGIN.
+ForeverCompanionAPI = { COLORS = {} }
+coreEvents.scripts.OnEvent(coreEvents, "ADDON_LOADED", "ForeverCompanion")
+assert(collection.modules[1].active, "late target not activated")
+local wrapped = ForeverCompanionAPI.CreateWindow
+coreEvents.scripts.OnEvent(coreEvents, "PLAYER_LOGIN")
+coreEvents.scripts.OnEvent(coreEvents, "ADDON_LOADED", "UnrelatedAddon")
+assert(otherRuns == 1 and ForeverCompanionAPI.CreateWindow == wrapped, "module installed twice")
+collection.RegisterModule("BrokenAddon", "Broken Addon", function() return true end,
+    function() error("expected test failure") end)
+assert(not collection.modules[3].active and #errors == 1, "installer failure not isolated")
+local afterFailure = false
+collection.RegisterModule("WorkingAddon", "Working Addon", function() return true end,
+    function() afterFailure = true end)
+assert(afterFailure, "broken integration blocked another skin")
+print("PASS: syntax, preserved returns/clicks, dynamic controls, coalescing, restricted frames, theme/toggles, missing API/target, late activation, independent modules, error isolation")

@@ -1,9 +1,11 @@
 ## Interface: 16001, 120000, 120001, 120005, 120007, 120100
 ## Title: EUI AddonSkins
-## Notes: Independent Forever Companion skin using the official EllesmereUI skinning API.
+## Notes: A collection of addon skins using the official EllesmereUI skinning API.
 ## Author: Smarre
-## Version: 0.1.0
-## Dependencies: ForeverCompanion, EllesmereUI, EllesmereUIBlizzardSkin
+## Version: 0.2.0
+## Dependencies: EllesmereUI, EllesmereUIBlizzardSkin
+## OptionalDeps: ForeverCompanion
 ## SavedVariables: EUIAddonSkinsDB
 
-Skin.lua
+Core.lua
+Skins\ForeverCompanion.lua
