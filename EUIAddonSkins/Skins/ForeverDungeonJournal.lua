@@ -44,7 +44,18 @@ end, function(S, module)
         if f.SetBackdrop then f:SetBackdrop(nil) end
     end
 
-    local function Visit(f)
+    local function Visit(f, kind)
+        -- UIPanelCloseButton textures can be numeric file IDs on this client.
+        -- Identify the unnamed journal close control by its exact owned anchor.
+        if kind == "Button" and f.GetParent and f.GetPoint then
+            local parent = f:GetParent()
+            if parent == _G.ForeverDungeonJournalFrame or parent == _G.ForeverDungeonJournalSettings
+                or parent == _G.ForeverDungeonJournalLootFilter then
+                local point, relative, relativePoint, x, y = f:GetPoint(1)
+                if point == "TOPRIGHT" and relative == parent and relativePoint == "TOPRIGHT"
+                    and ((x == -3 and y == -3) or (x == -2 and y == -2)) then S.CloseButton(f) end
+            end
+        end
         -- Brown text from the original parchment becomes unreadable on a dark panel.
         -- Keep item names/rarity, quest status indicators and portrait artwork intact.
         for _, key in ipairs({"slot", "meta"}) do H.Font(f[key], 0.65, 0.65, 0.68) end
@@ -53,6 +64,9 @@ end, function(S, module)
     local function Watch(f)
         if not H.Allowed(f) then return end
         H.Shell(f, refresh)
+        for _, key in ipairs({"fdjCloseButton", "CloseButton", "closeButton"}) do
+            if H.Allowed(f[key]) then S.CloseButton(f[key]) end
+        end
         if not watched[f] then
             watched[f] = true
             -- Private page renderers change panel colors; schedule after the whole render.

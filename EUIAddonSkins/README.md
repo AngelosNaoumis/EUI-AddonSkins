@@ -4,7 +4,7 @@ A modular collection of World of Warcraft addon skins using the official
 EllesmereUI skinning API. Each skin activates only when its target addon is installed
 and loaded. You do not need Forever Companion to use EUI AddonSkins.
 
-Version **0.3.0** includes optional skins for **Forever Companion**,
+Version **0.3.1** includes optional skins for **Forever Companion**,
 **Forever Dungeon Journal** and **RestedXP Guides**. Each integration is a separate module.
 
 ## Requirements
@@ -36,7 +36,7 @@ Theme and accent changes update the skinned elements live.
 | --- | --- | --- |
 | Forever Companion | Optional, test version | BiS, rotation, talents, consumables, loot, professions, market, options and companion dialogs |
 | Forever Dungeon Journal | Optional, test version | Main journal, boss/quest pages, settings, update notice, loot filter/results, favourites and companion dialogs |
-| RestedXP Guides | Optional, test version | Legacy and V2 guide window themes, fonts, ordinary controls, scrollbars and V2 guide importer |
+| RestedXP Guides | Optional, test version | Legacy and V2 guide window themes, fonts, ordinary controls, scrollbars, Active Targets backdrop/title and V2 guide importer |
 
 The Forever Companion skin covers window backgrounds, borders, close buttons,
 ordinary buttons, search fields, dropdown controls, scrollbars, icon tabs,
@@ -53,7 +53,10 @@ loop is added.
 RestedXP uses session copies of its native themes to retain its layout, window
 opacity/visibility behavior and existing click actions. Saved theme choices,
 registered theme definitions, guide data, map-pin colors, navigation arrows and
-auction value indicators are preserved. No guide window is created until RXP
+auction value indicators are preserved. Legacy guide/step borders receive a
+muted EUI-style tint after native redraws. Active Targets receives matching
+backdrop borders and title styling; its secure action buttons are left intact,
+and visual updates wait until combat ends. Hidden target backgrounds stay hidden. No guide window is created until RXP
 opens it. Minimap buttons, game tooltips and protected controls are excluded.
 
 ## Commands
@@ -72,6 +75,9 @@ and restart the game.
 
 Lua syntax and integration behavior are tested in a simulated WoW environment,
 including missing targets, load-on-demand activation and independent skin modules.
+Regression checks cover legacy border redraws, protected guide roots, lazy Active
+Targets, combat deferral, hidden backgrounds and unnamed numeric-texture close
+buttons without replacing their click actions.
 The new modules additionally check lazy windows, portraits/icons, skipped map
 contents, RXP theme/profile immutability and preserved API return values.
 Appearance and behavior still need verification in WoW.

@@ -5,6 +5,7 @@ end, function(S, module)
     local addon = _G.RXP
     local H = ns.CreateSkinHelper(S)
     local refresh
+    local targetSeen
     local copies, wrapped = setmetatable({}, {__mode = "k"}), {}
     local unpack = unpack or table.unpack
     local function Copy(t)
@@ -71,14 +72,52 @@ end, function(S, module)
             return unpack(result, 1, result.n)
         end
     end
+    local function TintBackdrop(f)
+        if InCombatLockdown and InCombatLockdown() then return end
+        if not f or (f.IsForbidden and f:IsForbidden()) then return end
+        if f.GetBackdrop and f.SetBackdropBorderColor then
+            local backdrop = f:GetBackdrop()
+            if backdrop and backdrop.edgeFile then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
+            H.Hook(f, "SetBackdrop", refresh)
+        end
+    end
     local function Scan(f)
-        if H.Allowed(f) then H.Scan(f, refresh) end
+        if H.Allowed(f) then H.Scan(f, refresh, TintBackdrop) end
+    end
+    local function CombatLocked()
+        return InCombatLockdown and InCombatLockdown()
+    end
+    local function TargetFrame()
+        return addon.targeting and addon.targeting.activeTargetFrame
+    end
+    local function ApplyTargets()
+        local f = TargetFrame()
+        if not f or CombatLocked() or (f.IsForbidden and f:IsForbidden()) then return end
+        -- The container has secure action-button children. Only touch its visual
+        -- backdrop/title outside combat; never scan or skin those buttons.
+        if targetSeen ~= f then
+            targetSeen = f
+            if f.UpdateVisuals then H.Safe(f.UpdateVisuals, f) end
+            H.Hook(f, "UpdateVisuals", refresh)
+        end
+        TintBackdrop(f)
+        TintBackdrop(f.title)
+        local r, g, b = S.GetAccentColor()
+        H.Font(f.title and f.title.text, r, g, b)
     end
     local function Apply()
         Wrap(addon.v2, "GetTheme")
         local legacy = addon.RXPFrame or _G.RXPFrame
         if legacy then
             Scan(legacy)
+            -- Secure children may make the guide root implicitly protected. Tint
+            -- only the known visual containers, without entering action buttons.
+            for _, key in ipairs({"BottomFrame", "GuideName", "Footer"}) do TintBackdrop(legacy[key]) end
+            for _, step in pairs(legacy.CurrentStepFrame and legacy.CurrentStepFrame.framePool or {}) do
+                TintBackdrop(step)
+                TintBackdrop(step.number)
+            end
+            H.Hook(legacy, "UpdateVisuals", refresh)
             H.Fade(legacy.GuideName and legacy.GuideName.bg)
             H.Fade(legacy.Footer and legacy.Footer.bg)
         end
@@ -94,6 +133,7 @@ end, function(S, module)
             H.Font(window.title, r, g, b)
             if window.closebutton and H.Allowed(window.closebutton) then S.CloseButton(window.closebutton) end
         end
+        ApplyTargets()
         local importer = addon.guideImporter
         if importer then
             for _, widget in pairs(importer.widgets or {}) do
@@ -104,7 +144,7 @@ end, function(S, module)
     end
     refresh = function() H.Queue(module, Apply) end
     local function UpdateTheme()
-        if not ns.IsEnabled() then return end
+        if not ns.IsEnabled() or CombatLocked() then return end
         if addon.settings and addon.settings.profile and addon.RXPFrame then
             H.Safe(addon.LoadActiveTheme, addon)
             -- Refresh visuals directly; RenderFrame also reloads the current guide.
@@ -116,6 +156,8 @@ end, function(S, module)
             H.Safe(addon.v2.UpdateActiveStepTheme, addon.v2)
         end
         if addon.guideImporter and addon.guideImporter.UpdateTheme then H.Safe(addon.guideImporter.UpdateTheme, addon.guideImporter) end
+        local target = TargetFrame()
+        if target and not CombatLocked() and target.UpdateVisuals then H.Safe(target.UpdateVisuals, target) end
         refresh()
     end
     Wrap(addon, "LoadActiveTheme", true)
@@ -123,6 +165,12 @@ end, function(S, module)
     for _, name in ipairs({"RenderFrame", "LoadGuide", "SetStep"}) do H.Hook(addon, name, refresh) end
     for _, name in ipairs({"GetGuideWindow", "UpdateGuideWindow", "UpdateActiveStepTheme"}) do H.Hook(addon.v2, name, refresh) end
     if addon.ui and addon.ui.v2 then H.Hook(addon.ui.v2, "CreateGuideImporter", refresh) end
+    for _, name in ipairs({"CreateTargetFrame", "RenderTargetFrameBackground", "UpdateTargetFrame"}) do
+        H.Hook(addon.targeting, name, refresh)
+    end
+    local combatEvents = CreateFrame("Frame")
+    combatEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+    combatEvents:SetScript("OnEvent", function() UpdateTheme() end)
     module.refresh = UpdateTheme
     if S.OnLooksChanged then S.OnLooksChanged(UpdateTheme) end
     UpdateTheme()

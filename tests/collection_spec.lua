@@ -33,10 +33,19 @@ local function frame(kind)
     function f:GetChildren() return table.unpack(self.children) end
     function f:GetRegions() return table.unpack(self.regions) end
     function f:HookScript(key, fn) self.hooks[key] = fn end
-    function f:SetBackdrop(v) self.backdropValue = v end
+    function f:SetBackdrop(v) self.backdropValue = v; self.borderColor = {1, 1, 1, 1} end
+    function f:GetBackdrop() return self.backdropValue end
     function f:SetBackdropColor() end
-    function f:SetBackdropBorderColor() end
+    function f:SetBackdropBorderColor(...) self.borderColor = {...} end
     return f
+end
+local combat, combatEvents = false
+InCombatLockdown = function() return combat end
+CreateFrame = function()
+    local f = frame()
+    function f:RegisterEvent(event) self.event = event end
+    function f:SetScript(event, fn) self.hooks[event] = fn end
+    combatEvents = f; return f
 end
 local S = {GetAccentColor = function() return 0.1, 0.8, 0.6 end,
     GetPanelColor = function() return 0.03, 0.03, 0.04, 0.95 end,
@@ -46,7 +55,7 @@ local shells, edits = 0, 0
 function S.Shell(f) shells = shells + 1; for _, r in ipairs(f.regions) do r:SetAlpha(0) end end
 function S.Panel(f) for _, r in ipairs(f.regions) do r:SetAlpha(0) end end
 function S.EditBox(f) edits = edits + 1; assert(not f.protected) end
-for _, key in ipairs({'Font', 'Button', 'StateButtonLabel', 'Checkbox', 'Dropdown', 'ScrollBar', 'CloseButton', 'FadeNineSlice', 'PageButton'}) do S[key] = function() end end
+for _, key in ipairs({'Font', 'Button', 'StateButtonLabel', 'Checkbox', 'Dropdown', 'ScrollBar', 'CloseButton', 'FadeNineSlice', 'PageButton'}) do S[key] = function(f) if key == 'CloseButton' then f.euiClose = true end end end
 for _, file in ipairs({'Widgets.lua', 'Skins/ForeverDungeonJournal.lua', 'Skins/RXPGuides.lua'}) do
     assert(loadfile('EUIAddonSkins/' .. file))('EUIAddonSkins', ns)
 end
@@ -57,11 +66,15 @@ local source2 = {font = 'original-v2', backgroundColors = {common = {1, 1, 1}}, 
 local guide = frame()
 guide.backdrop = {edge = {}, guideName = {}, bottom = {}}
 guide.GuideName = {bg = region('banner', 'BACKGROUND'), icon = region('logo', 'ARTWORK')}
+guide.BottomFrame = frame(); guide.BottomFrame:SetBackdrop({edgeFile = 'old'})
+local step = frame(); step.number = frame(); step:SetBackdrop({edgeFile = 'old'}); step.number:SetBackdrop({edgeFile = 'old'})
+guide.CurrentStepFrame = {framePool = {step}}
 guide.Footer = {bg = region('footer', 'BACKGROUND')}
 local secret, input = frame('EditBox'), frame('EditBox'); secret.protected = true
 guide.children = {secret, input}
 local guideCreates, originalCalls, renders = 0, 0, 0
-RXP = {RXPFrame = guide, settings = {profile = {activeTheme = 'Custom', guideFontSize = 12}},
+local lazyTarget
+RXP = {targeting = {CreateTargetFrame = function(self) self.activeTargetFrame = lazyTarget end}, RXPFrame = guide, settings = {profile = {activeTheme = 'Custom', guideFontSize = 12}},
     LoadActiveTheme = function() originalCalls = originalCalls + 1; return source, nil, 'tail' end,
     RenderFrame = function() renders = renders + 1; return nil, 'render-tail' end,
     v2 = {state = {}, GetTheme = function() return source2 end,
@@ -72,6 +85,11 @@ RXP = {RXPFrame = guide, settings = {profile = {activeTheme = 'Custom', guideFon
         end}}
 assert(modules.RXPGuides.available())
 modules.RXPGuides.install(S, modules.RXPGuides); flush()
+assert(guide.BottomFrame.borderColor[1] == 0.2 and step.borderColor[1] == 0.2 and step.number.borderColor[1] == 0.2, 'legacy border tint missing')
+guide.protected = true
+step:SetBackdrop({edgeFile = 'old'}); flush()
+assert(step.borderColor[1] == 0.2, 'reused step backdrop became white on a protected guide root')
+guide.protected = false
 assert(guideCreates == 0, 'skin must not create lazy guide windows')
 assert(edits == 1 and guide.GuideName.icon.alpha == 0.8, 'restricted controls and icons must survive')
 assert(guide.GuideName.bg.alpha == 0, 'legacy banner remains visible')
@@ -87,12 +105,43 @@ assert(source2.backgroundColors.common[1] == 1 and v2.mapPins == source2.mapPins
 local window = RXP.v2:GetGuideWindow(); flush()
 assert(window.banner.alpha == 0 and guideCreates == 1)
 window.banner:SetAlpha(1); assert(window.banner.alpha == 0, 'banner alpha lock missing')
+local target = frame(); target.protected = true; target.title = frame()
+target.title.text = {GetObjectType = function() return 'FontString' end}
+local action = frame('Button'); action.protected = true
+function action:SetAttribute() error('secure target attributes changed') end
+target.children = {action}
+local targetUpdates = 0
+function target:UpdateVisuals()
+    assert(not combat, 'target visuals changed in combat')
+    targetUpdates = targetUpdates + 1
+    self:SetBackdrop({edgeFile = 'old'})
+    self.title:SetBackdrop({edgeFile = 'old'})
+end
+lazyTarget = target
+combat = true
+RXP.targeting:CreateTargetFrame(); flush()
+assert(targetUpdates == 0, 'target updates must wait until combat ends')
+combat = false
+combatEvents.hooks.OnEvent(); flush()
+assert(targetUpdates > 0 and target.borderColor[1] == 0.2 and target.title.borderColor[1] == 0.2)
+target:UpdateVisuals(); flush(); assert(target.borderColor[1] == 0.2, 'target tint lost after native redraw')
+RXP.settings.profile.hideActiveTargetsBackground = true
+function target:UpdateVisuals() targetUpdates = targetUpdates + 1; self:SetBackdrop(nil) end
+modules.RXPGuides.refresh(); flush()
+assert(target:GetBackdrop() == nil, 'skin restored a hidden target background')
 local originalTheme = {frame = {1, 0, 0}}
 ForeverDungeonJournal_NS = {THEMES = {dungeon = originalTheme}, ToggleJournal = function()
     local root = frame(); root.rightPanel = frame()
     local portrait = region(12345, 'ARTWORK'); root.rightPanel.regions = {portrait}
     root.portrait = portrait
-    root.children = {root.rightPanel}
+    local close = frame('Button')
+    function close:GetParent() return root end
+    function close:GetPoint() return 'TOPRIGHT', root, 'TOPRIGHT', -3, -3 end
+    function close:GetNormalTexture() return region(123456, 'ARTWORK') end
+    local closeClicks = 0
+    close.onClick = function() closeClicks = closeClicks + 1 end
+    root.close, root.closeClicks = close, function() return closeClicks end
+    root.children = {root.rightPanel, close}
     root.dungeonMapArtHolder = frame(); root.dungeonMapArtHolder.children = {frame('EditBox')}
     root.children[#root.children + 1] = root.dungeonMapArtHolder
     ForeverDungeonJournalFrame = root
@@ -103,6 +152,8 @@ assert(shells == 0, 'journal skin created a window eagerly')
 local missing, result = ForeverDungeonJournal_NS.ToggleJournal(); flush()
 assert(missing == nil and result == 'journal-tail')
 assert(ForeverDungeonJournalFrame.portrait.alpha == 0.8, 'boss portrait faded')
+assert(ForeverDungeonJournalFrame.close.euiClose, 'numeric-texture close button missed')
+ForeverDungeonJournalFrame.close.onClick(); assert(ForeverDungeonJournalFrame.closeClicks() == 1, 'close action lost')
 assert(edits == 1, 'map contents must not be scanned')
 local icon = region('Interface\\Icons\\INV_Misc_Book_09', 'ARTWORK')
 ForeverDungeonJournalSettings = frame(); ForeverDungeonJournalSettings.regions = {icon}
@@ -118,4 +169,4 @@ assert(renders == 0, 'skin refresh must not reload guide content')
 local r1, r2 = RXP.RenderFrame(); assert(r1 == nil and r2 == 'render-tail')
 assert(originalCalls >= 2 and renders == 1)
 assert(#errors == 0, table.concat(errors, '\n'))
-print('PASS: optional/lazy targets, RXP source/profile immutability, semantic colors, preserved returns, protected controls, portraits/icons/maps, repeat refresh, disable')
+print('PASS: optional/lazy targets, legacy border tint after redraw, Active Targets/combat/hidden backgrounds, numeric close texture and clicks, source/profile immutability, portraits/icons/maps, disable')
