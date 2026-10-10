@@ -1,0 +1,26 @@
+"""Run Lua using the system library; no downloaded test dependencies."""
+import ctypes
+from pathlib import Path
+
+lua = ctypes.CDLL('liblua5.4.so.0')
+lua.luaL_newstate.restype = ctypes.c_void_p
+lua.luaL_openlibs.argtypes = [ctypes.c_void_p]
+lua.luaL_loadfilex.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
+lua.lua_pcallk.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_longlong, ctypes.c_void_p]
+lua.lua_tolstring.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p]
+lua.lua_tolstring.restype = ctypes.c_char_p
+lua.lua_close.argtypes = [ctypes.c_void_p]
+state = lua.luaL_newstate()
+lua.luaL_openlibs(state)
+try:
+    for path in Path('EUIAddonSkins').glob('*.lua'):
+        rc = lua.luaL_loadfilex(state, str(path).encode(), None)
+        if rc:
+            raise RuntimeError(lua.lua_tolstring(state, -1, None).decode())
+    rc = lua.luaL_loadfilex(state, b'tests/skin_spec.lua', None)
+    if not rc:
+        rc = lua.lua_pcallk(state, 0, 0, 0, 0, None)
+    if rc:
+        raise RuntimeError(lua.lua_tolstring(state, -1, None).decode())
+finally:
+    lua.lua_close(state)
