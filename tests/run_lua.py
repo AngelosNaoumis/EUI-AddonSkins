@@ -17,10 +17,11 @@ try:
         rc = lua.luaL_loadfilex(state, str(path).encode(), None)
         if rc:
             raise RuntimeError(lua.lua_tolstring(state, -1, None).decode())
-    rc = lua.luaL_loadfilex(state, b'tests/skin_spec.lua', None)
-    if not rc:
-        rc = lua.lua_pcallk(state, 0, 0, 0, 0, None)
-    if rc:
-        raise RuntimeError(lua.lua_tolstring(state, -1, None).decode())
+    for test in ['tests/skin_spec.lua', 'tests/collection_spec.lua']:
+        rc = lua.luaL_loadfilex(state, test.encode(), None)
+        if not rc:
+            rc = lua.lua_pcallk(state, 0, 0, 0, 0, None)
+        if rc:
+            raise RuntimeError(lua.lua_tolstring(state, -1, None).decode())
 finally:
     lua.lua_close(state)

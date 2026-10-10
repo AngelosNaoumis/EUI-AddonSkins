@@ -4,8 +4,8 @@ A modular collection of World of Warcraft addon skins using the official
 EllesmereUI skinning API. Each skin activates only when its target addon is installed
 and loaded. You do not need Forever Companion to use EUI AddonSkins.
 
-Version **0.2.0** includes **Forever Companion** as its first optional skin.
-More integrations can be added as separate modules.
+Version **0.3.0** includes optional skins for **Forever Companion**,
+**Forever Dungeon Journal** and **RestedXP Guides**. Each integration is a separate module.
 
 ## Requirements
 
@@ -13,9 +13,10 @@ More integrations can be added as separate modules.
 - EllesmereUI **Blizzard Skins+**, enabled.
 - Any supported target addon you want to skin. None of the target addons is mandatory.
 
-The included Forever Companion integration was developed against the supplied
-Forever Companion 1.0.0 build for WoW Forever (Interface 16001).
-Other Forever Companion variants have not been tested.
+Integrations were developed against the supplied Forever Companion 1.0.0,
+Forever Dungeon Journal 1.6.2 and RestedXP Guides 4.11.15 (Forever 11.21) builds.
+Other variants have not been tested. Original addon code, artwork and guide data
+are not bundled; install each target separately.
 
 ## Installation
 
@@ -33,7 +34,9 @@ Theme and accent changes update the skinned elements live.
 
 | Addon | Status | Coverage |
 | --- | --- | --- |
-| Forever Companion | Optional, first test version | BiS, rotation, talents, consumables, loot, professions, market, options and companion dialogs |
+| Forever Companion | Optional, test version | BiS, rotation, talents, consumables, loot, professions, market, options and companion dialogs |
+| Forever Dungeon Journal | Optional, test version | Main journal, boss/quest pages, settings, update notice, loot filter/results, favourites and companion dialogs |
+| RestedXP Guides | Optional, test version | Legacy and V2 guide window themes, fonts, ordinary controls, scrollbars and V2 guide importer |
 
 The Forever Companion skin covers window backgrounds, borders, close buttons,
 ordinary buttons, search fields, dropdown controls, scrollbars, icon tabs,
@@ -41,6 +44,17 @@ checkboxes, row backgrounds and dynamically created controls.
 Item icons, equipped-item indicators, talent artwork and click actions are preserved.
 Game tooltips, minimap buttons, map markers, dropdown popup menus, regular options
 sliders and Blizzard auction-house frames retain their existing appearance.
+
+Dungeon Journal keeps boss portraits, item rarity colors, quest indicators and
+map artwork. Parchment backgrounds are replaced by dark panels with readable text.
+Its existing one-shot quest refresh worker is observed after rendering; no polling
+loop is added.
+
+RestedXP uses session copies of its native themes to retain its layout, window
+opacity/visibility behavior and existing click actions. Saved theme choices,
+registered theme definitions, guide data, map-pin colors, navigation arrows and
+auction value indicators are preserved. No guide window is created until RXP
+opens it. Minimap buttons, game tooltips and protected controls are excluded.
 
 ## Commands
 
@@ -58,12 +72,20 @@ and restart the game.
 
 Lua syntax and integration behavior are tested in a simulated WoW environment,
 including missing targets, load-on-demand activation and independent skin modules.
+The new modules additionally check lazy windows, portraits/icons, skipped map
+contents, RXP theme/profile immutability and preserved API return values.
 Appearance and behavior still need verification in WoW.
 
 For Forever Companion, open each side tab, change class/spec/phase and scroll.
 Switch options pages; test checkboxes, search and dropdowns. Check tooltips, clicks,
 equipped-item borders, close buttons and Escape. Try changing the EUI theme/accent
 and disabling the collection followed by `/reload`.
+
+For Dungeon Journal, test boss/quest/map tabs, quest navigation, settings,
+loot filtering and favourites. Verify boss portraits, map markers, item rarity
+and quest completion indicators. For RestedXP, test both legacy and V2 guide
+windows, changing guides/steps, scrolling and the importer. Confirm that the
+saved RXP theme choice stays unchanged and hiding backgrounds still works.
 
 If a problem occurs, enable Lua errors with `/console scriptErrors 1`, run `/reload`
 and report the error. Include the affected addon/version and a screenshot if useful.
