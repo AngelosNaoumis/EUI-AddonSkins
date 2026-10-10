@@ -64,7 +64,11 @@ assert(not modules.RXPGuides.available() and not modules.ForeverDungeonJournal.a
 local source = {font = 'original-font', background = {1, 1, 1, 1}, textColor = {1, 0, 0}, mapPins = {1, 0, 0}, tooltip = {1, 1, 0}}
 local source2 = {font = 'original-v2', backgroundColors = {common = {1, 1, 1}}, borderColors = {common = {1, 1, 1}}, textColor = {title = {1, 1, 0}}, edge = {}, mapPins = {0, 1, 1}, navigationArrow = 'arrow'}
 local guide = frame()
-guide.backdrop = {edge = {}, guideName = {}, bottom = {}}
+guide.backdrop = {
+    edge = {edgeSize = 8, insets = {left = 4, right = 2, top = 2, bottom = 4}},
+    guideName = {edgeSize = 8, insets = {left = 4, right = 2, top = 2, bottom = 4}},
+    bottom = {insets = {left = 4, right = 2, top = 2, bottom = 4}},
+}
 guide.GuideName = {bg = region('banner', 'BACKGROUND'), icon = region('logo', 'ARTWORK')}
 guide.BottomFrame = frame(); guide.BottomFrame:SetBackdrop({edgeFile = 'old'})
 local step = frame(); step.number = frame(); step:SetBackdrop({edgeFile = 'old'}); step.number:SetBackdrop({edgeFile = 'old'})
@@ -99,6 +103,18 @@ assert(theme.font == 'EUI-font' and source.font == 'original-font' and source.ba
 assert(theme.mapPins == source.mapPins and theme.tooltip == source.tooltip, 'semantic colors changed')
 assert(RXP.settings.profile.activeTheme == 'Custom' and RXP.settings.profile.guideFontSize == 12)
 assert(RXP.colors == theme and RXP.RXPFrame.backdrop.edge.edgeSize == 1)
+-- The native renderer applies these shared backdrops to guide panels, pooled
+-- active steps, step-number badges and the Active Targets title/body.
+for _, key in ipairs({'edge', 'guideName', 'bottom'}) do
+    local backdrop = guide.backdrop[key]
+    local expected = key == 'bottom' and 0 or backdrop.edgeSize
+    for _, side in ipairs({'left', 'right', 'top', 'bottom'}) do
+        assert(backdrop.insets[side] == expected, 'fill detached from border: ' .. key .. '/' .. side)
+    end
+end
+step:SetBackdrop(guide.backdrop.edge); step.number:SetBackdrop(guide.backdrop.edge); flush()
+assert(step:GetBackdrop().insets.left == 1 and step.number:GetBackdrop().insets.bottom == 1)
+
 local v2 = RXP.v2:GetTheme()
 assert(v2 ~= source2 and v2.backgroundColors ~= source2.backgroundColors)
 assert(source2.backgroundColors.common[1] == 1 and v2.mapPins == source2.mapPins and v2.navigationArrow == 'arrow')
@@ -169,4 +185,4 @@ assert(renders == 0, 'skin refresh must not reload guide content')
 local r1, r2 = RXP.RenderFrame(); assert(r1 == nil and r2 == 'render-tail')
 assert(originalCalls >= 2 and renders == 1)
 assert(#errors == 0, table.concat(errors, '\n'))
-print('PASS: optional/lazy targets, legacy border tint after redraw, Active Targets/combat/hidden backgrounds, numeric close texture and clicks, source/profile immutability, portraits/icons/maps, disable')
+print('PASS: optional/lazy targets, legacy border/fill alignment and tint after redraw, Active Targets/combat/hidden backgrounds, numeric close texture and clicks, source/profile immutability, portraits/icons/maps, disable')

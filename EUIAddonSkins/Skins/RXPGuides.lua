@@ -65,6 +65,10 @@ end, function(S, module)
                             backdrop.bgFile = "Interface/Buttons/WHITE8X8"
                             backdrop.edgeFile = key ~= "bottom" and "Interface/Buttons/WHITE8X8" or nil
                             backdrop.edgeSize = 1
+                            -- RXP's original 8px artwork used asymmetric 2-4px
+                            -- fill insets. Match the fill to our thin border.
+                            local inset = key ~= "bottom" and 1 or 0
+                            backdrop.insets = {left = inset, right = inset, top = inset, bottom = inset}
                         end
                     end
                 end

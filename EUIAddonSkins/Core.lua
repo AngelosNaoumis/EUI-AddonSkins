@@ -1,5 +1,5 @@
 local ADDON, ns = ...
-ns.VERSION = "0.3.1"
+ns.VERSION = "0.3.2"
 ns.modules = {}
 local skin, registered
 

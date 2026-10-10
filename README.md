@@ -4,7 +4,7 @@ A modular collection of World of Warcraft addon skins using the official
 EllesmereUI skinning API. Each skin activates only when its target addon is installed
 and loaded. You do not need Forever Companion to use EUI AddonSkins.
 
-Version **0.3.1** includes optional skins for **Forever Companion**,
+Version **0.3.2** includes optional skins for **Forever Companion**,
 **Forever Dungeon Journal** and **RestedXP Guides**. Each integration is a separate module.
 
 ## Requirements
@@ -54,7 +54,8 @@ RestedXP uses session copies of its native themes to retain its layout, window
 opacity/visibility behavior and existing click actions. Saved theme choices,
 registered theme definitions, guide data, map-pin colors, navigation arrows and
 auction value indicators are preserved. Legacy guide/step borders receive a
-muted EUI-style tint after native redraws. Active Targets receives matching
+muted EUI-style tint after native redraws. Their background insets match the
+1-pixel border, removing the transparent gap left by RXP's original thicker art. Active Targets receives matching
 backdrop borders and title styling; its secure action buttons are left intact,
 and visual updates wait until combat ends. Hidden target backgrounds stay hidden. No guide window is created until RXP
 opens it. Minimap buttons, game tooltips and protected controls are excluded.
