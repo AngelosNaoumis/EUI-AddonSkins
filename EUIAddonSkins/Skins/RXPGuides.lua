@@ -3,7 +3,7 @@ ns.RegisterModule("RXPGuides", "RestedXP Guides", function()
     return _G.RXP and type(_G.RXP.LoadActiveTheme) == "function"
 end, function(S, module)
     local addon = _G.RXP
-    local H = ns.CreateSkinHelper(S)
+    local H = ns.CreateSkinHelper(S, module)
     local refresh
     local targetSeen
     local copies, wrapped = setmetatable({}, {__mode = "k"}), {}
@@ -53,7 +53,7 @@ end, function(S, module)
         object[name] = function(...)
             local function Pack(...) return {n = select("#", ...), ...} end
             local result = Pack(original(...))
-            if ns.IsEnabled() and type(result[1]) == "table" then
+            if ns.IsEnabled(module) and type(result[1]) == "table" then
                 result[1] = Theme(result[1])
                 object.activeTheme = result[1]
                 if legacy then
@@ -148,7 +148,7 @@ end, function(S, module)
     end
     refresh = function() H.Queue(module, Apply) end
     local function UpdateTheme()
-        if not ns.IsEnabled() or CombatLocked() then return end
+        if not ns.IsEnabled(module) or CombatLocked() then return end
         if addon.settings and addon.settings.profile and addon.RXPFrame then
             H.Safe(addon.LoadActiveTheme, addon)
             -- Refresh visuals directly; RenderFrame also reloads the current guide.

@@ -126,7 +126,7 @@ SlashCmdList.EUIADDONSKINS("")
 -- Missing target must be harmless and must not block other skin modules.
 EUIAddonSkinsDB = {}
 ForeverCompanionAPI = nil
-EllesmereUI = { RegisterSkin = function(_, fn) callback = fn end }
+EllesmereUI = { RegisterSkin = function(_, fn) callback = fn; fn(skin) end }
 local collection = {}
 chunk("EUIAddonSkins", collection)
 local coreEvents = lastCreated

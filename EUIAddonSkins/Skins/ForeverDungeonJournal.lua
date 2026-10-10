@@ -4,7 +4,7 @@ ns.RegisterModule("ForeverDungeonJournal", "Forever Dungeon Journal", function()
     return journal and type(journal.ToggleJournal) == "function"
 end, function(S, module)
     local journal = _G.ForeverDungeonJournal_NS
-    local H = ns.CreateSkinHelper(S)
+    local H = ns.CreateSkinHelper(S, module)
     local refresh
     local panels, watched = {}, {}
     local unpack = unpack or table.unpack
@@ -132,6 +132,6 @@ end, function(S, module)
     refresh()
     module.refresh = refresh
     if S.OnLooksChanged then S.OnLooksChanged(function()
-        if ns.IsEnabled() then Palette(); refresh() end
+        if ns.IsEnabled(module) then Palette(); refresh() end
     end) end
 end)

@@ -4,7 +4,7 @@ A modular collection of World of Warcraft addon skins using the official
 EllesmereUI skinning API. Each skin activates only when its target addon is installed
 and loaded. You do not need Forever Companion to use EUI AddonSkins.
 
-Version **0.3.2** includes optional skins for **Forever Companion**,
+Version **0.4.0** includes optional skins for **Forever Companion**,
 **Forever Dungeon Journal** and **RestedXP Guides**. Each integration is a separate module.
 
 ## Requirements
@@ -27,7 +27,18 @@ are not bundled; install each target separately.
 5. Restart the game if you installed while it was running. Open your supported addons normally.
 
 EllesmereUI selects the EllesmereUI or Modern theme using its own window settings.
-The collection appears as `EUIAddonSkins` in its third-party skins list.
+Each module has its own toggle under **Blizzard Skins+ > Window Skins >
+Third-Party Addons**:
+
+- `EUI AddonSkins - Forever Companion`
+- `EUI AddonSkins - Forever Dungeon Journal`
+- `EUI AddonSkins - RestedXP Guides`
+
+Supported skins appear even if their target is not installed; absent targets stay
+inactive. Enable or disable each skin independently. Enabling applies live when
+possible; disabling needs `/reload` to remove visuals already installed.
+The previous single `EUIAddonSkins` EUI toggle is replaced by these entries;
+the new toggles default to enabled.
 Theme and accent changes update the skinned elements live.
 
 ## Included skins
@@ -67,15 +78,17 @@ opens it. Minimap buttons, game tooltips and protected controls are excluded.
 - `/euiskins on` — enable the collection, then run `/reload`.
 - `/euiskins refresh` — discover new controls and refresh loaded modules.
 
-`/fcskin` remains a compatibility alias. You can also disable the collection through
-EllesmereUI's third-party skins settings. Disabling requires `/reload` to remove
+`/fcskin` remains a compatibility alias. EllesmereUI's "Skin Third-Party Addons" master switch controls all registered
+third-party skins, including this collection. `/euiskins off` remains a separate
+collection-wide override; `/euiskins on` clears it. Disabling requires `/reload` to remove
 visual changes already applied. To uninstall, remove only the `EUIAddonSkins` folder
 and restart the game.
 
 ## Validation and troubleshooting
 
 Lua syntax and integration behavior are tested in a simulated WoW environment,
-including missing targets, load-on-demand activation and independent skin modules.
+including missing targets, load-on-demand activation, independent EUI toggles,
+live enabling, queued refresh cancellation and both master switches.
 Regression checks cover legacy border redraws, protected guide roots, lazy Active
 Targets, combat deferral, hidden backgrounds and unnamed numeric-texture close
 buttons without replacing their click actions.
@@ -101,8 +114,9 @@ An absent target is reported as `not installed or not loaded`; this is normal.
 ## Adding skins
 
 Each integration lives in `Skins/` and calls
-`ns.RegisterModule(id, label, available, install)`. The core registers one collection
-with EllesmereUI, passes the official skin facade to available modules and checks
+`ns.RegisterModule(id, label, available, install)`. The core registers each module separately
+with EllesmereUI using a collection-prefixed name, passes its own gated skin
+facade to the integration and checks
 again on `ADDON_LOADED` for load-on-demand targets. Failed installers are isolated.
 Optional target dependencies provide load ordering without requiring those addons.
 

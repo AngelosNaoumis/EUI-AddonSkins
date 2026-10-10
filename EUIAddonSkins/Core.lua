@@ -1,46 +1,53 @@
 local ADDON, ns = ...
-ns.VERSION = "0.3.2"
+ns.VERSION = "0.4.0"
 ns.modules = {}
-local skin, registered
 
 local function Print(message)
     DEFAULT_CHAT_FRAME:AddMessage("|cff0cd29fEUI AddonSkins:|r " .. message)
 end
 
-function ns.IsEnabled()
-    return not (EUIAddonSkinsDB and EUIAddonSkinsDB.disabled)
-        and (not skin or not skin.IsEnabled or skin.IsEnabled())
+function ns.IsEnabled(module)
+    if EUIAddonSkinsDB and EUIAddonSkinsDB.disabled then return false end
+    if not module then return true end
+    local S = module.skin
+    return S and (not S.IsEnabled or S.IsEnabled()) or false
 end
 
 local function TryModules()
-    if not skin or not ns.IsEnabled() then return end
     for _, module in ipairs(ns.modules) do
-        if not module.attempted and module.available() then
+        if not module.attempted and ns.IsEnabled(module) and module.available() then
             module.attempted = true
-            local ok, err = pcall(module.install, skin, module)
+            local ok, err = pcall(module.install, module.skin, module)
             module.active = ok
             if not ok then geterrorhandler()(ADDON .. " / " .. module.label .. ": " .. tostring(err)) end
         end
     end
 end
 
--- Missing targets remain dormant; ADDON_LOADED activates load-on-demand targets.
+local function Register()
+    local EUI = _G.EllesmereUI
+    if not (EUI and EUI.RegisterSkin) then return end
+    for _, module in ipairs(ns.modules) do
+        if not module.registered then
+            module.registered = true
+            -- Unique collection-prefixed names avoid target addons' own registrations.
+            EUI.RegisterSkin("EUI AddonSkins - " .. module.label, function(S)
+                module.skin = S
+                TryModules()
+            end)
+        end
+    end
+end
+
+-- All supported skins appear in EUI options, even when the target is absent.
+-- An eligible callback waits for ADDON_LOADED if its target loads later.
 function ns.RegisterModule(id, label, available, install)
     for _, module in ipairs(ns.modules) do
         if module.id == id then error("Duplicate skin module: " .. id) end
     end
     table.insert(ns.modules, { id = id, label = label, available = available, install = install })
+    Register()
     TryModules()
-end
-
-local function Register()
-    local EUI = _G.EllesmereUI
-    if registered or not (EUI and EUI.RegisterSkin) then return end
-    registered = true
-    EUI.RegisterSkin(ADDON, function(S)
-        skin = S
-        TryModules()
-    end)
 end
 
 local events = CreateFrame("Frame")
@@ -50,7 +57,7 @@ events:SetScript("OnEvent", function(_, event)
     EUIAddonSkinsDB = EUIAddonSkinsDB or {}
     Register()
     TryModules()
-    if event == "PLAYER_LOGIN" and not registered then
+    if event == "PLAYER_LOGIN" and not (_G.EllesmereUI and _G.EllesmereUI.RegisterSkin) then
         Print("Skin API unavailable. Update EllesmereUI and enable Blizzard Skins+.")
     end
 end)
@@ -65,21 +72,20 @@ SlashCmdList.EUIADDONSKINS = function(message)
         EUIAddonSkinsDB.disabled = command == "off"
         Print((command == "off" and "Disabled." or "Enabled.") .. " Run /reload to apply.")
     elseif command == "refresh" then
-        if skin and ns.IsEnabled() then
+        if ns.IsEnabled() then
             TryModules()
             for _, module in ipairs(ns.modules) do
-                if module.active and module.refresh then module.refresh() end
+                if module.active and ns.IsEnabled(module) and module.refresh then module.refresh() end
             end
             Print("Refresh requested.")
         else Print("Skins are inactive. Enable skinning and run /reload.") end
     else
         Print("v" .. ns.VERSION .. " | /euiskins on, off, refresh, list")
-        if not skin then Print("Waiting for the EllesmereUI skin API. Check third-party skin settings.")
-        elseif not ns.IsEnabled() then Print("Skinning disabled. Enable it and run /reload.") end
+        if not ns.IsEnabled() then Print("Skinning disabled. Enable it and run /reload.") end
         for _, module in ipairs(ns.modules) do
             local status = "not installed or not loaded"
             if module.attempted and not module.active then status = "integration error"
-            elseif module.active and ns.IsEnabled() then status = "active"
+            elseif module.active and ns.IsEnabled(module) then status = "active"
             elseif module.available() then status = "inactive" end
             Print(module.label .. ": " .. status)
         end

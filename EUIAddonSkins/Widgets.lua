@@ -1,7 +1,7 @@
 local ADDON, ns = ...
 
 -- Scoped utilities for integrations without public frame factories. Never scan UIParent.
-function ns.CreateSkinHelper(S)
+function ns.CreateSkinHelper(S, module)
     local H = {}
     local known, hooks, shells = {}, {}, {}
     local pending, queued = {}, false
@@ -24,7 +24,7 @@ function ns.CreateSkinHelper(S)
         if h[name] then return end
         h[name] = true
         hooksecurefunc(object, name, function(...)
-            if ns.IsEnabled() then H.Safe(callback, ...) end
+            if ns.IsEnabled(module) then H.Safe(callback, ...) end
         end)
     end
     function H.Script(f, name, callback)
@@ -36,18 +36,18 @@ function ns.CreateSkinHelper(S)
         if h[key] then return end
         h[key] = true
         f:HookScript(name, function(...)
-            if ns.IsEnabled() then H.Safe(callback, ...) end
+            if ns.IsEnabled(module) then H.Safe(callback, ...) end
         end)
     end
     function H.Queue(key, callback)
-        if not ns.IsEnabled() then return end
+        if not ns.IsEnabled(module) then return end
         pending[key] = callback
         if queued then return end
         queued = true
         C_Timer.After(0, function()
             queued = false
             local batch = pending; pending = {}
-            if not ns.IsEnabled() then return end
+            if not ns.IsEnabled(module) then return end
             for _, fn in pairs(batch) do H.Safe(fn) end
         end)
     end
@@ -120,7 +120,7 @@ function ns.CreateSkinHelper(S)
             if visit then visit(f, kind) end
             for _, child in ipairs({ f:GetChildren() }) do walk(child, depth + 1) end
         end
-        if ns.IsEnabled() then walk(root, 0) end
+        if ns.IsEnabled(module) then walk(root, 0) end
     end
     return H
 end
