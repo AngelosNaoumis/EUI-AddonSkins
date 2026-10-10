@@ -5,6 +5,7 @@ end, function(S, module)
     local addon = _G.RXP
     local H = ns.CreateSkinHelper(S, module)
     local refresh
+    local themed = setmetatable({}, {__mode = "k"})
     local targetSeen
     local copies, wrapped = setmetatable({}, {__mode = "k"}), {}
     local unpack = unpack or table.unpack
@@ -76,6 +77,7 @@ end, function(S, module)
             return unpack(result, 1, result.n)
         end
     end
+    local SyncShell
     local function TintBackdrop(f)
         if InCombatLockdown and InCombatLockdown() then return end
         if not f or (f.IsForbidden and f:IsForbidden()) then return end
@@ -88,6 +90,10 @@ end, function(S, module)
                 if InCombatLockdown and InCombatLockdown() then return end
                 local current = f:GetBackdrop()
                 if current and current.edgeFile then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
+                local entry = themed[f]
+                if entry then
+                    SyncShell(f, entry)
+                end
             end)
         end
     end
@@ -96,6 +102,55 @@ end, function(S, module)
     end
     local function CombatLocked()
         return InCombatLockdown and InCombatLockdown()
+    end
+    SyncShell = function(f, entry)
+        if CombatLocked() then return end
+        local shown = true
+        if f.rxpBackground then
+            shown = not f.rxpBackground.IsShown or f.rxpBackground:IsShown()
+            f.rxpBackground:SetAlpha(0) -- native border/visibility still belongs to RXP
+        elseif f.GetBackdrop then
+            local backdrop = f:GetBackdrop()
+            shown = backdrop and backdrop.bgFile and true or false
+            if shown and f.SetBackdropColor and not entry.lock then
+                entry.lock = true
+                f:SetBackdropColor(0, 0, 0, 0)
+                entry.lock = false
+            end
+        end
+        entry.layer:SetAlpha(shown and entry.opacity or 0)
+    end
+    local function ThemeShell(f, footer)
+        if not f or not f.GetFrameLevel or (not f.GetBackdrop and not f.rxpBackground) or CombatLocked()
+            or (f.IsForbidden and f:IsForbidden()) then return end
+        local entry = themed[f]
+        if not entry then
+            -- Own background-only child: never feed icon/guide regions to Shell.
+            local layer = CreateFrame("Frame", nil, f)
+            layer:SetAllPoints(f)
+            layer:SetFrameLevel(f:GetFrameLevel())
+            layer:EnableMouse(false)
+            S.Shell(layer, {noBorder = true, noTopBar = true, bottomBar = footer})
+            entry = {layer = layer, opacity = 1}
+            local fill = f.rxpBackground and f.rxpBackground.textures and f.rxpBackground.textures[1]
+            if fill and fill.GetVertexColor then
+                local _, _, _, alpha = fill:GetVertexColor()
+                entry.opacity = alpha or 1
+            elseif f.GetBackdropColor then
+                local _, _, _, alpha = f:GetBackdropColor()
+                entry.opacity = alpha or 1
+            end
+            themed[f] = entry
+            H.Hook(f, "SetBackdropColor", function(_, r, g, b, a)
+                if entry.lock then return end
+                entry.opacity = a or 1
+                SyncShell(f, entry)
+            end)
+            H.Hook(f, "ClearBackdrop", function() SyncShell(f, entry) end)
+            -- SetBackdrop already has the synchronous tint hook. Its callback
+            -- below also handles removing/reinstating the native background.
+        end
+        SyncShell(f, entry)
     end
     local function TargetFrame()
         return addon.targeting and addon.targeting.activeTargetFrame
@@ -112,6 +167,8 @@ end, function(S, module)
         end
         TintBackdrop(f)
         TintBackdrop(f.title)
+        ThemeShell(f)
+        ThemeShell(f.title)
         ns.AttachAccent(S, f)
         local r, g, b = S.GetAccentColor()
         H.Font(f.title and f.title.text, r, g, b)
@@ -124,10 +181,15 @@ end, function(S, module)
             -- Secure children may make the guide root implicitly protected. Tint
             -- only the known visual containers, without entering action buttons.
             for _, key in ipairs({"BottomFrame", "GuideName", "Footer"}) do TintBackdrop(legacy[key]) end
+            ThemeShell(legacy.BottomFrame)
+            ThemeShell(legacy.GuideName)
+            ThemeShell(legacy.Footer, 20)
             ns.AttachAccent(S, legacy.GuideName)
             for _, step in pairs(legacy.CurrentStepFrame and legacy.CurrentStepFrame.framePool or {}) do
                 TintBackdrop(step)
                 TintBackdrop(step.number)
+                ThemeShell(step)
+                ThemeShell(step.number)
                 ns.AttachAccent(S, step)
             end
             H.Hook(legacy, "UpdateVisuals", refresh)
@@ -138,6 +200,7 @@ end, function(S, module)
         local window = addon.v2 and addon.v2.state and addon.v2.state.guideWindow or _G.RXPV2GuideWindow
         if window then
             Scan(window.frame)
+            for _, key in ipairs({"upperFrame", "guideNameFrame", "guideStepsFrame"}) do ThemeShell(window[key]) end
             ns.AttachAccent(S, window.upperFrame or window.frame)
             H.Fade(window.banner)
             H.Hook(window, "UpdateTheme", refresh)
@@ -151,10 +214,14 @@ end, function(S, module)
         local state = addon.v2 and addon.v2.state
         for _, player in pairs(state and state.player or {}) do
             local active = player.activeStepFrame
-            for _, child in pairs(active and active.children or {}) do ns.AttachAccent(S, child.frame) end
+            for _, child in pairs(active and active.children or {}) do
+                ThemeShell(child.card or child.frame)
+                ThemeShell(child.title)
+                ns.AttachAccent(S, child.card or child.frame)
+            end
         end
         local party = state and state.activePartyStepFrame
-        if party then ns.AttachAccent(S, party.frame) end
+        if party then ThemeShell(party.frame, 18); ns.AttachAccent(S, party.frame) end
         ApplyTargets()
         local importer = addon.guideImporter
         if importer then
@@ -186,7 +253,18 @@ end, function(S, module)
     Wrap(addon.v2, "GetTheme")
     for _, name in ipairs({"RenderFrame", "LoadGuide", "SetStep"}) do H.Hook(addon, name, refresh) end
     for _, name in ipairs({"GetGuideWindow", "UpdateGuideWindow", "UpdateActiveStepTheme"}) do H.Hook(addon.v2, name, refresh) end
-    if addon.ui and addon.ui.v2 then H.Hook(addon.ui.v2, "CreateGuideImporter", refresh) end
+    if addon.ui and addon.ui.v2 then
+        H.Hook(addon.ui.v2, "CreateGuideImporter", refresh)
+        H.Hook(addon.ui.v2, "ApplyFrameBackdrop", function(_, f, edge, background)
+            local entry = themed[f]
+            if entry then entry.opacity = background and background[4] or 1; SyncShell(f, entry) end
+            refresh()
+        end)
+        H.Hook(addon.ui.v2, "SetFrameBackdropShown", function(_, f)
+            local entry = themed[f]
+            if entry then SyncShell(f, entry) end
+        end)
+    end
     for _, name in ipairs({"CreateTargetFrame", "RenderTargetFrameBackground", "UpdateTargetFrame"}) do
         H.Hook(addon.targeting, name, refresh)
     end

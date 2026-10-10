@@ -3,7 +3,7 @@ local ADDON, ns = ...
 -- Scoped utilities for integrations without public frame factories. Never scan UIParent.
 function ns.CreateSkinHelper(S, module)
     local H = {}
-    local known, hooks, shells = {}, {}, {}
+    local known, hooks, shells, tabs = {}, {}, {}, {}
     local pending, queued = {}, false
     local failures = {}
     function H.Allowed(f)
@@ -85,15 +85,30 @@ function ns.CreateSkinHelper(S, module)
         end
         H.Script(f, "OnShow", refresh)
     end
+    function H.Tab(f, selected)
+        if not H.Allowed(f) or not S.Tab then return false end
+        if not tabs[f] then S.Tab(f); tabs[f] = true end
+        if S.SetTabSelection then S.SetTabSelection(f, selected) end
+        return true
+    end
     function H.Scan(root, refresh, visit, exclude)
         local function walk(f, depth)
             if depth > 16 or not H.Allowed(f) or (exclude and exclude[f]) then return end
             local kind = f:GetObjectType()
             if kind == "GameTooltip" or kind == "PlayerModel" or kind == "ModelScene" then return end
+            local handled = visit and visit(f, kind)
             if not known[f] then
                 known[f] = true
-                if kind == "CheckButton" then S.Checkbox(f)
-                elseif kind == "EditBox" then S.EditBox(f)
+                if handled then -- Integration-owned tab/control.
+                elseif kind == "StatusBar" and S.ApplyBarFill then
+                    S.ApplyBarFill(f)
+                    local painting = false
+                    H.Hook(f, "SetStatusBarColor", function()
+                        if painting then return end
+                        painting = true; S.ApplyBarFill(f); painting = false
+                    end)
+                elseif kind == "CheckButton" then S.Checkbox(f)
+                elseif kind == "EditBox" then S.EditBox(f, {padInput = true})
                 elseif kind == "DropdownButton" then S.Dropdown(f)
                 elseif kind == "Slider" and f.GetThumbTexture and f.GetOrientation and f:GetOrientation() == "VERTICAL" then S.ScrollBar(f)
                 elseif kind == "Button" then
@@ -108,17 +123,28 @@ function ns.CreateSkinHelper(S, module)
                         if type(path) == "string" and path:find("UI%-Panel%-MinimizeButton") then S.CloseButton(f) end
                     end
                 end
+                if S.SquareIcon and kind == "Button" and (f.icon or f.Icon) then
+                    -- The optional border surrounds the supplied frame. Only
+                    -- use it for square icon controls, never full-width item rows.
+                    local square = f.GetWidth and f.GetHeight and f:GetWidth() == f:GetHeight()
+                    S.SquareIcon(f.icon or f.Icon, square and f or nil)
+                end
                 for _, region in ipairs({ f:GetRegions() }) do
                     if region:GetObjectType() == "FontString" then S.Font(region) end
                 end
-                if kind == "Button" or kind == "CheckButton" then H.Script(f, "OnClick", refresh) end
+                if kind == "Button" or kind == "CheckButton" then
+                    H.Script(f, "OnClick", refresh)
+                    H.Script(f, "OnEnable", refresh)
+                    H.Script(f, "OnDisable", refresh)
+                end
                 H.Script(f, "OnShow", refresh)
                 if kind == "ScrollFrame" then
                     H.Script(f, "OnVerticalScroll", refresh)
                     if f.ScrollBar then S.ScrollBar(f.ScrollBar) end
                 end
             end
-            if visit then visit(f, kind) end
+            if S.SortHeaderBar and f.HeaderContainer and f.HeaderContainer.GetChildren then S.SortHeaderBar(f) end
+
             for _, child in ipairs({ f:GetChildren() }) do walk(child, depth + 1) end
         end
         if ns.IsEnabled(module) then walk(root, 0) end

@@ -45,6 +45,12 @@ end, function(S, module)
     end
 
     local function Visit(f, kind)
+        local root = _G.ForeverDungeonJournalFrame
+        if root and (f == root.bossesTab or f == root.questsTab or f == root.mapTab or f == root.dungeonRouteButton) then
+            -- FDJ disables the active mode button. Mirror that visual state,
+            -- including programmatic switches, without enabling/disabling it.
+            return H.Tab(f, f.IsEnabled and not f:IsEnabled() or false)
+        end
         -- UIPanelCloseButton textures can be numeric file IDs on this client.
         -- Identify the unnamed journal close control by its exact owned anchor.
         if kind == "Button" and f.GetParent and f.GetPoint then
@@ -97,7 +103,7 @@ end, function(S, module)
             H.Font(f.selectedQuestName, r, g, b)
             H.Font(f.dungeonTitle, r, g, b)
             H.Font(f.selectedBossName, r, g, b)
-            for _, key in ipairs({"questsTab", "bossesTab", "mapTab", "backButton"}) do
+            for _, key in ipairs({"backButton"}) do
                 if H.Allowed(f[key]) then S.Button(f[key]) end
             end
             if H.Allowed(f.questPrevStepButton) and S.PageButton then S.PageButton(f.questPrevStepButton, "<") end

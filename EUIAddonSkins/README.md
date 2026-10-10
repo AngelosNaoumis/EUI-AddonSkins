@@ -4,7 +4,7 @@ A modular collection of World of Warcraft addon skins using the official
 EllesmereUI skinning API. Each skin activates only when its target addon is installed
 and loaded. You do not need Forever Companion to use EUI AddonSkins.
 
-Version **0.4.1** includes optional skins for **Forever Companion**,
+Version **0.5.0** includes optional skins for **Forever Companion**,
 **Forever Dungeon Journal** and **RestedXP Guides**. Each integration is a separate module.
 
 ## Requirements
@@ -74,6 +74,27 @@ muted EUI-style tint synchronously during native redraws, avoiding a white flash
 backdrop borders and title styling; its secure action buttons are left intact,
 and visual updates wait until combat ends. Hidden target backgrounds stay hidden. No guide window is created until RXP
 opens it. Minimap buttons, game tooltips and protected controls are excluded.
+
+## EUI feature coverage
+
+- Main Companion/Journal windows and RXP's guide/active-step backdrops follow
+  EUI's resolved EllesmereUI/Modern style. RXP uses background-only child shells
+  to preserve guide artwork, native opacity and hidden-background behavior.
+- Journal Map/Bosses/Quests/Route tabs use native EUI selected underlines; Companion
+  side tabs follow their own `SetActive` callbacks. Older APIs retain basic styling.
+- Existing editable fields use EUI input padding after anchoring. Existing ordinary
+  StatusBars use EUI's configurable bar fill; compatible `HeaderContainer` lists
+  use EUI sortable-header treatment. These do not add new progress bars or columns.
+- Square icon controls gain thin icon borders; full-width item rows keep their
+  layout and rarity/status markers. Footer strips are used for existing RXP footers
+  and Companion export/Pawn dialogs, rather than every window.
+- Fonts, buttons, disabled labels, checkboxes, dropdowns, scrollbars, close glyphs,
+  page arrows, window accents and per-addon EUI toggles remain integrated.
+
+The public API does not offer a general hyperlink-color or options-slider skin.
+Semantic guide text, item rarity, tooltips, minimap/map markers and secure action
+buttons retain their original behavior. New target controls or other addon builds
+can still require integration updates and in-game visual checks.
 
 ## Commands
 

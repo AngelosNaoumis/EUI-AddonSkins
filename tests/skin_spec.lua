@@ -99,7 +99,7 @@ local inset = api.AddInset(f)
 local check = frame("CheckButton", nil, f)
 local secret = frame("EditBox", nil, f); secret.forbidden = true
 local protected = frame("EditBox", nil, f); protected.protected = true
-local edits = calls.EditBox
+local edits = calls.EditBox or 0
 flush()
 assert(calls.EditBox == edits + 1, "must skin the ordinary input exactly once; skip restricted frames")
 assert(light.color[4] == 0.045 and right.color[4] == 0.045)

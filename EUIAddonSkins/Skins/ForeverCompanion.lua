@@ -7,6 +7,7 @@ local roots = setmetatable({}, { __mode = "k" })
 local seen = setmetatable({}, { __mode = "k" })
 local hooked = setmetatable({}, { __mode = "k" })
 local paints = setmetatable({}, { __mode = "k" })
+local tabs = setmetatable({}, { __mode = "k" })
 local pending, queued = {}, false
 local Scan, Queue
 local failures = {}
@@ -74,8 +75,15 @@ local function SkinNode(f)
     if fresh then
         seen[f] = true
         local kind = f:GetObjectType()
-        if kind == "CheckButton" then S.Checkbox(f)
-        elseif kind == "EditBox" then S.EditBox(f)
+        if kind == "StatusBar" and S.ApplyBarFill then
+            S.ApplyBarFill(f)
+            local painting = false
+            HookMethod(f, "SetStatusBarColor", function()
+                if not Enabled() or painting then return end
+                painting = true; S.ApplyBarFill(f); painting = false
+            end)
+        elseif kind == "CheckButton" then S.Checkbox(f)
+        elseif kind == "EditBox" then S.EditBox(f, {padInput = true})
         elseif kind == "Slider" or kind == "EventFrame" then
             -- MinimalScrollBar is an EventFrame; normal option sliders stay intact.
             if f.ThumbTexture or f.GetThumbTexture or f.Track then S.ScrollBar(f) end
@@ -93,6 +101,7 @@ local function SkinNode(f)
             end
         end
     end
+    if S.SortHeaderBar and f.HeaderContainer and f.HeaderContainer.GetChildren then S.SortHeaderBar(f) end
     -- FC selection hooks must retain their original behavior.
     if f.accent then
         Paint(f.accent, "accent")
@@ -100,7 +109,7 @@ local function SkinNode(f)
     end
     if f.selL then Paint(f.selL, "selection") end
     if f.selR then Paint(f.selR, "selection") end
-    if f.icon and f.sel then Paint(f.sel, "selection") end
+    if f.icon and f.sel and not tabs[f] then Paint(f.sel, "selection") end
     HookMethod(f, "SetSelected", function() if Enabled() then Safe(SkinNode, f) end end)
     for _, method in ipairs({ "ShowPage", "Render", "RenderList", "Update", "RefreshAll" }) do
         HookMethod(f, method, function() Queue(f) end)
@@ -135,7 +144,8 @@ local function Window(f)
     -- Only call Shell on initial construction: a later call would fade content icons.
     -- Already-built options windows carry a content icon directly on the root.
     local headAlpha = f.headIcon and f.headIcon:GetAlpha()
-    S.Shell(f)
+    local footer = f.GetName and (f:GetName() == "ForeverCompanionRecipeExport" or f:GetName() == "ForeverCompanionPawnFrame")
+    S.Shell(f, footer and {bottomBar = 36} or nil)
     ns.AttachAccent(S, f)
     if headAlpha then f.headIcon:SetAlpha(headAlpha) end
     if f.NineSlice then S.FadeNineSlice(f.NineSlice) end
@@ -176,7 +186,7 @@ local function Install(skin)
         S.Button(v[1]); if S.StateButtonLabel then S.StateButtonLabel(v[1]) end
         Queue(v[1])
     end)
-    Wrap("CreateSearchBox", function(v) S.EditBox(v[1]); Queue(v[1]) end)
+    Wrap("CreateSearchBox", function(v) Queue(v[1]) end)
     Wrap("CreateDropdown", function(v)
         if v[1] and v[1].frame then S.Dropdown(v[1].frame); Queue(v[1].frame) end
     end)
@@ -194,13 +204,21 @@ local function Install(skin)
     end)
     Wrap("CreateSideTab", function(v)
         local tab = v[1]
-        S.Button(tab, { "icon", "sel" })
+        if S.Tab and S.SetTabSelection then
+            tabs[tab] = true
+            tab.Icon = tab.icon -- public Tab preserves icon tabs through this key
+            S.Tab(tab)
+            S.SetTabSelection(tab, tab.sel and tab.sel.IsShown and tab.sel:IsShown() or false)
+            HookMethod(tab, "SetActive", function(_, selected)
+                if Enabled() then S.SetTabSelection(tab, selected) end
+            end)
+        else S.Button(tab, { "icon", "sel" }) end
         if tab.mask and tab.icon and tab.icon.RemoveMaskTexture then tab.icon:RemoveMaskTexture(tab.mask) end
         if tab.bg then tab.bg:SetAlpha(0) end
         if tab.border then tab.border:SetAlpha(0) end
         if tab.hl then tab.hl:SetAlpha(0) end
-        if tab.icon then S.SquareIcon(tab.icon) end
-        Paint(tab.sel, "selection")
+        if tab.icon then S.SquareIcon(tab.icon, tab) end
+        if not tabs[tab] then Paint(tab.sel, "selection") end
         Queue(tab)
     end)
     Wrap("CreateOptionsButton", function(v) S.Button(v[1], { "icon" }); Queue(v[1]) end)
