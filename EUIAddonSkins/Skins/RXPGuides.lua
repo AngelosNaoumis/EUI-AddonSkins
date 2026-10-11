@@ -4,11 +4,12 @@ ns.RegisterModule("RXPGuides", "RestedXP Guides", function()
 end, function(S, module)
     local addon = _G.RXP
     local H = ns.CreateSkinHelper(S, module)
-    local refresh
+    local refresh, applyWaiting, themeWaiting
     local themed = setmetatable({}, {__mode = "k"})
     local targetSeen
     local copies, wrapped = setmetatable({}, {__mode = "k"}), {}
     local unpack = unpack or table.unpack
+    local function Pack(...) return {n = select("#", ...), ...} end
     local function Copy(t)
         local out = {}; for k, v in pairs(t or {}) do out[k] = v end; return out
     end
@@ -52,7 +53,6 @@ end, function(S, module)
         wrapped[object] = true
         local original = object[name]
         object[name] = function(...)
-            local function Pack(...) return {n = select("#", ...), ...} end
             local result = Pack(original(...))
             if ns.IsEnabled(module) and type(result[1]) == "table" then
                 result[1] = Theme(result[1])
@@ -174,6 +174,8 @@ end, function(S, module)
         H.Font(f.title and f.title.text, r, g, b)
     end
     local function Apply()
+        if CombatLocked() then applyWaiting = true; return end
+        applyWaiting = false
         Wrap(addon.v2, "GetTheme")
         local legacy = addon.RXPFrame or _G.RXPFrame
         if legacy then
@@ -233,7 +235,9 @@ end, function(S, module)
     end
     refresh = function() H.Queue(module, Apply) end
     local function UpdateTheme()
-        if not ns.IsEnabled(module) or CombatLocked() then return end
+        if not ns.IsEnabled(module) then return end
+        if CombatLocked() then themeWaiting = true; return end
+        themeWaiting = false
         if addon.settings and addon.settings.profile and addon.RXPFrame then
             H.Safe(addon.LoadActiveTheme, addon)
             -- Refresh visuals directly; RenderFrame also reloads the current guide.
@@ -270,7 +274,10 @@ end, function(S, module)
     end
     local combatEvents = CreateFrame("Frame")
     combatEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
-    combatEvents:SetScript("OnEvent", function() UpdateTheme() end)
+    combatEvents:SetScript("OnEvent", function()
+        if themeWaiting then UpdateTheme()
+        elseif applyWaiting then refresh() end
+    end)
     if ns.BindPopupOwner then
         H.Hook(addon, "ShowMenu", function(_, _, owner)
             ns.BindPopupOwner(S, module, owner or (addon.RXPFrame and addon.RXPFrame.MenuFrame))

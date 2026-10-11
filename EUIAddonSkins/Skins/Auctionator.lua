@@ -6,6 +6,7 @@ end, function(S, module)
     local H = ns.CreateSkinHelper(S, module)
     local roots, shells, panels = {}, {}, {}
     local refresh, waiting
+    local discoveryDirty = true
     local events = CreateFrame("Frame")
     events:RegisterEvent("AUCTION_HOUSE_SHOW")
     events:RegisterEvent("ADDON_LOADED")
@@ -51,9 +52,12 @@ end, function(S, module)
             end
         end
         -- Only addon-owned globals, never a scan of the Blizzard auction house.
-        for name, f in pairs(_G) do
-            if type(name) == "string" and name:match("^AuctionatorConfig.*Frame$") and (type(f) == "table" or type(f) == "userdata") then
-                if f.GetObjectType then roots[f] = roots[f] or "controls" end
+        if discoveryDirty then
+            discoveryDirty = false
+            for name, f in pairs(_G) do
+                if type(name) == "string" and name:match("^AuctionatorConfig.*Frame$") and (type(f) == "table" or type(f) == "userdata") then
+                    if f.GetObjectType then roots[f] = roots[f] or "controls" end
+                end
             end
         end
         for _, name in ipairs({"AuctionatorShoppingTabItemFrame", "AuctionatorExportListFrame",
@@ -94,7 +98,8 @@ end, function(S, module)
             H.Hook(A.Dialogs, method, refresh)
         end
     end
-    H.Hook(A.Config, "InternalInitializeFrames", refresh)
+    local function Discover() discoveryDirty = true; refresh() end
+    H.Hook(A.Config, "InternalInitializeFrames", Discover)
     -- OnLoad already ran for frames created before this skin was enabled.
     local shopping = _G.AuctionatorShoppingFrame
     if shopping then
@@ -104,6 +109,7 @@ end, function(S, module)
         if shopping.exportDialog and shopping.exportDialog.copyTextDialog then roots[shopping.exportDialog.copyTextDialog] = "dialog" end
     end
     events:SetScript("OnEvent", function(_, event)
+        if event == "ADDON_LOADED" then discoveryDirty = true end
         if ns.IsEnabled(module) and (event ~= "PLAYER_REGEN_ENABLED" or waiting) then refresh() end
     end)
     module.refresh = refresh

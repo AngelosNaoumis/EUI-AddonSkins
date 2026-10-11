@@ -46,16 +46,16 @@ end
 local function Font(r, text, S)
     if not text or not text.GetFont or not text.SetFont then return end
     if not r.fonts[text] then r.fonts[text] = {text:GetFont()} end
-    local _, size = text:GetFont()
+    local current, size, currentFlags = text:GetFont()
     local path, flags = S.GetFont()
     flags = flags or ""
-    text:SetFont(path, size or 12, flags)
+    if current ~= path or (currentFlags or "") ~= flags then text:SetFont(path, size or 12, flags) end
     r.appliedFonts[text] = {path, size or 12, flags}
 end
 local function Fade(r, object)
     if not object or not object.GetAlpha or not object.SetAlpha then return end
     if r.alpha[object] == nil then r.alpha[object] = object:GetAlpha() end
-    object:SetAlpha(0)
+    if object:GetAlpha() ~= 0 then object:SetAlpha(0) end
 end
 local function Tint(r, texture, red, green, blue, alpha)
     if not texture or not texture.GetVertexColor or not texture.SetVertexColor then return end
@@ -150,14 +150,15 @@ end
 function ns.BindPopupOwner(S, module, owner)
     if not owner then return end
     local binding = owners[owner]
-    if not binding or binding.module ~= module then
+    local changed = not binding or binding.module ~= module or binding.S ~= S
+    if changed then
         binding = {S = S, module = module}; owners[owner] = binding
     end
     if not lookHooks[module] and S.OnLooksChanged then
         lookHooks[module] = true
         S.OnLooksChanged(ns.RefreshPopupMenus)
     end
-    ns.RefreshPopupMenus()
+    if changed then ns.RefreshPopupMenus() end
 end
 -- Observe shared renderer completion, with all mutation gated by known owner.
 local function InstallHooks()

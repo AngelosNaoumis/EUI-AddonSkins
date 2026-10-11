@@ -151,6 +151,16 @@ RXP.settings.profile.hideActiveTargetsBackground = true
 function target:UpdateVisuals() targetUpdates = targetUpdates + 1; self:SetBackdrop(nil) end
 modules.RXPGuides.refresh(); flush()
 assert(target:GetBackdrop() == nil, 'skin restored a hidden target background')
+-- Routine combat endings must not rerender native themes; dirty changes do.
+local callsBeforeIdle = originalCalls
+combatEvents.hooks.OnEvent(); flush()
+assert(originalCalls == callsBeforeIdle, 'idle combat end refreshed RXP theme')
+combat = true
+modules.RXPGuides.refresh(); flush()
+assert(originalCalls == callsBeforeIdle, 'theme updated during combat')
+combat = false
+combatEvents.hooks.OnEvent(); flush()
+assert(originalCalls == callsBeforeIdle + 1, 'combat-deferred theme lost')
 local originalTheme = {frame = {1, 0, 0}}
 ForeverDungeonJournal_NS = {THEMES = {dungeon = originalTheme}, ToggleJournal = function()
     local root = frame(); root.rightPanel = frame()

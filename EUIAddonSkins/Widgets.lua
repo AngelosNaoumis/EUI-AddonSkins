@@ -6,6 +6,15 @@ function ns.CreateSkinHelper(S, module)
     local known, hooks, shells, tabs = {}, {}, {}, {}
     local pending, queued = {}, false
     local failures = {}
+    local empty, faded, scrolls = {}, {}, {}
+    function H.Children(f)
+        if f.GetNumChildren and f:GetNumChildren() == 0 then return empty end
+        return {f:GetChildren()}
+    end
+    function H.Regions(f)
+        if f.GetNumRegions and f:GetNumRegions() == 0 then return empty end
+        return {f:GetRegions()}
+    end
     function H.Allowed(f)
         return f and f.GetObjectType and not (f.IsForbidden and f:IsForbidden())
             and not (f.IsProtected and f:IsProtected())
@@ -48,12 +57,17 @@ function ns.CreateSkinHelper(S, module)
             queued = false
             local batch = pending; pending = {}
             if not ns.IsEnabled(module) then return end
-            for _, fn in pairs(batch) do H.Safe(fn) end
+            for key, fn in pairs(batch) do
+                -- A queued full integration refresh already covers scroll subtrees.
+                if not (batch[module] and scrolls[key]) then H.Safe(fn) end
+            end
         end)
     end
     function H.Fade(texture)
         if not texture or not texture.SetAlpha then return end
-        texture:SetAlpha(0)
+        if not texture.GetAlpha or texture:GetAlpha() ~= 0 then texture:SetAlpha(0) end
+        if faded[texture] then return end
+        faded[texture] = true
         local lock = false
         H.Hook(texture, "SetAlpha", function(_, value)
             if value == 0 or lock then return end
@@ -68,7 +82,7 @@ function ns.CreateSkinHelper(S, module)
         if not shells[f] then
             shells[f] = true
             local icons = {}
-            for _, region in ipairs({f:GetRegions()}) do
+            for _, region in ipairs(H.Regions(f)) do
                 if region.GetTexture then
                     local path = region:GetTexture()
                     if type(path) == "string" and path:lower():find("interface[/\\]icons") then
@@ -92,10 +106,28 @@ function ns.CreateSkinHelper(S, module)
         return true
     end
     function H.Scan(root, refresh, visit, exclude)
+        -- Update existing scroll contexts even when an ancestor becomes excluded.
+        for _, context in pairs(scrolls) do
+            if context.root == root then
+                context.refresh, context.visit, context.exclude = refresh, visit, exclude
+            end
+        end
         local function walk(f, depth)
             if depth > 16 or not H.Allowed(f) or (exclude and exclude[f]) then return end
             local kind = f:GetObjectType()
             if kind == "GameTooltip" or kind == "PlayerModel" or kind == "ModelScene" then return end
+            if kind == "ScrollFrame" then
+                local context = scrolls[f]
+                if not context then
+                    context = {root = root}; scrolls[f] = context
+                    context.apply = function() H.Scan(f, context.refresh, context.visit, context.exclude) end
+                    H.Script(f, "OnVerticalScroll", function()
+                        -- Exclusions can belong to ancestors outside this subtree.
+                        if context.exclude then context.refresh() else H.Queue(f, context.apply) end
+                    end)
+                end
+                context.refresh, context.visit, context.exclude = refresh, visit, exclude
+            end
             local handled = visit and visit(f, kind)
             if not known[f] then
                 known[f] = true
@@ -129,7 +161,7 @@ function ns.CreateSkinHelper(S, module)
                     local square = f.GetWidth and f.GetHeight and f:GetWidth() == f:GetHeight()
                     S.SquareIcon(f.icon or f.Icon, square and f or nil)
                 end
-                for _, region in ipairs({ f:GetRegions() }) do
+                for _, region in ipairs(H.Regions(f)) do
                     if region:GetObjectType() == "FontString" then S.Font(region) end
                 end
                 if kind == "Button" or kind == "CheckButton" then
@@ -139,13 +171,12 @@ function ns.CreateSkinHelper(S, module)
                 end
                 H.Script(f, "OnShow", refresh)
                 if kind == "ScrollFrame" then
-                    H.Script(f, "OnVerticalScroll", refresh)
                     if f.ScrollBar then S.ScrollBar(f.ScrollBar) end
                 end
             end
             if S.SortHeaderBar and f.HeaderContainer and f.HeaderContainer.GetChildren then S.SortHeaderBar(f) end
 
-            for _, child in ipairs({ f:GetChildren() }) do walk(child, depth + 1) end
+            for _, child in ipairs(H.Children(f)) do walk(child, depth + 1) end
         end
         if ns.IsEnabled(module) then walk(root, 0) end
     end

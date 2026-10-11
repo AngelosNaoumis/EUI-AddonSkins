@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2
+
+- Reduced repeated scrolling, texture writes and hook allocations.
+- Limited Auctionator configuration discovery to load/initialization events.
+- Deferred RestedXP skin work during combat and removed unnecessary combat-end theme refreshes.
+
 ## 0.7.1
 
 - Added scoped popup-menu styling for KiwiFarm, RestedXP and TwitchEmotes, including submenus.

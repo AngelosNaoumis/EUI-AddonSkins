@@ -11,6 +11,7 @@ local tabs = setmetatable({}, { __mode = "k" })
 local pending, queued = {}, false
 local Scan, Queue
 local failures = {}
+local refreshMethods = { "ShowPage", "Render", "RenderList", "Update", "RefreshAll" }
 
 local function Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff0cd29fEUI AddonSkins:|r " .. msg)
@@ -110,9 +111,14 @@ local function SkinNode(f)
     if f.selL then Paint(f.selL, "selection") end
     if f.selR then Paint(f.selR, "selection") end
     if f.icon and f.sel and not tabs[f] then Paint(f.sel, "selection") end
-    HookMethod(f, "SetSelected", function() if Enabled() then Safe(SkinNode, f) end end)
-    for _, method in ipairs({ "ShowPage", "Render", "RenderList", "Update", "RefreshAll" }) do
-        HookMethod(f, method, function() Queue(f) end)
+    local h = hooked[f]
+    if type(f.SetSelected) == "function" and not (h and h.SetSelected) then
+        HookMethod(f, "SetSelected", function() if Enabled() then Safe(SkinNode, f) end end)
+    end
+    for _, method in ipairs(refreshMethods) do
+        if type(f[method]) == "function" and not (h and h[method]) then
+            HookMethod(f, method, function() Queue(f) end)
+        end
     end
 end
 
@@ -120,7 +126,9 @@ Scan = function(f, depth)
     if not Enabled() or not Allowed(f) or (depth or 0) > 16 then return end
     if f:GetObjectType() == "GameTooltip" then return end
     SkinNode(f)
-    for _, child in ipairs({ f:GetChildren() }) do Scan(child, (depth or 0) + 1) end
+    if not f.GetNumChildren or f:GetNumChildren() > 0 then
+        for _, child in ipairs({ f:GetChildren() }) do Scan(child, (depth or 0) + 1) end
+    end
 end
 
 -- One deferred pass coalesces construction/refresh bursts. No polling/OnUpdate.

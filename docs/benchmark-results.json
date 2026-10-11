@@ -1,0 +1,23 @@
+{
+  "environment": "Lua 5.4 synthetic UI, 200 scroll events; median of five trials; GC stopped during measured loop",
+  "results": {
+    "before": {
+      "cpu_seconds": 0.532969,
+      "allocated_kib_gc_stopped": 78651.383,
+      "frames_visited": 402200.0,
+      "children_enumerations": 402200.0,
+      "alpha_writes": 402200.0,
+      "full_scans": 200.0,
+      "initial_hooks": 4023.0
+    },
+    "after": {
+      "cpu_seconds": 0.023588,
+      "allocated_kib_gc_stopped": 747.852,
+      "frames_visited": 40200.0,
+      "children_enumerations": 200.0,
+      "alpha_writes": 0.0,
+      "full_scans": 0.0,
+      "initial_hooks": 4023.0
+    }
+  }
+}

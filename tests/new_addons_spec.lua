@@ -70,7 +70,7 @@ for _, name in ipairs({'Auctionator', 'Spy'}) do
     assert(not modules[name].available())
 end
 Auctionator = {Tabs = {State = {knownTabs = {{name = 'Shopping', tabFrameName = 'AuctionatorShoppingFrame'}}}},
-    Dialogs = {}, Config = {}}
+    Dialogs = {}, Config = {InternalInitializeFrames = function() end}}
 AuctionatorTabContainerMixin = {OnLoad = function() return 'constructor-result' end}
 AuctionatorExportTextFrameMixin = {OnLoad = function() end}
 Auctionator.Dialogs.ShowConfirm = function()
@@ -99,6 +99,23 @@ local late = frame(); AuctionatorExportTextFrameMixin.OnLoad(late); flush(); ass
 combat = false
 for _, f in ipairs(events) do if f.events and f.events.PLAYER_REGEN_ENABLED then f.scripts.OnEvent(f, 'PLAYER_REGEN_ENABLED') end end
 flush(); assert(late.shell)
+-- Global discovery runs at initialization/load boundaries, not each repaint.
+local nativePairs, globalWalks = pairs, 0
+pairs = function(t)
+    if t == _G then globalWalks = globalWalks + 1 end
+    return nativePairs(t)
+end
+for _ = 1, 25 do modules.Auctionator.refresh(); flush() end
+assert(globalWalks == 0, 'warm refresh searched all globals')
+AuctionatorConfigLazyFrame = frame(); local lazyInput = frame('EditBox', AuctionatorConfigLazyFrame)
+Auctionator.Config:InternalInitializeFrames(); flush()
+assert(globalWalks == 1 and lazyInput.padded, 'late config discovery lost')
+AuctionatorConfigLoadedFrame = frame(); local loadedInput = frame('EditBox', AuctionatorConfigLoadedFrame)
+for _, f in ipairs(events) do
+    if f.events and f.events.ADDON_LOADED then f.scripts.OnEvent(f, 'ADDON_LOADED') end
+end
+flush(); assert(globalWalks == 2 and loadedInput.padded, 'addon-load discovery lost')
+pairs = nativePairs
 -- Spy's root is protected through its target rows. Never modify those rows.
 Spy = {CreateMainWindow = function() end, CreateFrame = function(_, name) _G[name] = frame(); return _G[name], 'extra' end,
     Colors = {UpdateColor = function() end}}
