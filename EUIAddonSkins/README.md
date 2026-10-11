@@ -46,3 +46,15 @@ Include the affected addon's version, any Lua error and a screenshot.
 See [CHANGELOG.md](CHANGELOG.md) for changes.
 
 ItemRack’s secure equipment buttons and Attune’s quest graph/map retain their artwork and status colors. Myslot’s private import-progress dialog and shared Blizzard menus/tooltips keep their existing styling.
+
+## License
+
+EUI AddonSkins is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+EUI AddonSkins is an independent third-party addon and is not affiliated with, sponsored by, or officially endorsed by EllesmereUI or the developers of the supported addons.
+
+All trademarks and addon names belong to their respective owners.
+
+EUI AddonSkins integrates with EllesmereUI's public skinning API. EllesmereUI and the supported addons are developed and distributed separately and are not included in this project.

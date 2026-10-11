@@ -2,6 +2,8 @@
 
 ## 0.7.0
 
+- Added MIT licensing and publication disclaimers.
+
 - Added CrossGambling, What’s Training?, ItemRack, KiwiFarm, Myslot, BugSack, Altoholic and Attune skins.
 - Added shared support for lazy windows, native panels, AceGUI controls and multiline output panes.
 

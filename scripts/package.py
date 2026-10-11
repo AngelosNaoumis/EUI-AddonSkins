@@ -8,6 +8,8 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 root = Path(__file__).resolve().parents[1]
 addon = root / 'EUIAddonSkins'
+license_bytes = (root / 'LICENSE').read_bytes()
+(addon / 'LICENSE').write_bytes(license_bytes)
 toc = (addon / 'EUIAddonSkins.toc').read_text()
 version = re.search(r'^## Version: (\S+)$', toc, re.M).group(1)
 assert f'ns.VERSION = "{version}"' in (addon / 'Core.lua').read_text(), 'Version mismatch'
@@ -24,6 +26,7 @@ with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as z:
         z.write(f, f.relative_to(root).as_posix())
 with ZipFile(archive) as z:
     assert z.testzip() is None, 'Corrupt ZIP'
+    assert z.read('EUIAddonSkins/LICENSE') == license_bytes, 'Release license differs from root LICENSE'
     assert set(z.namelist()) == {f.relative_to(root).as_posix() for f in files}
     for f in files:
         assert z.read(f.relative_to(root).as_posix()) == f.read_bytes()
