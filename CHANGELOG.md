@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0
+
+- Added CrossGambling, What’s Training?, ItemRack, KiwiFarm, Myslot, BugSack, Altoholic and Attune skins.
+- Added shared support for lazy windows, native panels, AceGUI controls and multiline output panes.
+
 ## 0.6.2
 
 - Skinned Forever Companion’s BiS Talents button above the spellbook/talent window.

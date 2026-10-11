@@ -14,7 +14,7 @@ assert f'ns.VERSION = "{version}"' in (addon / 'Core.lua').read_text(), 'Version
 loaded = [line.strip().replace('\\', '/') for line in toc.splitlines() if line.strip() and not line.startswith('#')]
 for path in loaded:
     assert (addon / path).is_file(), f'Missing TOC file: {path}'
-for name in ['ForeverCompanion', 'ForeverDungeonJournal', 'RXPGuides', 'Auctionator', 'Spy']:
+for name in ['ForeverCompanion', 'ForeverDungeonJournal', 'RXPGuides', 'Auctionator', 'Spy', 'CrossGambling', 'WhatsTraining', 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune']:
     assert f'Skins/{name}.lua' in loaded, f'Skin not loaded: {name}'
 subprocess.run([sys.executable, 'tests/run_lua.py'], cwd=root, check=True)
 archive = root / f'EUIAddonSkins-{version}.zip'
@@ -28,4 +28,4 @@ with ZipFile(archive) as z:
     for f in files:
         assert z.read(f.relative_to(root).as_posix()) == f.read_bytes()
 shutil.copyfile(archive, root / 'EUIAddonSkins.zip')
-print(f'Verified {archive.name}: {len(files)} files, all five skins loaded by the TOC')
+print(f'Verified {archive.name}: {len(files)} files, all thirteen skins loaded by the TOC')

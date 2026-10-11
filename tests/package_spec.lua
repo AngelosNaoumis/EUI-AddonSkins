@@ -7,6 +7,14 @@ ForeverDungeonJournal_NS = nil
 RXP = nil
 Auctionator = nil
 Spy = nil
+CrossGambling = nil
+WhatsTrainingFrame = nil
+ItemRack = nil
+KiwiFarm = nil
+Myslot = nil
+BugSack = nil
+Altoholic = nil
+Attune = nil
 SlashCmdList = {}
 DEFAULT_CHAT_FRAME = {AddMessage = function() end}
 CreateFrame = function()
@@ -22,8 +30,8 @@ for line in io.lines('EUIAddonSkins/EUIAddonSkins.toc') do
         assert(loadfile('EUIAddonSkins/' .. path))('EUIAddonSkins', ns)
     end
 end
-assert(#ns.modules == 5, 'Package must register all five skins')
-for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy'}) do
+assert(#ns.modules == 13, 'Package must register all thirteen skins')
+for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy', 'CrossGambling', "What's Training?", 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune'}) do
     assert(entries['EUI AddonSkins - ' .. label], 'Missing EUI toggle: ' .. label)
 end
-print('PASS: actual TOC loads all five skin modules and registers their EUI toggles')
+print('PASS: actual TOC loads all thirteen skin modules and registers their EUI toggles')

@@ -9,6 +9,14 @@ EllesmereUI skins for World of Warcraft addons.
 - RestedXP Guides (legacy and V2 windows)
 - Auctionator
 - Spy
+- CrossGambling
+- What’s Training?
+- ItemRack
+- KiwiFarm
+- Myslot
+- BugSack
+- Altoholic
+- Attune
 
 Each skin is optional and only activates when its addon is loaded.
 
@@ -36,3 +44,5 @@ Skins follow EUI's theme and accent settings. Run `/reload` after disabling a sk
 Include the affected addon's version, any Lua error and a screenshot.
 
 See [CHANGELOG.md](CHANGELOG.md) for changes.
+
+ItemRack’s secure equipment buttons and Attune’s quest graph/map retain their artwork and status colors. Myslot’s private import-progress dialog and shared Blizzard menus/tooltips keep their existing styling.

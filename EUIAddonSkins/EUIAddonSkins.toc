@@ -2,16 +2,25 @@
 ## Title: EUI AddonSkins
 ## Notes: EllesmereUI skins for World of Warcraft addons.
 ## Author: Smarre
-## Version: 0.6.2
+## Version: 0.7.0
 ## Dependencies: EllesmereUI, EllesmereUIBlizzardSkin
-## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides, Auctionator, Spy
+## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides, Auctionator, Spy, CrossGambling, WhatsTraining, ItemRack, ItemRackOptions, KiwiFarm, Myslot, BugSack, Altoholic, Attune
 ## SavedVariables: EUIAddonSkinsDB
 
 Core.lua
 Accent.lua
 Widgets.lua
+Scoped.lua
 Skins\ForeverCompanion.lua
 Skins\ForeverDungeonJournal.lua
 Skins\RXPGuides.lua
 Skins\Auctionator.lua
 Skins\Spy.lua
+Skins\CrossGambling.lua
+Skins\WhatsTraining.lua
+Skins\ItemRack.lua
+Skins\KiwiFarm.lua
+Skins\Myslot.lua
+Skins\BugSack.lua
+Skins\Altoholic.lua
+Skins\Attune.lua
