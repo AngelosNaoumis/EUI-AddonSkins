@@ -1,0 +1,31 @@
+"""Build and verify a versioned addon ZIP from the files in its TOC."""
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+from zipfile import ZipFile, ZIP_DEFLATED
+
+root = Path(__file__).resolve().parents[1]
+addon = root / 'EUIAddonSkins'
+toc = (addon / 'EUIAddonSkins.toc').read_text()
+version = re.search(r'^## Version: (\S+)$', toc, re.M).group(1)
+assert f'ns.VERSION = "{version}"' in (addon / 'Core.lua').read_text(), 'Version mismatch'
+loaded = [line.strip().replace('\\', '/') for line in toc.splitlines() if line.strip() and not line.startswith('#')]
+for path in loaded:
+    assert (addon / path).is_file(), f'Missing TOC file: {path}'
+for name in ['ForeverCompanion', 'ForeverDungeonJournal', 'RXPGuides', 'Auctionator', 'Spy']:
+    assert f'Skins/{name}.lua' in loaded, f'Skin not loaded: {name}'
+subprocess.run([sys.executable, 'tests/run_lua.py'], cwd=root, check=True)
+archive = root / f'EUIAddonSkins-{version}.zip'
+files = sorted(f for f in addon.rglob('*') if f.is_file())
+with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as z:
+    for f in files:
+        z.write(f, f.relative_to(root).as_posix())
+with ZipFile(archive) as z:
+    assert z.testzip() is None, 'Corrupt ZIP'
+    assert set(z.namelist()) == {f.relative_to(root).as_posix() for f in files}
+    for f in files:
+        assert z.read(f.relative_to(root).as_posix()) == f.read_bytes()
+shutil.copyfile(archive, root / 'EUIAddonSkins.zip')
+print(f'Verified {archive.name}: {len(files)} files, all five skins loaded by the TOC')

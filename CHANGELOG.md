@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1
+
+- Fixed release packaging to include and load the Auctionator and Spy skins.
+
 ## 0.6.0
 
 - Added Auctionator and Spy skins with individual EUI toggles.
