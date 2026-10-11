@@ -1,165 +1,36 @@
 # EUI AddonSkins
 
-A modular collection of World of Warcraft addon skins using the official
-EllesmereUI skinning API. Each skin activates only when its target addon is installed
-and loaded. You do not need Forever Companion to use EUI AddonSkins.
+EllesmereUI skins for World of Warcraft addons.
 
-Version **0.5.0** includes optional skins for **Forever Companion**,
-**Forever Dungeon Journal** and **RestedXP Guides**. Each integration is a separate module.
+## Supported addons
 
-## Requirements
+- Forever Companion
+- Forever Dungeon Journal
+- RestedXP Guides (legacy and V2 windows)
 
-- EllesmereUI with `EllesmereUI.RegisterSkin` and the public skinning API.
-- EllesmereUI **Blizzard Skins+**, enabled.
-- Any supported target addon you want to skin. None of the target addons is mandatory.
-
-Integrations were developed against the supplied Forever Companion 1.0.0,
-Forever Dungeon Journal 1.6.2 and RestedXP Guides 4.11.15 (Forever 11.21) builds.
-Other variants have not been tested. Original addon code, artwork and guide data
-are not bundled; install each target separately.
+Each skin is optional and only activates when its addon is loaded.
 
 ## Installation
 
-1. Extract the download. If you download GitHub's source ZIP, open its outer project folder.
-2. Copy only the `EUIAddonSkins` folder into your WoW client's `Interface/AddOns/` folder.
-3. Check that the TOC file is at `Interface/AddOns/EUIAddonSkins/EUIAddonSkins.toc`.
-4. Enable EUI AddonSkins, EllesmereUI and EllesmereUI Blizzard Skins+ in the addon list.
-5. Restart the game if you installed while it was running. Open your supported addons normally.
+1. Install EllesmereUI and enable its Blizzard Skins+ module.
+2. Copy the `EUIAddonSkins` folder to `Interface/AddOns/`.
+3. Enable EUI AddonSkins and restart the game.
 
-EllesmereUI selects the EllesmereUI or Modern theme using its own window settings.
-Each module has its own toggle under **Blizzard Skins+ > Window Skins >
-Third-Party Addons**:
+Install the addons you want to skin separately.
 
-- `EUI AddonSkins - Forever Companion`
-- `EUI AddonSkins - Forever Dungeon Journal`
-- `EUI AddonSkins - RestedXP Guides`
+## Settings
 
-Supported skins appear even if their target is not installed; absent targets stay
-inactive. Enable or disable each skin independently. Enabling applies live when
-possible; disabling needs `/reload` to remove visuals already installed.
-The previous single `EUIAddonSkins` EUI toggle is replaced by these entries;
-the new toggles default to enabled.
-Theme and accent changes update the skinned elements live. Window accent lines
-follow **Show Accent Bar** in Blizzard Skins+ > Window Skins, including its separate
-custom color, linked global accent and visibility switch. This preference is read
-from EUI without changing its saved settings. Guide instruction/rarity colors
-remain semantic and are not recolored by the accent-line preference.
-
-## Included skins
-
-| Addon | Status | Coverage |
-| --- | --- | --- |
-| Forever Companion | Optional, test version | BiS, rotation, talents, consumables, loot, professions, market, options and companion dialogs |
-| Forever Dungeon Journal | Optional, test version | Main journal, boss/quest pages, settings, update notice, loot filter/results, favourites and companion dialogs |
-| RestedXP Guides | Optional, test version | Legacy and V2 guide window themes, fonts, ordinary controls, scrollbars, Active Targets backdrop/title and V2 guide importer |
-
-The Forever Companion skin covers window backgrounds, borders, close buttons,
-ordinary buttons, search fields, dropdown controls, scrollbars, icon tabs,
-checkboxes, row backgrounds and dynamically created controls.
-Item icons, equipped-item indicators, talent artwork and click actions are preserved.
-Game tooltips, minimap buttons, map markers, dropdown popup menus, regular options
-sliders and Blizzard auction-house frames retain their existing appearance.
-
-Dungeon Journal keeps boss portraits, item rarity colors, quest indicators and
-map artwork. Parchment backgrounds are replaced by dark panels with readable text.
-Its existing one-shot quest refresh worker is observed after rendering; no polling
-loop is added.
-
-RestedXP uses session copies of its native themes to retain its layout, window
-opacity/visibility behavior and existing click actions. Saved theme choices,
-registered theme definitions, guide data, map-pin colors, navigation arrows and
-auction value indicators are preserved. Legacy guide/step borders receive a
-muted EUI-style tint synchronously during native redraws, avoiding a white flash. Their background insets match the
-1-pixel border, removing the transparent gap left by RXP's original thicker art. Active Targets receives matching
-backdrop borders and title styling; its secure action buttons are left intact,
-and visual updates wait until combat ends. Hidden target backgrounds stay hidden. No guide window is created until RXP
-opens it. Minimap buttons, game tooltips and protected controls are excluded.
-
-## EUI feature coverage
-
-- Main Companion/Journal windows and RXP's guide/active-step backdrops follow
-  EUI's resolved EllesmereUI/Modern style. RXP uses background-only child shells
-  to preserve guide artwork, native opacity and hidden-background behavior.
-- Journal Map/Bosses/Quests/Route tabs use native EUI selected underlines; Companion
-  side tabs follow their own `SetActive` callbacks. Older APIs retain basic styling.
-- Existing editable fields use EUI input padding after anchoring. Existing ordinary
-  StatusBars use EUI's configurable bar fill; compatible `HeaderContainer` lists
-  use EUI sortable-header treatment. These do not add new progress bars or columns.
-- Square icon controls gain thin icon borders; full-width item rows keep their
-  layout and rarity/status markers. Footer strips are used for existing RXP footers
-  and Companion export/Pawn dialogs, rather than every window.
-- Fonts, buttons, disabled labels, checkboxes, dropdowns, scrollbars, close glyphs,
-  page arrows, window accents and per-addon EUI toggles remain integrated.
-
-The public API does not offer a general hyperlink-color or options-slider skin.
-Semantic guide text, item rarity, tooltips, minimap/map markers and secure action
-buttons retain their original behavior. New target controls or other addon builds
-can still require integration updates and in-game visual checks.
+Toggle individual skins in **Blizzard Skins+ > Window Skins > Third-Party Addons**.
+Skins follow EUI's theme and accent settings. Run `/reload` after disabling a skin.
 
 ## Commands
 
-- `/euiskins` or `/euiskins list` — version and module status.
-- `/euiskins off` — disable the collection, then run `/reload`.
-- `/euiskins on` — enable the collection, then run `/reload`.
-- `/euiskins refresh` — discover new controls and refresh loaded modules.
+- `/euiskins` — show version and skin status.
+- `/euiskins on` or `/euiskins off` — enable or disable the collection; then `/reload`.
+- `/euiskins refresh` — refresh loaded skins.
 
-`/fcskin` remains a compatibility alias. EllesmereUI's "Skin Third-Party Addons" master switch controls all registered
-third-party skins, including this collection. `/euiskins off` remains a separate
-collection-wide override; `/euiskins on` clears it. Disabling requires `/reload` to remove
-visual changes already applied. To uninstall, remove only the `EUIAddonSkins` folder
-and restart the game.
+## Issues
 
-## Validation and troubleshooting
+Include the affected addon's version, any Lua error and a screenshot.
 
-Lua syntax and integration behavior are tested in a simulated WoW environment,
-including missing targets, load-on-demand activation, independent EUI toggles,
-live enabling, queued refresh cancellation and both master switches. Accent tests
-cover linked/custom colors, hidden bars, late windows and disabled skins; border
-regressions assert the correct color before the deferred refresh runs.
-Regression checks cover legacy border redraws, protected guide roots, lazy Active
-Targets, combat deferral, hidden backgrounds and unnamed numeric-texture close
-buttons without replacing their click actions.
-The new modules additionally check lazy windows, portraits/icons, skipped map
-contents, RXP theme/profile immutability and preserved API return values.
-Appearance and behavior still need verification in WoW.
-
-For Forever Companion, open each side tab, change class/spec/phase and scroll.
-Switch options pages; test checkboxes, search and dropdowns. Check tooltips, clicks,
-equipped-item borders, close buttons and Escape. Try changing the EUI theme/accent
-and disabling the collection followed by `/reload`.
-
-For Dungeon Journal, test boss/quest/map tabs, quest navigation, settings,
-loot filtering and favourites. Verify boss portraits, map markers, item rarity
-and quest completion indicators. For RestedXP, test both legacy and V2 guide
-windows, changing guides/steps, scrolling and the importer. Confirm that the
-saved RXP theme choice stays unchanged and hiding backgrounds still works.
-
-If a problem occurs, enable Lua errors with `/console scriptErrors 1`, run `/reload`
-and report the error. Include the affected addon/version and a screenshot if useful.
-An absent target is reported as `not installed or not loaded`; this is normal.
-
-## Adding skins
-
-Each integration lives in `Skins/` and calls
-`ns.RegisterModule(id, label, available, install)`. The core registers each module separately
-with EllesmereUI using a collection-prefixed name, passes its own gated skin
-facade to the integration and checks
-again on `ADDON_LOADED` for load-on-demand targets. Failed installers are isolated.
-Optional target dependencies provide load ordering without requiring those addons.
-
-The Forever Companion module wraps its public frame factories and preserves return
-values and callbacks. Deferred scans coalesce refresh bursts; it uses no global
-`CreateFrame` hook, polling or `OnUpdate`. Forbidden/protected frames are skipped.
-
-To propose another skin, provide the addon's ZIP, version and the windows you want
-covered. Reference screenshots help verify the result. Future target updates that
-change frame factories may require corresponding skin updates.
-
-## Development
-
-Run `python3 tests/run_lua.py` from the repository root. The harness requires Python 3
-and the system library `liblua5.4.so.0` on Linux.
-
-API reference: https://github.com/EllesmereGaming/EllesmereUI/blob/main/SKINNING_API.md
-
-This is an independent community project, not an official EllesmereUI release.
+See [CHANGELOG.md](CHANGELOG.md) for changes.
