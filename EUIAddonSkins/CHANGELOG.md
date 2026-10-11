@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0
+
+- First stable release with fourteen optional addon skins and independent EllesmereUI toggles.
+- Includes the performance improvements from 0.7.2.
+
 ## 0.7.2
 
 - Reduced repeated scrolling, texture writes and hook allocations.
