@@ -7,6 +7,8 @@ EllesmereUI skins for World of Warcraft addons.
 - Forever Companion
 - Forever Dungeon Journal
 - RestedXP Guides (legacy and V2 windows)
+- Auctionator
+- Spy
 
 Each skin is optional and only activates when its addon is loaded.
 

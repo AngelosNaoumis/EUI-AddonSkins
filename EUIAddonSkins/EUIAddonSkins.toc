@@ -2,9 +2,9 @@
 ## Title: EUI AddonSkins
 ## Notes: EllesmereUI skins for World of Warcraft addons.
 ## Author: Smarre
-## Version: 0.5.0
+## Version: 0.6.0
 ## Dependencies: EllesmereUI, EllesmereUIBlizzardSkin
-## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides
+## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides, Auctionator, Spy
 ## SavedVariables: EUIAddonSkinsDB
 
 Core.lua
@@ -13,3 +13,5 @@ Widgets.lua
 Skins\ForeverCompanion.lua
 Skins\ForeverDungeonJournal.lua
 Skins\RXPGuides.lua
+Skins\Auctionator.lua
+Skins\Spy.lua

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+- Added Auctionator and Spy skins with individual EUI toggles.
+
 ## 0.5.0
 
 - Added EUI theme backgrounds for RestedXP guide and Active Targets windows.
