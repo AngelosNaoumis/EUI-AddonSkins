@@ -1,0 +1,13 @@
+# Local validation/build outputs and reference material
+*.zip
+.release/
+dist/
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+audit/
+source/
+reference/
+upload/
+helpers/

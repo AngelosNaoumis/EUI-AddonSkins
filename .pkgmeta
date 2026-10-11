@@ -1,0 +1,41 @@
+# The checkout is wrapped in EUIAddonSkins before move-folders runs.
+# Promote the existing addon subdirectory into that wrapper, avoiding nesting.
+package-as: EUIAddonSkins
+
+enable-nolib-creation: no
+
+required-dependencies:
+  - ellesmereui
+
+move-folders:
+  EUIAddonSkins/EUIAddonSkins: EUIAddonSkins
+
+# Paths here are relative to the repository, before folder moves.
+ignore:
+  - benchmarks
+  - tests
+  - scripts
+  - docs
+  - README.md
+  - CHANGELOG.md
+  - CURSEFORGE.md
+  - LICENSE
+  - EUIAddonSkins/README.md
+  - EUIAddonSkins/CHANGELOG.md
+  - audit
+  - source
+  - reference
+  - upload
+  - helpers
+  - dist
+  - build
+  - EUIAddonSkins.zip
+  - EUIAddonSkins-1.0.0.zip
+
+# Read from the checkout for the CurseForge file page, not from the ZIP.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+# LICENSE is already tracked inside the addon; do not generate a replacement.
+# No externals: EllesmereUI and all supported addons are installed separately.

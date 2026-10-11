@@ -20,7 +20,11 @@ for name in ['ForeverCompanion', 'ForeverDungeonJournal', 'RXPGuides', 'Auctiona
     assert f'Skins/{name}.lua' in loaded, f'Skin not loaded: {name}'
 subprocess.run([sys.executable, 'tests/run_lua.py'], cwd=root, check=True)
 archive = root / f'EUIAddonSkins-{version}.zip'
-files = sorted(f for f in addon.rglob('*') if f.is_file())
+# Match .pkgmeta's player payload; retain these documents in the repository.
+excluded = {'README.md', 'CHANGELOG.md'}
+files = sorted(f for f in addon.rglob('*') if f.is_file()
+               and f.relative_to(addon).as_posix() not in excluded
+               and not any(part.startswith('.') for part in f.relative_to(addon).parts))
 with ZipFile(archive, 'w', compression=ZIP_DEFLATED) as z:
     for f in files:
         z.write(f, f.relative_to(root).as_posix())
