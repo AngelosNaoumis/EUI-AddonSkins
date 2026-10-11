@@ -1,4 +1,6 @@
 local timers, errors, calls = {}, {}, {}
+local combat = false
+InCombatLockdown = function() return combat end
 local function count(k) calls[k] = (calls[k] or 0) + 1 end
 local function texture(kind)
     return { GetObjectType = function() return kind or "Texture" end,
@@ -56,12 +58,13 @@ local skin = {
 }
 for _, name in ipairs({ "Shell", "Button", "EditBox", "Dropdown", "Inset", "FadeRegions",
     "FadeNineSlice", "Font", "CloseButton", "ScrollBar", "SquareIcon", "Checkbox", "StateButtonLabel" }) do
-    skin[name] = function(f) assert(f, name .. " missing frame"); count(name) end
+    skin[name] = function(f) assert(f, name .. " missing frame"); count(name); if name == "Button" then f.buttonSkinned = true end end
 end
 local callback
 EllesmereUI = { RegisterSkin = function(name, fn) count("registration"); callback = fn end }
 ForeverCompanionAPI = {
     COLORS = {},
+    AttachToFrame = function(button, host) button.host = host; return "attach-result" end,
     CreateWindow = function(name) return frame("Frame", name), nil, "sentinel" end,
     CreateMenuButton = function(parent)
         local f = frame("Button", nil, parent); f.Text = texture("FontString"); return f
@@ -84,7 +87,36 @@ chunk("EUIAddonSkins", ns)
 assert(loadfile("EUIAddonSkins/Accent.lua"))("EUIAddonSkins", ns)
 integration("EUIAddonSkins", ns)
 assert(calls.registration == 1 and not calls.Shell, "must wait for API dispatch")
+local existingLauncher = frame("Button", "ForeverCompanionTalentBtn")
+existingLauncher.Text = texture("FontString")
 callback(skin)
+flush()
+assert(existingLauncher.buttonSkinned, "existing BiS Talents launcher not skinned")
+local host = frame()
+local blizzardButton = frame("Button", nil, host); blizzardButton.Text = texture("FontString")
+local lateLauncher = frame("Button", "ForeverCompanionTalentBtn")
+lateLauncher.Text = texture("FontString")
+lateLauncher:SetScript("OnClick", function() return "original-talent-toggle" end)
+assert(ForeverCompanionAPI.AttachToFrame(lateLauncher, host) == "attach-result")
+flush()
+assert(lateLauncher.buttonSkinned and not blizzardButton.buttonSkinned, "launcher skin scanned Blizzard host")
+assert(lateLauncher.scripts.OnClick() == "original-talent-toggle" and lateLauncher.host == host)
+combat = true
+local combatLauncher = frame("Button", "ForeverCompanionTalentBtn")
+combatLauncher.Text = texture("FontString")
+ForeverCompanionAPI.AttachToFrame(combatLauncher, host); flush()
+assert(not combatLauncher.buttonSkinned, "launcher changed in combat")
+combat = false
+lastCreated.scripts.OnEvent(lastCreated, "PLAYER_REGEN_ENABLED"); flush()
+assert(combatLauncher.buttonSkinned, "launcher not applied after combat")
+enabled = false
+local disabledLauncher = frame("Button", "ForeverCompanionTalentBtn")
+disabledLauncher.Text = texture("FontString")
+ForeverCompanionAPI.AttachToFrame(disabledLauncher, host); flush()
+assert(not disabledLauncher.buttonSkinned, "disabled Companion launcher was skinned")
+enabled = true
+ForeverCompanionAPI.AttachToFrame(disabledLauncher, host); flush()
+assert(disabledLauncher.buttonSkinned)
 local api = ForeverCompanionAPI
 local f, missing, sentinel = api.CreateWindow("ForeverCompanionFrame")
 assert(f and missing == nil and sentinel == "sentinel", "factory return values changed")

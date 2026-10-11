@@ -175,12 +175,37 @@ local function Wrap(name, after)
     end
 end
 
+local externalWaiting
+local function ExternalButtons()
+    if not Enabled() then return end
+    if InCombatLockdown and InCombatLockdown() then externalWaiting = true; return end
+    externalWaiting = false
+    -- FC attaches this UIParent-owned launcher to the Blizzard talent/spellbook
+    -- window. Only visit the named button, never the Blizzard host's controls.
+    local button = _G.ForeverCompanionTalentBtn
+    if Allowed(button) then Queue(button) end
+end
+
 local function Install(skin)
     if installed then return end
     S = skin
     if not Enabled() then return end
     installed = true
     Palette()
+    -- AttachToFrame is called after the launcher is fully constructed.
+    if type(API.AttachToFrame) == "function" then
+        hooksecurefunc(API, "AttachToFrame", function(button)
+            if button == _G.ForeverCompanionTalentBtn then ExternalButtons() end
+        end)
+    end
+    local externalEvents = CreateFrame("Frame")
+    externalEvents:RegisterEvent("PLAYER_LOGIN")
+    externalEvents:RegisterEvent("ADDON_LOADED")
+    externalEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+    externalEvents:SetScript("OnEvent", function(_, event)
+        if event ~= "PLAYER_REGEN_ENABLED" or externalWaiting then ExternalButtons() end
+    end)
+    ExternalButtons()
     Wrap("CreateWindow", function(v) Window(v[1]) end)
     Wrap("CreateMenuButton", function(v)
         S.Button(v[1]); if S.StateButtonLabel then S.StateButtonLabel(v[1]) end
@@ -252,6 +277,7 @@ end, function(skin, module)
     API = _G.ForeverCompanionAPI
     Install(skin)
     module.refresh = function()
+        ExternalButtons()
         for f in pairs(roots) do Queue(f) end
     end
 end)

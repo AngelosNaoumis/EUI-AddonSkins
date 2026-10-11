@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2
+
+- Skinned Forever Companion’s BiS Talents button above the spellbook/talent window.
+
 ## 0.6.1
 
 - Fixed release packaging to include and load the Auctionator and Spy skins.
