@@ -25,7 +25,8 @@ local function texture(kind)
     function t:GetAlpha() return self.alpha end
     function t:SetAlpha(a) self.alpha = a end
     function t:GetTexture() return self.path end
-    function t:GetDrawLayer() return 'ARTWORK' end
+    function t:GetDrawLayer() return self.layer or 'ARTWORK' end
+    function t:SetDrawLayer(layer) self.layer = layer end
     function t:SetColorTexture(...) self.color = {...} end
     function t:SetVertexColor(...) self.color = {...} end
     function t:SetPoint() end
@@ -121,6 +122,11 @@ ItemRackOptFrame = frame('Frame', 'ItemRackOptFrame')
 ItemRackOptTab1 = frame('Button', 'ItemRackOptTab1', ItemRackOptFrame); ItemRackOptTab1.enabled = false
 local inv = frame('CheckButton', 'ItemRackOptInv1', ItemRackOptFrame)
 ItemRackOptInv1Icon = texture(); inv.regions = {ItemRackOptInv1Icon}
+local selectedSet = frame('CheckButton', 'ItemRackOptSetsCurrentSet', ItemRackOptFrame)
+ItemRackOptSetsCurrentSetIcon = texture(); selectedSet.regions = {ItemRackOptSetsCurrentSetIcon}
+local configRow = frame('Button', 'ItemRackOptList1', ItemRackOptFrame)
+local configLabel = texture('FontString'); configLabel.layer = 'BACKGROUND'; configRow.regions = {configLabel}
+configRow.GetFontString = function() return configLabel end
 local secure = frame('Button', nil, ItemRackOptFrame); secure.protected = true; secure.attributes = {macro = 'equip'}
 AltoholicFrame = frame('Frame', 'AltoholicFrame'); AltoholicFrame.Tabs = {frame('Button', nil, AltoholicFrame)}; AltoholicFrame.selectedTab = 1
 AltoholicFrame.SwitchToTab = function() return 'tab-original' end
@@ -137,6 +143,8 @@ flush()
 assert(input.padded and exportText.font == 'eui-font' and exportText.content == 'encoded-profile' and not exportText.padded)
 assert(inv.regions[1].square and not inv.checkSkin and secure.attributes.macro == 'equip')
 assert(ItemRackOptTab1.tab and ItemRackOptTab1.selected)
+assert(ItemRackOptSetsCurrentSetIcon.square and not selectedSet.checkSkin)
+assert(configLabel.layer == 'OVERLAY' and not configRow.button)
 assert(AltoholicFrame.Tabs[1].selected)
 assert(spellRow.spell.icon.square and spellRow.statusColor[1] == 1 and spellRow.scripts.OnClick() == 'spell-original' and not unrelated.button)
 assert(not graphButton.button and not pin.button and progress.fill)

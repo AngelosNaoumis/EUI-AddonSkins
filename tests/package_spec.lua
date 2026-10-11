@@ -30,8 +30,8 @@ for line in io.lines('EUIAddonSkins/EUIAddonSkins.toc') do
         assert(loadfile('EUIAddonSkins/' .. path))('EUIAddonSkins', ns)
     end
 end
-assert(#ns.modules == 13, 'Package must register all thirteen skins')
-for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy', 'CrossGambling', "What's Training?", 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune'}) do
+assert(#ns.modules == 14, 'Package must register all fourteen skins')
+for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy', 'CrossGambling', "What's Training?", 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune', 'TwitchEmotes'}) do
     assert(entries['EUI AddonSkins - ' .. label], 'Missing EUI toggle: ' .. label)
 end
-print('PASS: actual TOC loads all thirteen skin modules and registers their EUI toggles')
+print('PASS: actual TOC loads all fourteen skin modules and registers their EUI toggles')

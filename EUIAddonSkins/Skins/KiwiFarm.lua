@@ -4,9 +4,12 @@ ns.RegisterScopedSkin("KiwiFarm", "KiwiFarm", {
     panels = false,
     roots = function() return ns.SkinRoots({"KiwiFarm"}, {noTopBar = true}) end,
     hooks = function(C, refresh)
-        C.H.Hook(_G.KiwiFarm, "ShowMenu", refresh)
+        C.MenuOwner(_G.KiwiFarmPopupMenu)
+        C.H.Hook(_G.KiwiFarm, "ShowMenu", function()
+            C.MenuOwner(_G.KiwiFarmPopupMenu); refresh()
+        end)
         C.H.Hook(_G.KiwiFarm, "PLAYER_REGEN_ENABLED", refresh)
     end,
     -- KiwiFarm's native whole-frame alpha/visibility still controls its shell.
-    -- Shared Blizzard StaticPopup and dropdown-menu frames belong to EUI itself.
+    -- Shared Blizzard StaticPopup frames retain their existing styling.
 })

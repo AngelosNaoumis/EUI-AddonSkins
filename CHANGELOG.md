@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1
+
+- Added scoped popup-menu styling for KiwiFarm, RestedXP and TwitchEmotes, including submenus.
+- Fixed ItemRack labels hidden by background fills and preserved the selected-set icon.
+
 ## 0.7.0
 
 - Added MIT licensing and publication disclaimers.

@@ -271,6 +271,13 @@ end, function(S, module)
     local combatEvents = CreateFrame("Frame")
     combatEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
     combatEvents:SetScript("OnEvent", function() UpdateTheme() end)
+    if ns.BindPopupOwner then
+        H.Hook(addon, "ShowMenu", function(_, _, owner)
+            ns.BindPopupOwner(S, module, owner or (addon.RXPFrame and addon.RXPFrame.MenuFrame))
+        end)
+        if addon.RXPFrame then ns.BindPopupOwner(S, module, addon.RXPFrame.MenuFrame) end
+        if S.OnLooksChanged then S.OnLooksChanged(ns.RefreshPopupMenus) end
+    end
     module.refresh = UpdateTheme
     if S.OnLooksChanged then S.OnLooksChanged(UpdateTheme) end
     UpdateTheme()

@@ -1,7 +1,7 @@
 -- Standalone integration. No Forever Companion files or gameplay handlers are replaced.
 local ADDON, ns = ...
 local API
-local S, installed
+local S, installed, moduleOwner
 local unpack = unpack or table.unpack
 local roots = setmetatable({}, { __mode = "k" })
 local seen = setmetatable({}, { __mode = "k" })
@@ -213,7 +213,10 @@ local function Install(skin)
     end)
     Wrap("CreateSearchBox", function(v) Queue(v[1]) end)
     Wrap("CreateDropdown", function(v)
-        if v[1] and v[1].frame then S.Dropdown(v[1].frame); Queue(v[1].frame) end
+        if v[1] and v[1].frame then
+            S.Dropdown(v[1].frame); Queue(v[1].frame)
+            if ns.BindPopupOwner then ns.BindPopupOwner(S, moduleOwner, v[1].frame) end
+        end
     end)
     Wrap("CreateScrollFrame", function(v)
         local sf, bar = v[1], v[2]
@@ -275,6 +278,7 @@ ns.RegisterModule("ForeverCompanion", "Forever Companion", function()
     return _G.ForeverCompanionAPI ~= nil
 end, function(skin, module)
     API = _G.ForeverCompanionAPI
+    moduleOwner = module
     Install(skin)
     module.refresh = function()
         ExternalButtons()

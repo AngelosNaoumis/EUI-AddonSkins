@@ -13,6 +13,9 @@ function ns.RegisterScopedSkin(id, label, config)
         events:RegisterEvent("PLAYER_ENTERING_WORLD")
         events:RegisterEvent("PLAYER_REGEN_ENABLED")
         local C = {S = S, H = H}
+        function C.MenuOwner(owner)
+            if ns.BindPopupOwner then ns.BindPopupOwner(S, module, owner) end
+        end
         local function PaintPanel(f)
             if not H.Allowed(f) then return end
             if panels[f] then
@@ -36,6 +39,7 @@ function ns.RegisterScopedSkin(id, label, config)
         end
         C.Panel = PaintPanel
         local function Visit(f, kind)
+            if kind == "Frame" and type(f.initialize) == "function" then C.MenuOwner(f) end
             if config.visit and config.visit(C, f, kind, refresh) then return true end
             if kind == "Button" and f.GetParent and styled[f:GetParent()] and f.GetPoint
                 and not (f.GetFontString and f:GetFontString()) then
