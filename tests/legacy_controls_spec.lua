@@ -315,6 +315,58 @@ enabled = false; local disabledLine = frame('Frame', nil, base); local disabledT
 tracker:Update(); flush(); assert(disabledText.font == 'GameFontNormal')
 enabled = true
 print('PASS: Questie owned windows/tabs, tracker colours/opacity, secure items, dynamic rows, combat/toggles and hook idempotence')
+-- DBM-GUI loads on demand; its colour selectors and previews are not ordinary buttons.
+DBM_GUI, DBM_GUI_OptionsFrame = nil, nil
+assert(loadfile('EUIAddonSkins/Skins/DBM.lua'))('EUIAddonSkins', ns)
+assert(not modules.DBM.available(), 'DBM skin forced missing GUI initialization')
+DBM_GUI = {CreateNewPanel = function() return 'panel-native' end}
+local dbm = frame('Frame', 'DBM_GUI_OptionsFrame')
+dbm.tab, dbm.tabs = 1, {{}, {}}
+dbm.ShowTab = function(self, index) self.tab = index end
+dbm.DisplayFrame = function(_, page) DBM_GUI.currentViewing = page; dbm.tabs[dbm.tab].selection = page end
+dbm.UpdateMenuFrame = function() end
+local dbmTab1 = frame('Button', 'DBM_GUI_OptionsFrameTab1', dbm)
+local dbmTab2 = frame('Button', 'DBM_GUI_OptionsFrameTab2', dbm)
+local close = frame('Button', 'DBM_GUI_OptionsFrameClosePanelButton', dbm)
+local page = frame('Frame', nil, dbm); page.mytype = 'panel'; page.showSub = true
+dbm.tabs[1].selection = page
+local row = frame('Button', nil, dbm); row.element = page
+row.toggle = frame('Button', nil, row); row.toggle.normal = texture(); row.toggle.normal.path = 130821
+local swatch = frame('Button', nil, page); swatch.SetColorRGB = function() return 'colour-native' end
+local colour = swatch:CreateTexture(); colour:SetVertexColor(0.3, 0.8, 0.1, 1)
+local preview = frame('ScrollingMessageFrame', nil, page)
+local previewText = preview:CreateFontString(nil, 'OVERLAY', 'DBMPreviewFont')
+local previewButton = frame('Button', nil, preview); previewButton.label = previewButton:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+local dropdown = frame('DropdownButton', nil, page); dropdown.mytype = 'dropdown2'
+local check = frame('CheckButton', nil, page); check.checked = true
+local slider = frame('Slider', nil, page); slider.GetThumbTexture = function() return thumb end
+slider.GetOrientation = function() return 'HORIZONTAL' end; slider.value = 0.7
+local warning = frame(); local alert = warning:CreateFontString(nil, 'OVERLAY', 'DBMAlertFont')
+local area = frame('Frame', nil, page); area.mytype = 'area'; area:SetBackdrop({bgFile = 'native'})
+assert(modules.DBM.available())
+S.Dropdown = function(f) f.dropdown = true end
+modules.DBM.install(S, modules.DBM); flush()
+assert(dbm.shell and dbm.accent and dbmTab1.selected and not dbmTab2.selected and close.close)
+assert(row.euiSelection.color[4] == 0.2 and row.toggle.regions[1].text == '-')
+assert(colour.alpha == 1 and colour.color[2] == 0.8 and swatch:SetColorRGB() == 'colour-native')
+assert(previewText.font == 'DBMPreviewFont' and not previewButton.button and alert.font == 'DBMAlertFont')
+assert(dropdown.dropdown and check.checkbox and check.checked and slider.value == 0.7 and area.panel)
+dbm:ShowTab(2); flush(); assert(not dbmTab1.selected and dbmTab2.selected)
+local dynamic = frame('CheckButton', nil, page)
+assert(DBM_GUI:CreateNewPanel() == 'panel-native'); flush(); assert(dynamic.checkbox)
+local dbmHook, objects = dbm.ShowTab, #row.regions + #row.toggle.regions + #slider.regions
+for _ = 1, 5 do modules.DBM.refresh(); flush() end
+assert(dbm.ShowTab == dbmHook and objects == #row.regions + #row.toggle.regions + #slider.regions)
+accent = 0.9; dbm:DisplayFrame(page); flush(); assert(row.euiSelection.color[1] == accent and thumb.color[1] == accent)
+combat = true; local deferred = frame('CheckButton', nil, page)
+DBM_GUI:CreateNewPanel(); flush(); assert(not deferred.checkbox)
+combat = false
+for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(deferred.checkbox)
+enabled = false; local skipped = frame('CheckButton', nil, page)
+DBM_GUI:CreateNewPanel(); flush(); assert(not skipped.checkbox)
+enabled = true
+print('PASS: DBM lazy GUI, dynamic controls, selection, swatches/previews, theme refresh, combat/toggles and idempotence')
 combat = true
 local late = frame('Button', 'Attune_Node_43', Attune_GraphRoot); late.SetBackdrop = nil
 modules.Attune.refresh(); flush(); assert(not late.button)

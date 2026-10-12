@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0-alpha.2
+
+- Added optional Deadly Boss Mods options-window styling, including tabs, category toggles, sliders, buttons and dropdown controls.
+- Preserved DBM colour swatches, preview content, combat alerts and timer bars.
+- Includes the Questie skin from the previous alpha.
+
 ## 1.1.0-alpha
 
 - Added an optional Questie skin for Journey, settings, note windows, tracker typography and popup menus.

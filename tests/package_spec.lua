@@ -17,6 +17,9 @@ Altoholic = nil
 Attune = nil
 Questie = nil
 QuestieLoader = nil
+DBM = nil
+DBM_GUI = nil
+DBM_GUI_OptionsFrame = nil
 SlashCmdList = {}
 DEFAULT_CHAT_FRAME = {AddMessage = function() end}
 CreateFrame = function()
@@ -32,8 +35,8 @@ for line in io.lines('EUIAddonSkins/EUIAddonSkins.toc') do
         assert(loadfile('EUIAddonSkins/' .. path))('EUIAddonSkins', ns)
     end
 end
-assert(#ns.modules == 15, 'Package must register all fifteen skins')
-for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy', 'CrossGambling', "What's Training?", 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune', 'TwitchEmotes', 'Questie'}) do
+assert(#ns.modules == 16, 'Package must register all sixteen skins')
+for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy', 'CrossGambling', "What's Training?", 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune', 'TwitchEmotes', 'Questie', 'Deadly Boss Mods'}) do
     assert(entries['EUI AddonSkins - ' .. label], 'Missing EUI toggle: ' .. label)
 end
-print('PASS: actual TOC loads all fifteen skin modules and registers their EUI toggles')
+print('PASS: actual TOC loads all sixteen skin modules and registers their EUI toggles')
