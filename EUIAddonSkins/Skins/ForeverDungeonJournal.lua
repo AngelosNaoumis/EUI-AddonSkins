@@ -44,12 +44,28 @@ end, function(S, module)
         if f.SetBackdrop then f:SetBackdrop(nil) end
     end
 
+    local function ModeTab(tab)
+        if not H.Allowed(tab) then return end
+        -- Keep the journal's foreground icon; the API only preserves .Icon.
+        if H.Texture(tab.fdjIcon) then tab.Icon = tab.fdjIcon end
+        H.Tab(tab, tab.IsEnabled and not tab:IsEnabled() or false)
+        -- UIPanelButtonTemplate can restore its state textures after Enable().
+        -- Suppress only native chrome, never the EUI tab's own regions.
+        for _, getter in ipairs({"GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture"}) do
+            if tab[getter] then H.Fade(tab[getter](tab)) end
+        end
+        H.Fade(tab.text or (tab.GetFontString and tab:GetFontString()))
+        for _, method in ipairs({"SetNormalTexture", "SetPushedTexture", "SetDisabledTexture", "SetHighlightTexture", "Enable", "Disable"}) do
+            H.Hook(tab, method, function() ModeTab(tab) end)
+        end
+    end
+
     local function Visit(f, kind)
         local root = _G.ForeverDungeonJournalFrame
         if root and (f == root.bossesTab or f == root.questsTab or f == root.mapTab or f == root.dungeonRouteButton) then
             -- FDJ disables the active mode button. Mirror that visual state,
             -- including programmatic switches, without enabling/disabling it.
-            return H.Tab(f, f.IsEnabled and not f:IsEnabled() or false)
+            ModeTab(f); return true
         end
         -- UIPanelCloseButton textures can be numeric file IDs on this client.
         -- Identify the unnamed journal close control by its exact owned anchor.
@@ -115,6 +131,7 @@ end, function(S, module)
         local f = _G.ForeverDungeonJournalFrame
         if f then
             Watch(f)
+            for _, key in ipairs({"mapTab", "bossesTab", "questsTab", "dungeonRouteButton"}) do ModeTab(f[key]) end
             for _, key in ipairs({"contentPanel", "headerPanel", "homePanel", "leftPanel", "rightPanel",
                 "questLeftPanel", "questRightPanel", "questTextInset", "routePanel"}) do Panel(f[key]) end
             for _, key in ipairs({"homeParchment", "contentParchment", "headerParchment", "leftParchment",

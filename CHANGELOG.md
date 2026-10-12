@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.3
+
+- Kept Dungeon Journal mode tabs flat in every enabled and disabled state, preserving their icons.
+- Completed Auctionator legacy scrollbar, item-border, duration-selector and secondary-control styling.
+- Corrected Auctionator tab selection when hidden wrappers retain visible child pages.
+- Aligned Shopping search controls and separated them from its list tabs.
+- Applied consistent panel and text styling while preserving item counts, rarity colours and loading indicators.
+- Moved Forever Companion's auction scan footer below the tabs so its status text has room.
+
 ## 1.0.2
 
 - Fixed missing-font errors in tree toggles, resize grips and the Dungeon Journal language picker.

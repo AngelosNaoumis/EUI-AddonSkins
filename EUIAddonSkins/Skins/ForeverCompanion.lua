@@ -184,6 +184,7 @@ local function Wrap(name, after)
 end
 
 local externalWaiting
+local auctionFooters = setmetatable({}, {__mode = "k"})
 local function ExternalButtons()
     if not Enabled() then return end
     if InCombatLockdown and InCombatLockdown() then externalWaiting = true; return end
@@ -192,6 +193,29 @@ local function ExternalButtons()
     -- window. Only visit the named button, never the Blizzard host's controls.
     local button = _G.ForeverCompanionTalentBtn
     if Allowed(button) then Queue(button) end
+    -- The auction scan footer is private to FC. Inspect only the host's direct
+    -- children and require its exact owned logo and fields before touching it.
+    local host = _G.AuctionHouseFrame or _G.AuctionFrame
+    if Allowed(host) and host.GetChildren then
+        for _, footer in ipairs({host:GetChildren()}) do
+            local icon = footer.icon
+            local path = type(icon) == "table" or type(icon) == "userdata"
+            path = path and icon.GetTexture and icon:GetTexture()
+            if Allowed(footer) and Allowed(footer.btn) and footer.status
+                and type(path) == "string" and path:find("ForeverCompanion", 1, true)
+                and path:find("LogoAddon", 1, true) then
+                if not auctionFooters[footer] then
+                    auctionFooters[footer] = true
+                    footer:ClearAllPoints(); footer:SetPoint("TOPRIGHT", host, "BOTTOMRIGHT", -4, -30)
+                    footer:SetSize(360, 26)
+                    footer.status:SetWidth(200)
+                    S.Panel(footer); S.Button(footer.btn)
+                    if S.StateButtonLabel then S.StateButtonLabel(footer.btn) end
+                end
+                icon:SetAlpha(1); S.Font(footer.status, 0.9, 0.9, 0.92)
+            end
+        end
+    end
 end
 
 local function Install(skin)
@@ -209,9 +233,13 @@ local function Install(skin)
     local externalEvents = CreateFrame("Frame")
     externalEvents:RegisterEvent("PLAYER_LOGIN")
     externalEvents:RegisterEvent("ADDON_LOADED")
+    externalEvents:RegisterEvent("AUCTION_HOUSE_SHOW")
     externalEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
     externalEvents:SetScript("OnEvent", function(_, event)
-        if event ~= "PLAYER_REGEN_ENABLED" or externalWaiting then ExternalButtons() end
+        if event == "AUCTION_HOUSE_SHOW" then
+            -- FC may construct the private footer later in this same event.
+            C_Timer.After(0, ExternalButtons)
+        elseif event ~= "PLAYER_REGEN_ENABLED" or externalWaiting then ExternalButtons() end
     end)
     ExternalButtons()
     Wrap("CreateWindow", function(v) Window(v[1]) end)
@@ -276,6 +304,7 @@ local function Install(skin)
     if S.OnLooksChanged then S.OnLooksChanged(function()
         if not Enabled() then return end
         Palette()
+        ExternalButtons()
         for texture, kind in pairs(paints) do Safe(Paint, texture, kind) end
         for f in pairs(roots) do Queue(f) end
     end) end

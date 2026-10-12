@@ -22,6 +22,9 @@ local function texture(kind, parent)
     function t:SetVertexColor(...) self.color = {...} end
     function t:SetPoint(...) self.points[#self.points + 1] = {...} end
     function t:SetAllPoints() end
+    function t:ClearAllPoints() self.points = {} end
+    function t:SetShown(v) self.shown = v end
+    function t:GetVertexColor() return table.unpack(self.color or {1, 1, 1, 1}) end
     function t:SetSize(w, h) self.width, self.height = w, h end
     function t:SetHeight(h) self.height = h end
     function t:SetWidth(w) self.width = w end
@@ -37,6 +40,17 @@ end
 local function frame(kind, name, parent)
     local f = {kind = kind or 'Frame', name = name, parent = parent, regions = {}, children = {}, hooks = {}}
     function f:GetObjectType() return self.kind end
+    function f:SetPoint(...) self.points = self.points or {}; self.points[#self.points + 1] = {...} end
+    function f:ClearAllPoints() self.points = {} end
+    function f:SetSize(w, h) self.width, self.height = w, h end
+    function f:SetWidth(w) self.width = w end
+    function f:GetID() return self.id end
+    function f:IsShown() return not self.hidden end
+    function f:IsEnabled() return not self.disabled end
+    function f:Enable() self.disabled = false end
+    function f:Disable() self.disabled = true end
+    function f:SetChecked(v) self.checked = v end
+    function f:GetChecked() return self.checked end
     function f:GetName() return self.name end
     function f:GetParent() return self.parent end
     function f:IsForbidden() return self.forbidden end
@@ -78,6 +92,8 @@ function S.Shell(f) f.shell = true end
 function S.Tab(f) f.tab = true end
 function S.SetTabSelection(f, selected) f.selected = selected end
 function S.CloseButton(f) f.close = true end
+function S.Checkbox(f) f.checkbox = true end
+function S.EditBox(f) f.input = true end
 function S.FadeNineSlice() end
 SetPortraitTexture = function(t) t:SetTexture('player-face') end
 assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
@@ -182,6 +198,68 @@ modules.ForeverDungeonJournal.install(S, modules.ForeverDungeonJournal); flush()
 assert(cover.backdrop.edgeSize == 1 and cover.art.path == 'dungeon-art' and cover.art.alpha == 1 and cover.counts.textColor[1] == 1 and cover.action() == 'open-dungeon')
 assert(journal.homeTitle.textColor[1] == accent and journal.bugReportButton.button and bug.alpha == 1)
 assert(caret.alpha == 0 and journal.languageSelectorButton.euiCaret.text == 'v')
+-- All FDJ mode states keep their icon but never revive UIPanelButton art.
+for _, key in ipairs({'mapTab', 'bossesTab', 'questsTab'}) do
+    local tab = frame('Button', nil, journal); journal[key] = tab
+    tab.normal = texture(); tab.regions = {tab.normal}; tab.fdjIcon = tab:CreateTexture()
+    tab.text = tab:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+    tab.SetNormalTexture = function(self, value) self.normal:SetTexture(value); self.normal:SetAlpha(1) end
+end
+journal.questsTab:Disable(); modules.ForeverDungeonJournal.refresh(); flush()
+for _, key in ipairs({'mapTab', 'bossesTab', 'questsTab'}) do
+    local tab = journal[key]
+    assert(tab.tab and tab.normal.alpha == 0 and tab.Icon == tab.fdjIcon and tab.fdjIcon.alpha == 1)
+    tab:SetNormalTexture('restored-red'); tab:Enable(); assert(tab.normal.alpha == 0 and not tab.selected)
+    tab:Disable(); assert(tab.selected and tab.normal.alpha == 0)
+end
+-- Auctionator legacy templates: wrappers, controls and pooled inventory rows.
+assert(loadfile('EUIAddonSkins/Skins/Auctionator.lua'))('EUIAddonSkins', ns)
+AuctionFrame = frame(); AuctionFrame.selectedTab = 1
+AuctionFrameTab1 = frame('Button'); AuctionFrameTab2 = frame('Button'); AuctionFrameTab3 = frame('Button')
+Auctionator = {Tabs = {State = {knownTabs = {{name = 'Shopping', tabFrameName = 'AuctionatorShoppingFrame'}}}}}
+AuctionatorShoppingFrame = frame(); local shopping = AuctionatorShoppingFrame
+AuctionatorTabs_Shopping = frame('Button'); local tab = AuctionatorTabs_Shopping
+local wrapper = frame(); tab.wrapperFrame = wrapper
+wrapper.Title = wrapper:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+tab.Selected = function() wrapper.hidden = false end; tab.DeselectTab = function() wrapper.hidden = true end
+shopping.SearchOptions = frame('Frame', nil, shopping); local options = shopping.SearchOptions
+options.SearchLabel = options:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+options.SearchString = frame('EditBox', nil, options); options.SearchButton = frame('Button', nil, options)
+shopping.ListsContainer = frame('Frame', nil, shopping); shopping.RecentsContainer = frame('Frame', nil, shopping)
+shopping.ContainerTabs = frame('Frame', nil, shopping); local mini = shopping.ContainerTabs
+mini.ListsTab = frame('Button', nil, mini); mini.ListsTab.id = 1
+mini.RecentsTab = frame('Button', nil, mini); mini.RecentsTab.id = 2
+mini.selectedTab = 2; mini.SetView = function(self, id) self.selectedTab = id end
+local results = frame('Frame', nil, shopping); results.ScrollBar = frame('Frame', nil, results)
+local cap = results.ScrollBar:CreateTexture()
+results.ScrollArea = frame('Frame', nil, results); local spinner = results.ScrollArea:CreateTexture(); spinner.layer = 'OVERLAY'
+local radio = frame('Frame', nil, shopping); radio.isAuctionatorRadio = true
+radio.RadioButton = frame('CheckButton', nil, radio); radio.RadioButton.checked = true
+radio.RadioButton.action = function() return 'native-duration' end
+local item = frame('Button', nil, shopping); item.Icon = item:CreateTexture(); item.Icon.path = 'item-art'
+item.IconBorder = item:CreateTexture(); item.IconBorder:SetVertexColor(0.3, 0.6, 1, 1)
+item.Text = item:CreateFontString(nil, 'OVERLAY', 'GameFontNormal'); item.Text:SetText('34')
+item.IconSelectedHighlight = item:CreateTexture(); item.action = function() return 'native-item-drag' end
+local prices = frame('Frame', nil, shopping); prices.CurrentPrices = frame('Frame', nil, prices)
+prices.HistoryPrices = frame('Frame', nil, prices); prices.HistoryPrices.hidden = true
+prices.HistoryButton = frame('Button', nil, prices)
+modules.Auctionator.install(S, modules.Auctionator); flush()
+assert(tab.selected and AuctionFrameTab1.selected == false and AuctionFrame.selectedTab == 1)
+assert(options.SearchButton.points[1][1] == 'LEFT' and shopping.ListsContainer.points[1][5] == -84)
+assert(mini.RecentsTab.selected and not mini.ListsTab.selected and cap.alpha == 0 and results.ScrollBar.scroll)
+assert(radio.RadioButton.checkbox and radio.RadioButton.regions[1].shown and radio.RadioButton.action() == 'native-duration')
+assert(item.Icon.path == 'item-art' and item.Icon.crop and item.IconBorder.alpha == 0 and item.Text.text == '34')
+assert(item.euiQualityTop.color[3] == 1 and item.IconSelectedHighlight.alpha == 1 and item.action() == 'native-item-drag')
+item.IconBorder:SetVertexColor(1, 0.5, 0, 1); assert(item.euiQualityTop.color[1] == 1 and item.euiQualityTop.color[2] == 0.5)
+radio.RadioButton:SetChecked(false); assert(not radio.RadioButton.regions[1].shown)
+mini:SetView(1); tab:DeselectTab(); flush()
+assert(not tab.selected and AuctionFrameTab1.selected == nil and mini.ListsTab.selected and not mini.RecentsTab.selected)
+assert(not prices.HistoryButton.selected)
+prices.HistoryPrices.hidden = false; modules.Auctionator.refresh(); flush(); assert(prices.HistoryButton.selected)
+local count = #item.regions + #radio.RadioButton.regions
+accent = 0.2; spinner:SetAlpha(0); modules.Auctionator.refresh(); flush()
+assert(spinner.alpha == 1 and radio.RadioButton.regions[1].color[1] == accent)
+assert(count == #item.regions + #radio.RadioButton.regions, 'warm refresh created more UI objects')
 combat = true
 local late = frame('Button', 'Attune_Node_43', Attune_GraphRoot); late.SetBackdrop = nil
 modules.Attune.refresh(); flush(); assert(not late.button)

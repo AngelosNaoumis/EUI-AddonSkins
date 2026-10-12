@@ -24,8 +24,11 @@ local function frame(kind, name, parent)
         self.hooks[event] = self.hooks[event] or {}; table.insert(self.hooks[event], fn)
     end
     function f:SetScript(event, fn) self.scripts[event] = fn end
-    function f:RegisterEvent() end
+    function f:RegisterEvent(event) self.events = self.events or {}; self.events[event] = true end
     function f:UnregisterEvent() end
+    function f:SetPoint(...) self.point = {...} end
+    function f:ClearAllPoints() self.point = nil end
+    function f:SetSize(w, h) self.width, self.height = w, h end
     if parent then table.insert(parent.children, f) end
     if name then _G[name] = f end
     return f
@@ -56,7 +59,7 @@ local skin = {
     GetAccentColor = function() return 0.047, 0.824, 0.616 end,
     OnLooksChanged = function(fn) looks = fn end,
 }
-for _, name in ipairs({ "Shell", "Button", "EditBox", "Dropdown", "Inset", "FadeRegions",
+for _, name in ipairs({ "Shell", "Panel", "Button", "EditBox", "Dropdown", "Inset", "FadeRegions",
     "FadeNineSlice", "Font", "CloseButton", "ScrollBar", "SquareIcon", "Checkbox", "StateButtonLabel" }) do
     skin[name] = function(f) assert(f, name .. " missing frame"); count(name); if name == "Button" then f.buttonSkinned = true end end
 end
@@ -117,6 +120,20 @@ assert(not disabledLauncher.buttonSkinned, "disabled Companion launcher was skin
 enabled = true
 ForeverCompanionAPI.AttachToFrame(disabledLauncher, host); flush()
 assert(disabledLauncher.buttonSkinned)
+-- The private FC scan footer moves below the auction tabs; unrelated children stay put.
+AuctionFrame = frame('Frame')
+local unrelated = frame('Frame', nil, AuctionFrame)
+local footer = frame('Frame', nil, AuctionFrame)
+footer.icon = texture(); footer.icon.GetTexture = function() return 'Interface/\\AddOns/ForeverCompanion/Media/LogoAddon.tga' end
+footer.btn = frame('Button', nil, footer); footer.btn.scripts.OnClick = function() return 'full-scan-original' end
+footer.status = texture('FontString'); footer.status.SetWidth = function(self, w) self.width = w end
+local externalEvents = lastCreated
+externalEvents.scripts.OnEvent(externalEvents, 'AUCTION_HOUSE_SHOW'); flush()
+assert(footer.point[5] == -30 and footer.status.width == 200 and footer.btn.buttonSkinned)
+assert(not unrelated.point and footer.btn.scripts.OnClick() == 'full-scan-original')
+local panels = calls.Panel; externalEvents.scripts.OnEvent(externalEvents, 'AUCTION_HOUSE_SHOW'); flush()
+assert(calls.Panel == panels, 'scan footer allocated twice')
+AuctionFrame = nil
 local api = ForeverCompanionAPI
 local f, missing, sentinel = api.CreateWindow("ForeverCompanionFrame")
 assert(f and missing == nil and sentinel == "sentinel", "factory return values changed")
