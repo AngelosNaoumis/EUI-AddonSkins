@@ -148,7 +148,7 @@ local function Apply()
     for f in pairs(extraLists) do
         if f.IsShown and f:IsShown() then Style(f, owners[f.dropdown]) else Restore(f) end
     end
-    for _, prefix in ipairs({"DropDownList", "L_DropDownList"}) do
+    for _, prefix in ipairs({"DropDownList", "L_DropDownList", "L_DropDownListQuestie"}) do
         local root = _G[prefix .. "1"]
         local owner = root and root.dropdown
         local binding = owner and root.IsShown and root:IsShown() and owners[owner]
@@ -205,10 +205,12 @@ local function InstallHooks()
     Hook(_G, "ToggleDropDownMenu", ns.RefreshPopupMenusNow)
     Hook(_G, "UIDropDownMenu_AddButton", ns.RefreshPopupMenusNow)
     if LibStub then
-        local lib = LibStub("LibUIDropDownMenu-4.0", true)
-        if lib then
-            Hook(lib, "ToggleDropDownMenu", ns.RefreshPopupMenusNow)
-            Hook(lib, "UIDropDownMenu_AddButton", ns.RefreshPopupMenusNow)
+        for _, name in ipairs({"LibUIDropDownMenu-4.0", "LibUIDropDownMenuQuestie-4.0"}) do
+            local lib = LibStub(name, true)
+            if lib then
+                Hook(lib, "ToggleDropDownMenu", ns.RefreshPopupMenusNow)
+                Hook(lib, "UIDropDownMenu_AddButton", ns.RefreshPopupMenusNow)
+            end
         end
     end
 end

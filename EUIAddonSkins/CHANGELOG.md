@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha
+
+- Added an optional Questie skin for Journey, settings, note windows, tracker typography and popup menus.
+- Preserved quest colours, tracker opacity, map markers and secure quest-item buttons.
+
 ## 1.0.6
 
 - Replaced the AddOns list icon with the correct A.S. logo.

@@ -34,6 +34,7 @@ local function texture(kind, parent)
     function t:GetFont() return self.font, self.font and 12, '' end
     function t:SetFont(v) self.font = v end
     function t:SetTextColor(...) self.textColor = {...} end
+    function t:GetTextColor() return table.unpack(self.textColor or {1, 1, 1, 1}) end
     function t:GetParent() return self.parent end
     return t
 end
@@ -138,7 +139,7 @@ H.Portrait(chrome); assert(#chrome.regions == 1 and chrome.accent)
 H.Portrait(chrome, true); assert(square.path == 'player-face' and square.crop[1] == 0.2)
 -- Exercise the adapters, not just utility primitives.
 local modules = {}
-function ns.RegisterModule(id, _, _, install) modules[id] = {install = install} end
+function ns.RegisterModule(id, _, available, install) modules[id] = {available = available, install = install} end
 assert(loadfile('EUIAddonSkins/Scoped.lua'))('EUIAddonSkins', ns)
 assert(loadfile('EUIAddonSkins/Skins/Attune.lua'))('EUIAddonSkins', ns)
 Attune_MainFrame = frame('Frame', 'Attune_MainFrame'); Attune_GraphRoot = frame('Frame', 'Attune_GraphRoot', Attune_MainFrame)
@@ -262,6 +263,58 @@ local count = #item.regions + #radio.RadioButton.regions
 accent = 0.2; spinner:SetAlpha(0); modules.Auctionator.refresh(); flush()
 assert(spinner.alpha == 1 and radio.RadioButton.regions[1].color[1] == accent)
 assert(count == #item.regions + #radio.RadioButton.regions, 'warm refresh created more UI objects')
+-- Questie: actual adapter with AceGUI wrapper roots and independent tracker updates.
+Questie, QuestieLoader = nil, nil
+assert(loadfile('EUIAddonSkins/Skins/Questie.lua'))('EUIAddonSkins', ns)
+assert(not modules.Questie.available())
+Questie = {db = {profile = {trackerBackground = {r = 0.2, g = 0.3, b = 0.4, a = 0.25}}}}
+local journey = {BuildMainFrame = function() return 'journey-native' end, ToggleJourneyWindow = function() end, private = {}}
+local tracker = {Update = function() return 'tracker-native' end}
+QuestieLoader = {_modules = {QuestieJourney = journey, QuestieTracker = tracker, QuestieOptions = {ToggleConfigWindow = function() end}}}
+QuestieJourneyFrame = {frame = frame()}; local journeyRoot = QuestieJourneyFrame.frame
+QuestieConfigFrame = {frame = frame()}; local input = frame('EditBox', nil, QuestieConfigFrame.frame)
+local groupFrame = frame('Frame', nil, journeyRoot)
+local first, second = frame('Button', nil, groupFrame), frame('Button', nil, groupFrame)
+first.selected, second.selected = true, false
+local group = {type = 'TabGroup', frame = groupFrame, tabs = {first, second}, SelectTab = function(_, value) first.selected = value == 1; second.selected = value == 2 end}
+groupFrame.obj = group
+local detail = journeyRoot:CreateFontString(nil, 'OVERLAY', 'GameFontNormal'); detail:SetTextColor(0.2, 0.7, 0.3, 0.8)
+Questie_BaseFrame = frame(); local base = Questie_BaseFrame
+base:SetBackdrop({bgFile = 'white', edgeFile = 'native', edgeSize = 16}); base:SetBackdropColor(0.2, 0.3, 0.4, 0.25)
+local line = frame('Frame', nil, base); local progress = line:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+progress:SetTextColor(0.8, 0.2, 0.1, 0.7)
+local protectedItem = frame('Button', nil, base); protectedItem.protected = true; protectedItem.attributes = {type = 'item', item = 'quest item'}
+protectedItem.Icon = protectedItem:CreateTexture()
+local map = frame(); map.pin = map:CreateTexture(); local pinPath = map.pin.path
+Questie_HeaderFrame = frame('Button', nil, base)
+Questie_HeaderFrame.trackedQuests = {label = Questie_HeaderFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')}
+QuestieTrackerMenuFrame = frame()
+local bound = false; ns.BindPopupOwner = function(_, module, owner) if owner == QuestieTrackerMenuFrame then assert(module == modules.Questie); bound = true end end
+local dialog = {OpenFrames = {}, FeedGroup = function() return 'feed-native' end}
+LibStub = function(name) if name == 'AceConfigDialog-3.0' then return dialog end end
+modules.Questie.install(S, modules.Questie); flush()
+assert(journeyRoot.shell and QuestieConfigFrame.frame.shell and input.input and first.selected and not second.selected)
+assert(detail.font == 'eui' and detail.textColor[1] == 0.2 and detail.textColor[4] == 0.8)
+assert(base.backdrop.edgeSize == 1 and base.color[4] == 0.25 and base.accent and not base.shell)
+assert(progress.font == 'eui' and progress.textColor[1] == 0.8 and progress.textColor[4] == 0.7)
+assert(not protectedItem.button and not protectedItem.Icon.crop and protectedItem.attributes.item == 'quest item')
+assert(map.pin.path == pinPath and not map.pin.crop and bound and QuestieLoader._modules.Nonexistent == nil)
+group:SelectTab(2); flush(); assert(not first.selected and second.selected)
+local lateLine = frame('Frame', nil, base); local lateText = lateLine:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+lateText:SetTextColor(0.1, 0.5, 0.9, 1)
+assert(tracker:Update() == 'tracker-native'); flush(); assert(lateText.font == 'eui' and lateText.textColor[3] == 0.9)
+local hook = tracker.Update; local count = #base.regions
+for _ = 1, 10 do modules.Questie.refresh(); flush() end
+assert(tracker.Update == hook and #base.regions == count, 'Questie refresh duplicated hooks/objects')
+combat = true; local combatLine = frame('Frame', nil, base); local combatText = combatLine:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+tracker:Update(); flush(); assert(combatText.font == 'GameFontNormal')
+combat = false
+for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(combatText.font == 'eui')
+enabled = false; local disabledLine = frame('Frame', nil, base); local disabledText = disabledLine:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+tracker:Update(); flush(); assert(disabledText.font == 'GameFontNormal')
+enabled = true
+print('PASS: Questie owned windows/tabs, tracker colours/opacity, secure items, dynamic rows, combat/toggles and hook idempotence')
 combat = true
 local late = frame('Button', 'Attune_Node_43', Attune_GraphRoot); late.SetBackdrop = nil
 modules.Attune.refresh(); flush(); assert(not late.button)

@@ -4,6 +4,16 @@ local ADDON, ns = ...
 -- or global frame-creation/AceGUI replacement is used.
 function ns.RegisterScopedSkin(id, label, config)
     ns.RegisterModule(id, label, config.available, function(S, module)
+        if config.preserveTextColors then
+            local font = S.Font
+            S = setmetatable({Font = function(text, r, g, b)
+                if r == nil and text.GetTextColor then
+                    local cr, cg, cb, ca = text:GetTextColor()
+                    font(text, cr, cg, cb)
+                    text:SetTextColor(cr, cg, cb, ca)
+                else font(text, r, g, b) end
+            end}, {__index = S})
+        end
         local H = ns.CreateSkinHelper(S, module)
         local styled, panels, checks = {}, {}, {}
         local refresh, waiting

@@ -65,7 +65,8 @@ CreateFrame = function(kind, _, parent)
     return f
 end
 local lib = {ToggleDropDownMenu = function() return 'lib-original' end, UIDropDownMenu_AddButton = function() end}
-LibStub = function(name) if name == 'LibUIDropDownMenu-4.0' then return lib end end
+local questLib = {ToggleDropDownMenu = function() return 'quest-menu-native' end, UIDropDownMenu_AddButton = function() end}
+LibStub = function(name) if name == 'LibUIDropDownMenu-4.0' then return lib elseif name == 'LibUIDropDownMenuQuestie-4.0' then return questLib end end
 ToggleDropDownMenu = function() return 'native-original', nil, 9 end
 UIDropDownMenu_AddButton = function() end
 local S = {GetFont = function() return 'eui-font', '' end, GetAccentColor = function() return accent, 0.5, 0.6 end,
@@ -123,6 +124,17 @@ assert(L_DropDownList1.Backdrop.alpha == 1)
 emoteModule.enabled = true; combat = true; ns.RefreshPopupMenus(); flush(); assert(L_DropDownList1.Backdrop.alpha == 1)
 combat = false; events.scripts.OnEvent(events, 'PLAYER_REGEN_ENABLED'); flush(); assert(L_DropDownList1.Backdrop.alpha == 0)
 L_DropDownList1:Hide()
+-- Questie's private menu namespace paints immediately and restores on native reuse.
+local questOwner = frame(); local questModule = {enabled = true}
+L_DropDownListQuestie1 = frame('Frame', 'L_DropDownListQuestie1')
+L_DropDownListQuestie1.dropdown, L_DropDownListQuestie1.shown = questOwner, true
+L_DropDownListQuestie1.Backdrop = frame('Frame', nil, L_DropDownListQuestie1)
+ns.BindPopupOwner(S, questModule, questOwner)
+assert(questLib:ToggleDropDownMenu() == 'quest-menu-native')
+assert(L_DropDownListQuestie1.Backdrop.alpha == 0, 'Questie menu deferred past first draw')
+L_DropDownListQuestie1.dropdown = unrelated; questLib:UIDropDownMenu_AddButton()
+assert(L_DropDownListQuestie1.Backdrop.alpha == 1, 'Questie menu reuse lost native style')
+L_DropDownListQuestie1:Hide()
 -- AddonFactory's unnamed pool is registered explicitly and restores on reuse.
 local custom = frame('Button'); custom.Backdrop = frame('Frame', nil, custom)
 local customRow = frame('Button', nil, custom); local customText = region('FontString')

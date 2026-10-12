@@ -18,6 +18,7 @@ EllesmereUI skins for World of Warcraft addons.
 - Altoholic
 - Attune
 - TwitchEmotes (popup menu)
+- Questie (alpha: Journey, settings, tracker styling and popup menus)
 
 Each skin is optional and only activates when its addon is loaded.
 
