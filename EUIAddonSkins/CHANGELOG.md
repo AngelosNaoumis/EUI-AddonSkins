@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- Added the addon icon to the in-game AddOns list.
+
 ## 1.0.4
 
 - Promoted the tested 1.0.4-beta build to stable; no skinning behaviour changed.
