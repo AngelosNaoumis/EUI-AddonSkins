@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4
+
+- Promoted the tested 1.0.4-beta build to stable; no skinning behaviour changed.
+- Includes the frame-guard and Auctionator refresh-discovery fixes from the beta.
+
 ## 1.0.4-beta
 
 - Fixed frame guards attempting to inspect functions or other non-UI values.
