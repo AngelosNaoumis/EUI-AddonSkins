@@ -140,7 +140,7 @@ end, function(S, module)
                 if view then H.Script(view, "OnShow", refresh); H.Script(view, "OnHide", refresh) end
             end
         end
-        for _, key in ipairs({"RefreshButton", "Refresh", "ResetSearchStringButton"}) do
+        for _, key in ipairs({"RefreshButton", "ResetSearchStringButton"}) do
             local button = f[key]
             if H.Allowed(button) and button:GetObjectType() == "Button" then
                 local icon = H.Texture(button.GetNormalTexture and button:GetNormalTexture())

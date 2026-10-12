@@ -29,6 +29,14 @@ assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
 local S = {Font = function() end, EditBox = function(f) f.skinned = true; painted = painted + 1 end}
 local module, exclude = {}, nil
 local H = ns.CreateSkinHelper(S, module)
+-- UI fields can be functions or asset IDs, not just frames.
+for _, value in ipairs({function() end, 12345, 'Refresh', true, false, {}, {GetObjectType = true}}) do
+    assert(not H.Allowed(value), 'non-UI value accepted as a frame')
+    H.Scan(value, function() error('invalid scan callback') end)
+    H.Script(value, 'OnShow', function() error('invalid hook') end)
+    H.Font(value); H.Fade(value); H.Hook(value, 'Refresh', function() error('invalid method hook') end)
+end
+assert(not H.Allowed(nil))
 local root, scroll, sibling = frame(), frame('ScrollFrame'), frame()
 root.children = {scroll, sibling}
 local function visit(f) visits[f] = (visits[f] or 0) + 1 end

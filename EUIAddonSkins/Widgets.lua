@@ -16,7 +16,9 @@ function ns.CreateSkinHelper(S, module)
         return {f:GetRegions()}
     end
     function H.Allowed(f)
-        return f and f.GetObjectType and not (f.IsForbidden and f:IsForbidden())
+        local kind = type(f)
+        return (kind == "table" or kind == "userdata") and type(f.GetObjectType) == "function"
+            and not (f.IsForbidden and f:IsForbidden())
             and not (f.IsProtected and f:IsProtected())
     end
     function H.Safe(fn, ...)
@@ -27,7 +29,8 @@ function ns.CreateSkinHelper(S, module)
         end
     end
     function H.Hook(object, name, callback)
-        if not object or type(object[name]) ~= "function" then return end
+        local kind = type(object)
+        if (kind ~= "table" and kind ~= "userdata") or type(object[name]) ~= "function" then return end
         local h = hooks[object]
         if not h then h = {}; hooks[object] = h end
         if h[name] then return end
@@ -64,7 +67,8 @@ function ns.CreateSkinHelper(S, module)
         end)
     end
     function H.Fade(texture)
-        if not texture or not texture.SetAlpha then return end
+        local kind = type(texture)
+        if (kind ~= "table" and kind ~= "userdata") or type(texture.SetAlpha) ~= "function" then return end
         if not texture.GetAlpha or texture:GetAlpha() ~= 0 then texture:SetAlpha(0) end
         if faded[texture] then return end
         faded[texture] = true
@@ -75,7 +79,7 @@ function ns.CreateSkinHelper(S, module)
         end)
     end
     function H.Font(text, r, g, b)
-        if text and text.GetObjectType and text:GetObjectType() == "FontString" then S.Font(text, r, g, b) end
+        if H.Allowed(text) and text:GetObjectType() == "FontString" then S.Font(text, r, g, b) end
     end
     function H.Texture(value)
         local kind = type(value)

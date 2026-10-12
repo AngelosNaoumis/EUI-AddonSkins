@@ -69,3 +69,7 @@ Expected payload: 21 files, all inside `EUIAddonSkins/`: the TOC, Core.lua, Acce
 - [Automatic Packaging](https://support.curseforge.com/support/solutions/articles/9000197281): webhook setup, push/tag packaging and alpha/beta classification.
 
 The compatible BigWigs packager's source was inspected as a secondary implementation reference for promoting a child into its parent. It is not the configured release service and was not installed or executed. Official-service output must still be inspected before calling the workflow verified.
+
+## Current release policy
+
+Publish new skinning updates as beta (`v1.0.4-beta`, for example), with the matching TOC/Core version and a GitHub prerelease. CurseForge classifies beta tags as Beta. Keep the latest stable release unchanged; promote a tested beta in a separate stable version rather than moving an existing tag.

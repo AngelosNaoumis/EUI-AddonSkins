@@ -3,7 +3,7 @@
 ## Notes: EllesmereUI skins for World of Warcraft addons.
 ## Author: Smarre
 ## X-License: MIT
-## Version: 1.0.3
+## Version: 1.0.4-beta
 ## Dependencies: EllesmereUI, EllesmereUIBlizzardSkin
 ## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides, Auctionator, Spy, CrossGambling, WhatsTraining, ItemRack, ItemRackOptions, KiwiFarm, Myslot, BugSack, Altoholic, Attune, TwitchEmotes
 ## SavedVariables: EUIAddonSkinsDB

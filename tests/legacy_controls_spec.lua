@@ -230,6 +230,7 @@ shopping.ContainerTabs = frame('Frame', nil, shopping); local mini = shopping.Co
 mini.ListsTab = frame('Button', nil, mini); mini.ListsTab.id = 1
 mini.RecentsTab = frame('Button', nil, mini); mini.RecentsTab.id = 2
 mini.selectedTab = 2; mini.SetView = function(self, id) self.selectedTab = id end
+shopping.Refresh = function() return 'native-refresh-result' end
 local results = frame('Frame', nil, shopping); results.ScrollBar = frame('Frame', nil, results)
 local cap = results.ScrollBar:CreateTexture()
 results.ScrollArea = frame('Frame', nil, results); local spinner = results.ScrollArea:CreateTexture(); spinner.layer = 'OVERLAY'
@@ -244,6 +245,7 @@ local prices = frame('Frame', nil, shopping); prices.CurrentPrices = frame('Fram
 prices.HistoryPrices = frame('Frame', nil, prices); prices.HistoryPrices.hidden = true
 prices.HistoryButton = frame('Button', nil, prices)
 modules.Auctionator.install(S, modules.Auctionator); flush()
+assert(shopping.Refresh() == 'native-refresh-result')
 assert(tab.selected and AuctionFrameTab1.selected == false and AuctionFrame.selectedTab == 1)
 assert(options.SearchButton.points[1][1] == 'LEFT' and shopping.ListsContainer.points[1][5] == -84)
 assert(mini.RecentsTab.selected and not mini.ListsTab.selected and cap.alpha == 0 and results.ScrollBar.scroll)

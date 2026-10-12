@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4-beta
+
+- Fixed frame guards attempting to inspect functions or other non-UI values.
+- Removed Auctionator's ambiguous Refresh field from button discovery.
+- Updates are now published as beta while the skinning fixes are being validated.
+
 ## 1.0.3
 
 - Kept Dungeon Journal mode tabs flat in every enabled and disabled state, preserving their icons.
