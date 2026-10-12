@@ -4,9 +4,10 @@ local ADDON, ns = ...
 -- or global frame-creation/AceGUI replacement is used.
 function ns.RegisterScopedSkin(id, label, config)
     ns.RegisterModule(id, label, config.available, function(S, module)
-        if config.preserveTextColors then
-            local font = S.Font
+        if config.preserveTextColors or config.font then
+            local font, original = S.Font, S
             S = setmetatable({Font = function(text, r, g, b)
+                if config.font then return config.font(original, text, r, g, b) end
                 if r == nil and text.GetTextColor then
                     local cr, cg, cb, ca = text:GetTextColor()
                     font(text, cr, cg, cb)

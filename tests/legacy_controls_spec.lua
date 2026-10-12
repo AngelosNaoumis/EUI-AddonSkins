@@ -460,6 +460,83 @@ enabled = false; local skipped = frame('CheckButton', nil, GTFO_MainFrame)
 GTFO_RefreshOptions(); flush(); assert(not skipped.checkbox)
 enabled = true
 print('PASS: GTFO late options, settings-only roots, preserved sound/actions/values, themes, combat/toggles and idempotence')
+-- ThreatClassic2: never route semantic threat bars through the generic fill skin.
+ThreatClassic2BarFrame = nil
+assert(loadfile('EUIAddonSkins/Skins/ThreatClassic2.lua'))('EUIAddonSkins', ns)
+assert(not modules.ThreatClassic2.available())
+local threat = frame('Frame', 'ThreatClassic2BarFrame')
+threat.bg = threat:CreateTexture(); threat.bg:SetVertexColor(0.2, 0.4, 0.6, 0.25)
+threat.header = frame('StatusBar', nil, threat)
+threat.header.text = threat.header:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+local threatBar = frame('StatusBar', nil, threat)
+threatBar.value, threatBar.barColor, threatBar.barTexture = 83, {0.9, 0.2, 0.1, 0.7}, 'tc2-user-texture'
+threatBar.name = threatBar:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+threatBar.name:SetTextColor(0.8, 0.2, 0.9, 1)
+local updates = 0
+threat.hooks.OnUpdate = function() updates = updates + 1 end
+local update = threat.hooks.OnUpdate
+local fills = 0; S.ApplyBarFill = function() fills = fills + 1 end
+modules.ThreatClassic2.install(S, modules.ThreatClassic2); flush()
+assert(threat.header.accent and not threat.shell and threat.bg.color[4] == 0.25)
+assert(threatBar.name.font == 'eui' and threatBar.name.textColor[1] == 0.8 and fills == 0)
+for _ = 1, 20 do threat.hooks.OnUpdate(); end
+assert(updates == 20 and threat.hooks.OnUpdate == update and #timers == 0)
+assert(threatBar.value == 83 and threatBar.barColor[1] == 0.9 and threatBar.barTexture == 'tc2-user-texture')
+threatBar.name:SetFont('profile-font'); flush(); assert(threatBar.name.font == 'eui')
+local threatHook = threatBar.name.SetFont
+for _ = 1, 5 do modules.ThreatClassic2.refresh(); flush() end
+assert(threatBar.name.SetFont == threatHook and #timers == 0)
+combat = true; threatBar.name:SetFont('combat-profile-font'); flush()
+assert(threatBar.name.font == 'combat-profile-font')
+combat = false
+for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(threatBar.name.font == 'eui')
+enabled = false; threatBar.name:SetFont('disabled-font'); flush(); assert(threatBar.name.font == 'disabled-font')
+enabled = true
+print('PASS: ThreatClassic2 semantic bars/opacity, native update loop, profile fonts, idempotence, combat and toggles')
+-- Gargul's SetFont(rem, flags) overload must never receive a font path.
+Gargul = nil
+assert(loadfile('EUIAddonSkins/Skins/Gargul.lua'))('EUIAddonSkins', ns)
+assert(not modules.Gargul.available())
+UIParent = frame()
+S.GetFont = function() return 'eui', 'OUTLINE' end
+local gargulRoot = frame('Frame', 'GargulTestWindow', UIParent)
+local overloaded = gargulRoot:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+overloaded._SetFont = overloaded.SetFont
+overloaded.SetFont = function(self, rem) assert(type(rem) == 'number', 'Gargul SetFont called with a path'); self:_SetFont('gargul-' .. rem) end
+overloaded:SetTextColor(0.2, 0.8, 0.3, 0.6)
+local input = frame('EditBox', nil, gargulRoot); input._SetFont = function(self, path) self.font = path end
+input.GetFont = function() return 'native', 12 end
+input.SetFont = function(_, rem) assert(type(rem) == 'number') end
+local countdown = frame('StatusBar', nil, gargulRoot); countdown.value = 17
+local gear = frame('Button', nil, gargulRoot); gear.Texture = gear:CreateTexture()
+local protected = frame('Button', nil, gargulRoot); protected.protected = true; protected.action = 'award-native'
+local dropdown = frame('Frame', nil, gargulRoot); dropdown.initialize = function() end
+local binding = false
+ns.BindPopupOwner = function(_, module, f) if module == modules.Gargul and f == dropdown then binding = true end end
+local scope = {InterfaceItems = {Frame = {Window = {frame = gargulRoot, type = 'Frame'}}}}
+local iface = {Award = scope, set = function(_, s, id, item) s.InterfaceItems = {Frame = {[id] = item}}; return 'set-native' end,
+    createWindow = function(_, details) return frame('Frame', details.name, UIParent) end}
+Gargul = {Interface = iface, UI = {components = {}}}
+modules.Gargul.install(S, modules.Gargul); flush()
+assert(gargulRoot.shell and gargulRoot.accent and binding and input.input and input.font == 'eui')
+assert(overloaded.font == 'eui' and overloaded.textColor[2] == 0.8 and overloaded.textColor[4] == 0.6)
+assert(gear.Texture.crop and countdown.value == 17 and fills == 0 and not protected.button and protected.action == 'award-native')
+overloaded:SetFont(2); flush(); assert(overloaded.font == 'eui', 'Gargul relative-size updates must retain the EUI font')
+local dynamicRoot = iface:createWindow({name = 'GargulDynamic'}); local late = frame('CheckButton', nil, dynamicRoot)
+flush(); assert(dynamicRoot.shell and late.checkbox)
+local dialogRoot = frame('Frame', nil, UIParent)
+assert(iface:set(scope, 'Window', {frame = dialogRoot, type = 'GLAwardDialog'}) == 'set-native'); flush(); assert(dialogRoot.shell)
+local hook, regions, fontHook = iface.createWindow, #gear.regions, overloaded.SetFont
+for _ = 1, 5 do modules.Gargul.refresh(); flush() end
+assert(iface.createWindow == hook and #gear.regions == regions and overloaded.SetFont == fontHook)
+combat = true; local combatRoot = iface:createWindow({name = 'GargulCombat'}); flush(); assert(not combatRoot.shell)
+combat = false
+for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(combatRoot.shell)
+enabled = false; local disabledRoot = iface:createWindow({name = 'GargulDisabled'}); flush(); assert(not disabledRoot.shell)
+enabled = true
+print('PASS: Gargul owned registry/factory/dialogs, overloaded fonts/inputs, menu ownership, icons, countdowns, secure actions and idempotence')
 combat = true
 local late = frame('Button', 'Attune_Node_43', Attune_GraphRoot); late.SetBackdrop = nil
 modules.Attune.refresh(); flush(); assert(not late.button)

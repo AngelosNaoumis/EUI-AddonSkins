@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0-beta.2
+
+- Added ThreatClassic2 monitor typography, window accents and settings controls while preserving threat values, class colours and warnings.
+- Added Gargul window, dialog, input, icon and menu styling.
+- Preserved Gargul countdown colours, loot actions and its custom font-size methods.
+
 ## 1.1.0-beta
 
 - Added AtlasLootClassic Continued window, favourites, settings, dropdown and selection-control styling.
