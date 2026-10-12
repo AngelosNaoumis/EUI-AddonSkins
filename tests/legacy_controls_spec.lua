@@ -367,6 +367,99 @@ enabled = false; local skipped = frame('CheckButton', nil, page)
 DBM_GUI:CreateNewPanel(); flush(); assert(not skipped.checkbox)
 enabled = true
 print('PASS: DBM lazy GUI, dynamic controls, selection, swatches/previews, theme refresh, combat/toggles and idempotence')
+-- AtlasLoot Continued: owned custom widgets and foreground/status art.
+AtlasLoot = nil
+assert(loadfile('EUIAddonSkins/Skins/AtlasLootContinued.lua'))('EUIAddonSkins', ns)
+assert(not modules.AtlasLootContinued.available())
+local atlasRoot = frame('Frame', 'AtlasLoot_GUI-Frame')
+atlasRoot:SetBackdrop({bgFile = 'native-fill', edgeFile = 'native-bevel', edgeSize = 16})
+local logo = atlasRoot:CreateTexture(); logo.path = 538639; atlasRoot.gameVersionLogo = logo
+atlasRoot.CloseButton = frame('Button', nil, atlasRoot)
+local atlasGUI = {frame = atlasRoot, Toggle = function() return 'atlas-native' end,
+    ItemFrame = {Refresh = function() return 'items-native' end}}
+AtlasLoot = {GUI = atlasGUI, Favourites = {GUI = {frame = frame()}}}
+local map = atlasRoot:CreateTexture(); map.path = 'dungeon-map'
+local model = frame('PlayerModel', nil, atlasRoot); local modelArt = model:CreateTexture()
+local item = frame('Button', 'AtlasLoot_Button_1', atlasRoot)
+item.icon, item.overlay, item.phaseIndicator = item:CreateTexture(), item:CreateTexture(), item:CreateTexture()
+item.icon.path = 'loot-icon'; item.overlay:SetVertexColor(0.6, 0.2, 0.9, 1)
+item.label = item:CreateFontString(nil, 'ARTWORK', 'GameFontNormal'); item.label:SetTextColor(0.6, 0.2, 0.9, 1)
+local selectFrame = frame('ScrollFrame', 'AtlasLoot-Select-1', atlasRoot)
+local selector = {frame = selectFrame, SetSelected = function() end, Update = function() end}; selectFrame.obj = selector
+local selection = frame('CheckButton', nil, selectFrame); selection.obj, selection.info = selector, {id = 'boss'}
+selection.label, selection.coin = selection:CreateFontString(nil, 'OVERLAY', 'GameFontNormal'), selection:CreateTexture()
+selection.checked = true
+local dropdown = frame('Button', 'AtlasLoot-DropDown-1', atlasRoot)
+dropdown.label = dropdown:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+dropdown.button = frame('Button', 'AtlasLoot-DropDown-1-button', dropdown)
+local popup, popupRow
+dropdown.par = {Toggle = function()
+    popup = frame('Frame', 'AtlasLoot-DropDown-CatFrame1', dropdown); popup:SetBackdrop({bgFile = 'native-fill'})
+    popupRow = frame('Button', 'AtlasLoot-DropDown-Button1', popup)
+    popupRow.icon, popupRow.check = popupRow:CreateTexture(), popupRow:CreateTexture()
+    popupRow.label = popupRow:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+    popupRow.label:SetTextColor(0.3, 0.8, 0.1, 1)
+    return 'popup-native'
+end, SetData = function() end, SetSelected = function() end}
+S.GetPanelColor = function() return 0.02, 0.02, 0.02, 0.9 end
+modules.AtlasLootContinued.install(S, modules.AtlasLootContinued); flush()
+assert(atlasRoot.accent and not atlasRoot.shell and atlasRoot.backdrop.edgeSize == 1 and atlasRoot.color[4] == 0.9)
+assert(atlasRoot.CloseButton.close and AtlasLoot.Favourites.GUI.frame.shell and logo.alpha == 1 and map.path == 'dungeon-map')
+assert(item.icon.crop and item.overlay.alpha == 1 and item.phaseIndicator.alpha == 1 and item.overlay.color[3] == 0.9)
+assert(item.label.textColor[3] == 0.9 and not item.button and not modelArt.crop)
+assert(selection.euiAtlasSelection.color[4] == 0.2 and selection.coin.alpha == 1 and not selection.checkbox)
+assert(dropdown.dropdown and dropdown.button.glyph == 'v')
+assert(dropdown.par:Toggle() == 'popup-native')
+assert(popup.panel and popupRow.button and popupRow.check.alpha == 1 and popupRow.label.textColor[2] == 0.8,
+    'AtlasLoot popup must be styled synchronously, without waiting for a timer')
+flush(); selection:SetChecked(false); flush(); assert(selection.euiAtlasSelection.color[4] == 0)
+local hook, objects = atlasGUI.Toggle, #selection.regions
+for _ = 1, 5 do modules.AtlasLootContinued.refresh(); flush() end
+assert(atlasGUI.Toggle == hook and #selection.regions == objects)
+local late = frame('CheckButton', nil, atlasRoot)
+assert(atlasGUI.ItemFrame:Refresh() == 'items-native'); flush(); assert(late.checkbox)
+enabled = false; local untouched = frame('CheckButton', nil, atlasRoot)
+atlasGUI:Toggle(); flush(); assert(not untouched.checkbox)
+enabled = true
+print('PASS: AtlasLoot windows, synchronous pooled menus, selectors, colours/overlays/maps/models, dynamic controls and idempotence')
+-- GTFO: skin only its settings canvases; sound/gameplay methods stay untouched.
+GTFO = nil
+assert(loadfile('EUIAddonSkins/Skins/GTFO.lua'))('EUIAddonSkins', ns)
+assert(not modules.GTFO.available())
+GTFO = {Settings = {Volume = 3, Enabled = true}, PlaySound = function() return 'alert-native' end}
+GTFO_MainFrame, GTFO_IgnoreOptionsFrame = nil, nil
+GTFO_RenderOptions = function()
+    GTFO_MainFrame = frame('Frame', 'GTFO_MainFrame')
+    GTFO_IgnoreOptionsFrame = frame('Frame', 'GTFO_IgnoreOptionsFrame')
+    return 'settings-native'
+end
+GTFO_RefreshOptions = function() return 'refresh-native' end
+modules.GTFO.install(S, modules.GTFO); flush()
+assert(GTFO_RenderOptions() == 'settings-native')
+local gtfoCheck = frame('CheckButton', nil, GTFO_MainFrame); gtfoCheck.checked = true
+local testButton = frame('Button', nil, GTFO_MainFrame)
+testButton.label = testButton:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+testButton.action = function() return GTFO.PlaySound() end
+local volume = frame('Slider', nil, GTFO_MainFrame); volume.GetThumbTexture = function() return thumb end
+volume.GetOrientation = function() return 'HORIZONTAL' end; volume.value = 3
+local ignore = frame('CheckButton', nil, GTFO_IgnoreOptionsFrame)
+flush()
+assert(GTFO_MainFrame.accent and not GTFO_MainFrame.shell and not GTFO_IgnoreOptionsFrame.shell)
+assert(gtfoCheck.checkbox and gtfoCheck.checked and ignore.checkbox and testButton.button and testButton.action() == 'alert-native')
+assert(volume.value == 3 and GTFO.Settings.Volume == 3 and GTFO.Settings.Enabled)
+local gtfoHook, objects = GTFO_RefreshOptions, #volume.regions
+accent = 0.35; assert(GTFO_RefreshOptions() == 'refresh-native'); flush(); assert(thumb.color[1] == accent)
+for _ = 1, 5 do modules.GTFO.refresh(); flush() end
+assert(GTFO_RefreshOptions == gtfoHook and #volume.regions == objects)
+combat = true; local deferred = frame('CheckButton', nil, GTFO_IgnoreOptionsFrame)
+GTFO_RefreshOptions(); flush(); assert(not deferred.checkbox)
+combat = false
+for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(deferred.checkbox)
+enabled = false; local skipped = frame('CheckButton', nil, GTFO_MainFrame)
+GTFO_RefreshOptions(); flush(); assert(not skipped.checkbox)
+enabled = true
+print('PASS: GTFO late options, settings-only roots, preserved sound/actions/values, themes, combat/toggles and idempotence')
 combat = true
 local late = frame('Button', 'Attune_Node_43', Attune_GraphRoot); late.SetBackdrop = nil
 modules.Attune.refresh(); flush(); assert(not late.button)

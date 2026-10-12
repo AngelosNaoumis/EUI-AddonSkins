@@ -18,8 +18,10 @@ EllesmereUI skins for World of Warcraft addons.
 - Altoholic
 - Attune
 - TwitchEmotes (popup menu)
-- Questie (alpha: Journey, settings, tracker styling and popup menus)
-- Deadly Boss Mods (alpha: options window and controls)
+- Questie (beta: Journey, settings, tracker styling and popup menus)
+- Deadly Boss Mods (beta: options window and controls)
+- AtlasLootClassic Continued
+- GTFO (settings controls)
 
 Each skin is optional and only activates when its addon is loaded.
 
@@ -50,7 +52,7 @@ See [CHANGELOG.md](CHANGELOG.md) for changes.
 
 ItemRack’s secure equipment buttons and Attune’s quest graph/map retain their artwork and status colors. Myslot’s private import-progress dialog and shared Blizzard tooltips keep their existing styling. Altoholic, KiwiFarm, RestedXP and TwitchEmotes popup menus use temporary EUI styling while open.
 
-DBM combat alerts, timer bars and preview content retain DBM’s styling. Its newer Blizzard Menu popups are not included in this alpha skin.
+DBM combat alerts, timer bars and preview content retain DBM’s styling. Its newer Blizzard Menu popups are not included in this beta skin.
 
 ## License
 

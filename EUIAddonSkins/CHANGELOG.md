@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0-beta
+
+- Added AtlasLootClassic Continued window, favourites, settings, dropdown and selection-control styling.
+- Preserved AtlasLoot item-quality colours, item overlays, expansion logos, maps and models.
+- Added GTFO settings skins for checkboxes, test/reset buttons and sliders.
+- Includes the Questie and DBM skins from the alpha builds.
+
 ## 1.1.0-alpha.2
 
 - Added optional Deadly Boss Mods options-window styling, including tabs, category toggles, sliders, buttons and dropdown controls.
