@@ -65,7 +65,7 @@ assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
 local H = ns.CreateSkinHelper(S, {})
 local root, tab, input, progress, list, iconButton = frame(), frame('Button'), frame('EditBox'), frame('StatusBar'), frame(), frame('Button')
 list.HeaderContainer = frame()
-iconButton.icon = {}
+iconButton.icon = {GetObjectType = function() return "Texture" end}
 iconButton.GetWidth = function() return 25 end; iconButton.GetHeight = function() return 25 end
 root.children = {tab, input, progress, list, iconButton}
 local selected = true

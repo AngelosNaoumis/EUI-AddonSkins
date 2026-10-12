@@ -8,10 +8,12 @@ ns.RegisterScopedSkin("WhatsTraining", "What's Training?", {
     end,
     hooks = function(C, refresh) C.H.Hook(_G.WhatsTrainingFrame, "Refresh", refresh) end,
     visit = function(C, f)
-        if f.spell and f.spell.icon then C.S.SquareIcon(f.spell.icon) end
+        local spellIcon = f.spell and C.H.Texture(f.spell.icon)
+        if spellIcon then C.S.SquareIcon(spellIcon) end
         if f.groupingPopup then C.Panel(f.groupingPopup) end
         if f.scrollBar and f.scrollBar.ScrollBar then C.S.ScrollBar(f.scrollBar.ScrollBar) end
         -- Spell/city indicators keep their colors and artwork. Only UI icons crop.
-        if f.icon and f.icon.GetObjectType and f.icon:GetObjectType() == "Texture" then C.S.SquareIcon(f.icon) end
+        local icon = C.H.Icon(f)
+        if icon then C.S.SquareIcon(icon) end
     end,
 })

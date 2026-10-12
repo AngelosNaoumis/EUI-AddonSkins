@@ -77,6 +77,15 @@ function ns.CreateSkinHelper(S, module)
     function H.Font(text, r, g, b)
         if text and text.GetObjectType and text:GetObjectType() == "FontString" then S.Font(text, r, g, b) end
     end
+    function H.Texture(value)
+        local kind = type(value)
+        if (kind == "table" or kind == "userdata") and H.Allowed(value)
+            and value:GetObjectType() == "Texture" then return value end
+    end
+    function H.Icon(f)
+        -- Some addons store an asset ID in .icon and the Texture in .Icon.
+        return H.Texture(f.icon) or H.Texture(f.Icon)
+    end
     function H.Shell(f, refresh, options)
         if not H.Allowed(f) then return end
         if not shells[f] then
@@ -155,11 +164,12 @@ function ns.CreateSkinHelper(S, module)
                         if type(path) == "string" and path:find("UI%-Panel%-MinimizeButton") then S.CloseButton(f) end
                     end
                 end
-                if S.SquareIcon and kind == "Button" and (f.icon or f.Icon) then
+                local icon = kind == "Button" and H.Icon(f)
+                if S.SquareIcon and icon then
                     -- The optional border surrounds the supplied frame. Only
                     -- use it for square icon controls, never full-width item rows.
                     local square = f.GetWidth and f.GetHeight and f:GetWidth() == f:GetHeight()
-                    S.SquareIcon(f.icon or f.Icon, square and f or nil)
+                    S.SquareIcon(icon, square and f or nil)
                 end
                 for _, region in ipairs(H.Regions(f)) do
                     if region:GetObjectType() == "FontString" then S.Font(region) end
@@ -231,12 +241,12 @@ function ns.CreateSkinHelper(S, module)
         H.Action(f)
         local text = glyphs[f]
         if not text and f.CreateFontString then
-            text = f:CreateFontString(nil, "OVERLAY"); glyphs[f] = text
+            text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); glyphs[f] = text
             text:SetPoint("CENTER")
         end
         if text then
-            text:SetText(expanded and "-" or "+")
             H.Font(text, 1, 1, 1)
+            text:SetText(expanded and "-" or "+")
         end
         for _, getter in ipairs({"GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture"}) do
             local t = f[getter] and f[getter](f)
@@ -301,7 +311,8 @@ function ns.CreateSkinHelper(S, module)
         end
         if not found and not grips[f] then return end
         if not grips[f] and f.CreateFontString then
-            local label = f:CreateFontString(nil, "OVERLAY"); label:SetPoint("BOTTOMRIGHT", -2, 2)
+            local label = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); label:SetPoint("BOTTOMRIGHT", -2, 2)
+            H.Font(label, 0.65, 0.65, 0.68)
             label:SetText("+"); grips[f] = label
         end
         if grips[f] then H.Font(grips[f], 0.65, 0.65, 0.68) end

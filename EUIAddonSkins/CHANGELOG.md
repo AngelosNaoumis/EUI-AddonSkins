@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2
+
+- Fixed missing-font errors in tree toggles, resize grips and the Dungeon Journal language picker.
+- Fixed numeric icon IDs being passed to EllesmereUI as Texture objects.
+
 ## 1.0.1
 
 - Removed the deferred native-menu flash when opening supported popup menus and submenus.

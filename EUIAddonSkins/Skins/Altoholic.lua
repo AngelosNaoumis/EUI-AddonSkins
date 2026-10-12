@@ -51,8 +51,8 @@ ns.RegisterScopedSkin("Altoholic", "Altoholic", {
             BindLists()
         end
         if kind == "Button" then
-            local icon = f.Icon or f.icon
-            if icon and type(icon) ~= "boolean" and icon.GetObjectType and icon:GetObjectType() == "Texture" then
+            local icon = H.Icon(f)
+            if icon then
                 if f.GetWidth and f.GetHeight and f:GetWidth() == f:GetHeight() then
                     H.Action(f, {"Icon", "icon"}); S.SquareIcon(icon, f)
                     return true

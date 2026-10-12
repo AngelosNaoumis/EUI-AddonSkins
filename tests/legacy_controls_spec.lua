@@ -27,8 +27,8 @@ local function texture(kind, parent)
     function t:SetWidth(w) self.width = w end
     function t:SetTexCoord(...) self.crop = {...} end
     function t:GetNumMaskTextures() return self.masked and 1 or 0 end
-    function t:SetText(s) self.text = s end
-    function t:GetFont() return self.font or 'native-font', 12, '' end
+    function t:SetText(s) assert(self.font, "FontString:SetText(): Font not set"); self.text = s end
+    function t:GetFont() return self.font, self.font and 12, '' end
     function t:SetFont(v) self.font = v end
     function t:SetTextColor(...) self.textColor = {...} end
     function t:GetParent() return self.parent end
@@ -53,7 +53,7 @@ local function frame(kind, name, parent)
     function f:SetBackdropColor(...) self.color = {...} end
     function f:SetBackdropBorderColor(...) self.border = {...} end
     function f:CreateTexture() local t = texture(nil, self); self.regions[#self.regions + 1] = t; return t end
-    function f:CreateFontString() local t = texture('FontString', self); self.regions[#self.regions + 1] = t; return t end
+    function f:CreateFontString(_, _, template) local t = texture('FontString', self); t.font = template; self.regions[#self.regions + 1] = t; return t end
     function f:GetNormalTexture() return self.normal end
     function f:GetWidth() return 24 end
     function f:GetHeight() return 24 end
@@ -82,6 +82,17 @@ function S.FadeNineSlice() end
 SetPortraitTexture = function(t) t:SetTexture('player-face') end
 assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
 local H = ns.CreateSkinHelper(S, {})
+-- Asset identifiers must never reach SquareIcon; mixed rows retain the real Texture.
+for _, asset in ipairs({134400, "Interface/Icons/Test", true}) do
+    local row = frame('Button'); row.icon = asset; row.Icon = texture()
+    H.Scan(row, function() end)
+    assert(row.Icon.crop and H.Icon(row) == row.Icon)
+    local primitive = frame('Button'); primitive.icon = asset
+    H.Scan(primitive, function() end)
+    assert(not H.Icon(primitive))
+end
+local forbidden = texture(); forbidden.IsForbidden = function() return true end
+assert(not H.Texture(forbidden) and not H.Texture(texture('FontString')))
 local node = frame('Button', 'Attune_Node_Test')
 node:SetBackdrop({bgFile = 'native-fill', edgeFile = 'native-bevel', edgeSize = 16})
 node:SetBackdropColor(0.37, 0.72, 0.27, 0.3); node:SetBackdropBorderColor(0.37, 0.72, 0.27, 1)
@@ -136,6 +147,8 @@ assert(tree.icon.path == 'dungeon-status-art' and tree.icon.alpha == 1 and tree.
 assert(tree.toggle.regions[1].text == '-')
 assert(loadfile('EUIAddonSkins/Skins/Altoholic.lua'))('EUIAddonSkins', ns)
 AltoholicFrame = frame('Frame', 'AltoholicFrame'); AltoholicFrame.Tabs = {}
+local mixedRow = frame('Button', nil, AltoholicFrame); mixedRow.icon = 134400; mixedRow.Icon = texture()
+local assetRow = frame('Button', nil, AltoholicFrame); assetRow.icon = 134400
 local owner = frame('Frame', nil, AltoholicFrame)
 owner.AddButtonInfo = function() end
 owner.Initialize = function(self) self.initialize = function() end; return 'init-original' end
@@ -147,6 +160,7 @@ local bindings = 0
 ns.BindPopupOwner = function() end
 ns.BindPopupList = function(_, _, boundOwner, list) assert(boundOwner == owner and list == pool); bindings = bindings + 1 end
 modules.Altoholic.install(S, modules.Altoholic); flush()
+assert(mixedRow.Icon.crop and mixedRow.button)
 assert(owner:Initialize() == 'init-original' and owner:Toggle() == 'toggle-original' and bindings >= 3)
 assert(loadfile('EUIAddonSkins/Skins/ForeverDungeonJournal.lua'))('EUIAddonSkins', ns)
 ForeverDungeonJournal_NS = {THEMES = {}, ToggleJournal = function() end}

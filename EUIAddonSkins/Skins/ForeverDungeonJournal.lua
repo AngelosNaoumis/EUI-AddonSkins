@@ -143,8 +143,9 @@ end, function(S, module)
                 H.Action(f.languageSelectorButton)
                 local button = f.languageSelectorButton
                 if not button.euiCaret and button.CreateFontString then
-                    local caret = button:CreateFontString(nil, "OVERLAY")
-                    caret:SetPoint("RIGHT", button, "RIGHT", -7, -3); caret:SetText("v")
+                    local caret = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+                    caret:SetPoint("RIGHT", button, "RIGHT", -7, -3)
+                    H.Font(caret, 1, 1, 1); caret:SetText("v")
                     button.euiCaret = caret
                 end
                 H.Font(button.euiCaret, 1, 1, 1)
