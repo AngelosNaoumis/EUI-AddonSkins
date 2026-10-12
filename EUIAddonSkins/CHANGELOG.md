@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6
+
+- Replaced the AddOns list icon with the correct A.S. logo.
+
 ## 1.0.5
 
 - Added the addon icon to the in-game AddOns list.
