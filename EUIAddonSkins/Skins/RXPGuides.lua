@@ -103,6 +103,29 @@ end, function(S, module)
     local function CombatLocked()
         return InCombatLockdown and InCombatLockdown()
     end
+    local function LegacyChrome(f)
+        if CombatLocked() or not f then return end
+        local header = f.GuideName
+        if H.Allowed(header) then
+            local icon, class = H.Texture(header.icon), H.Texture(header.classIcon)
+            if icon then
+                icon:ClearAllPoints(); icon:SetPoint("TOPLEFT", header, "TOPLEFT", 6, -3)
+                icon:SetSize(28, 28); S.SquareIcon(icon)
+            end
+            if class and icon then
+                class:ClearAllPoints(); class:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -1)
+                class:SetSize(12, 12); S.SquareIcon(class)
+            end
+            if header.text then
+                header.text:ClearAllPoints()
+                header.text:SetPoint("LEFT", header, "LEFT", 42, 0)
+                header.text:SetPoint("RIGHT", header, "RIGHT", -6, 0)
+            end
+        end
+        local scroll = f.ScrollFrame and f.ScrollFrame.ScrollBar
+        if H.Allowed(scroll) then H.LegacySlider(scroll) end
+        if f.Footer and H.Allowed(f.Footer.icon) then H.Resize(f.Footer.icon, true) end
+    end
     SyncShell = function(f, entry)
         if CombatLocked() then return end
         local shown = true
@@ -179,6 +202,7 @@ end, function(S, module)
         Wrap(addon.v2, "GetTheme")
         local legacy = addon.RXPFrame or _G.RXPFrame
         if legacy then
+            LegacyChrome(legacy)
             Scan(legacy)
             -- Secure children may make the guide root implicitly protected. Tint
             -- only the known visual containers, without entering action buttons.
@@ -194,7 +218,8 @@ end, function(S, module)
                 ThemeShell(step.number)
                 ns.AttachAccent(S, step)
             end
-            H.Hook(legacy, "UpdateVisuals", refresh)
+            H.Hook(legacy, "UpdateVisuals", function() LegacyChrome(legacy); refresh() end)
+            H.Hook(legacy, "UpdateScrollBar", function() LegacyChrome(legacy) end)
             H.Fade(legacy.GuideName and legacy.GuideName.bg)
             H.Fade(legacy.Footer and legacy.Footer.bg)
         end

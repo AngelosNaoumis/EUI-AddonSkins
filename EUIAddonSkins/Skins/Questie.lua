@@ -69,7 +69,7 @@ ns.RegisterScopedSkin("Questie", "Questie", {
         H.Hook(journey and journey.private, "HandleTabChange", refresh)
         H.Hook(journey and journey.private, "ShowNotePopup", refresh)
         H.Hook(Module("QuestDetailsFrame"), "Draw", refresh)
-        H.Hook(options, "Initialize", refresh); H.Hook(options, "ToggleConfigWindow", refresh)
+        H.Hook(options, "ToggleConfigWindow", refresh)
         if LibStub then
             local dialog = LibStub("AceConfigDialog-3.0", true)
             H.Hook(dialog, "FeedGroup", function(_, name) if name == "Questie" then refresh() end end)
@@ -82,11 +82,10 @@ ns.RegisterScopedSkin("Questie", "Questie", {
                 end)
             else refresh() end
         end
-        for _, name in ipairs({"Initialize", "Update", "UpdateFormatting", "Show", "Expand", "Collapse"}) do
+        -- Questie's coroutine-based initialization must not cross the C boundary
+        -- introduced by hooksecurefunc. Discover frames after initialization.
+        for _, name in ipairs({"Update", "UpdateFormatting", "Show", "Expand", "Collapse"}) do
             H.Hook(Module("QuestieTracker"), name, UpdateTracker)
-        end
-        for _, name in ipairs({"TrackerBaseFrame", "TrackerHeaderFrame", "TrackerLinePool"}) do
-            H.Hook(Module(name), "Initialize", UpdateTracker)
         end
         H.Hook(Module("TrackerHeaderFrame"), "Update", UpdateTracker)
         local menu = Module("QuestieMenu")

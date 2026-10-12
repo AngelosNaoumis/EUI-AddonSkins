@@ -88,7 +88,7 @@ end
 function S.SquareIcon(t, parent) if t:GetNumMaskTextures() > 0 then return end; t:SetTexCoord(0.08, 0.92, 0.08, 0.92); t.borderParent = parent end
 function S.PageButton(f, label) f.glyph = label end
 function S.ScrollBar(f) f.scroll = true end
-function S.Panel(f) f.panel = true end
+function S.Panel(f, options) f.panel = true; f.panelOptions = options end
 function S.Shell(f) f.shell = true end
 function S.Tab(f) f.tab = true end
 function S.SetTabSelection(f, selected) f.selected = selected end
@@ -270,7 +270,11 @@ assert(not modules.Questie.available())
 Questie = {db = {profile = {trackerBackground = {r = 0.2, g = 0.3, b = 0.4, a = 0.25}}}}
 local journey = {BuildMainFrame = function() return 'journey-native' end, ToggleJourneyWindow = function() end, private = {}}
 local tracker = {Update = function() return 'tracker-native' end}
+local init = function() coroutine.yield('initializing'); return 'initialized' end
+tracker.Initialize = init
+local linePool = {Initialize = init}
 QuestieLoader = {_modules = {QuestieJourney = journey, QuestieTracker = tracker, QuestieOptions = {ToggleConfigWindow = function() end}}}
+QuestieLoader._modules.TrackerLinePool = linePool
 QuestieJourneyFrame = {frame = frame()}; local journeyRoot = QuestieJourneyFrame.frame
 QuestieConfigFrame = {frame = frame()}; local input = frame('EditBox', nil, QuestieConfigFrame.frame)
 local groupFrame = frame('Frame', nil, journeyRoot)
@@ -293,6 +297,10 @@ local bound = false; ns.BindPopupOwner = function(_, module, owner) if owner == 
 local dialog = {OpenFrames = {}, FeedGroup = function() return 'feed-native' end}
 LibStub = function(name) if name == 'AceConfigDialog-3.0' then return dialog end end
 modules.Questie.install(S, modules.Questie); flush()
+assert(tracker.Initialize == init and linePool.Initialize == init, 'yielding Questie initializers must remain unhooked')
+local initializer = coroutine.create(init)
+local ok, value = coroutine.resume(initializer); assert(ok and value == 'initializing')
+ok, value = coroutine.resume(initializer); assert(ok and value == 'initialized')
 assert(journeyRoot.shell and QuestieConfigFrame.frame.shell and input.input and first.selected and not second.selected)
 assert(detail.font == 'eui' and detail.textColor[1] == 0.2 and detail.textColor[4] == 0.8)
 assert(base.backdrop.edgeSize == 1 and base.color[4] == 0.25 and base.accent and not base.shell)
@@ -327,6 +335,10 @@ dbm.DisplayFrame = function(_, page) DBM_GUI.currentViewing = page; dbm.tabs[dbm
 dbm.UpdateMenuFrame = function() end
 local dbmTab1 = frame('Button', 'DBM_GUI_OptionsFrameTab1', dbm)
 local dbmTab2 = frame('Button', 'DBM_GUI_OptionsFrameTab2', dbm)
+local tabArt = frame('Frame', nil, dbmTab2); local stockTab = tabArt:CreateTexture()
+dbmTab2.kind = 'CheckButton'
+local wrapper = frame('Frame', nil, dbm)
+frame('ScrollFrame', 'DBM_GUI_OptionsFrameList', wrapper)
 local close = frame('Button', 'DBM_GUI_OptionsFrameClosePanelButton', dbm)
 local page = frame('Frame', nil, dbm); page.mytype = 'panel'; page.showSub = true
 dbm.tabs[1].selection = page
@@ -347,11 +359,12 @@ assert(modules.DBM.available())
 S.Dropdown = function(f) f.dropdown = true end
 modules.DBM.install(S, modules.DBM); flush()
 assert(dbm.shell and dbm.accent and dbmTab1.selected and not dbmTab2.selected and close.close)
+assert(stockTab.alpha == 0 and wrapper.panelOptions.noBorder and wrapper.points[1][5] == -72)
 assert(row.euiSelection.color[4] == 0.2 and row.toggle.regions[1].text == '-')
 assert(colour.alpha == 1 and colour.color[2] == 0.8 and swatch:SetColorRGB() == 'colour-native')
 assert(previewText.font == 'DBMPreviewFont' and not previewButton.button and alert.font == 'DBMAlertFont')
 assert(dropdown.dropdown and check.checkbox and check.checked and slider.value == 0.7 and area.panel)
-dbm:ShowTab(2); flush(); assert(not dbmTab1.selected and dbmTab2.selected)
+dbm:ShowTab(2); assert(not dbmTab1.selected and dbmTab2.selected, 'DBM tabs must style before the callback returns'); flush()
 local dynamic = frame('CheckButton', nil, page)
 assert(DBM_GUI:CreateNewPanel() == 'panel-native'); flush(); assert(dynamic.checkbox)
 local dbmHook, objects = dbm.ShowTab, #row.regions + #row.toggle.regions + #slider.regions
@@ -378,6 +391,9 @@ atlasRoot.CloseButton = frame('Button', nil, atlasRoot)
 local atlasGUI = {frame = atlasRoot, Toggle = function() return 'atlas-native' end,
     ItemFrame = {Refresh = function() return 'items-native' end}}
 AtlasLoot = {GUI = atlasGUI, Favourites = {GUI = {frame = frame()}}}
+local favourites = AtlasLoot.Favourites
+AtlasLoot.Favourites = nil
+AtlasLoot.Addons = {GetAddon = function(_, name) if name == 'Favourites' then return favourites end end}
 local map = atlasRoot:CreateTexture(); map.path = 'dungeon-map'
 local model = frame('PlayerModel', nil, atlasRoot); local modelArt = model:CreateTexture()
 local item = frame('Button', 'AtlasLoot_Button_1', atlasRoot)
@@ -404,7 +420,9 @@ end, SetData = function() end, SetSelected = function() end}
 S.GetPanelColor = function() return 0.02, 0.02, 0.02, 0.9 end
 modules.AtlasLootContinued.install(S, modules.AtlasLootContinued); flush()
 assert(atlasRoot.accent and not atlasRoot.shell and atlasRoot.backdrop.edgeSize == 1 and atlasRoot.color[4] == 0.9)
-assert(atlasRoot.CloseButton.close and AtlasLoot.Favourites.GUI.frame.shell and logo.alpha == 1 and map.path == 'dungeon-map')
+assert(atlasRoot.CloseButton.close and favourites.GUI.frame.shell and logo.alpha == 1 and map.path == 'dungeon-map')
+atlasRoot:SetBackdropBorderColor(1, 1, 1, 1)
+assert(atlasRoot.border[1] == 0.2, 'AtlasLoot native redraw must not restore a white outer border')
 assert(item.icon.crop and item.overlay.alpha == 1 and item.phaseIndicator.alpha == 1 and item.overlay.color[3] == 0.9)
 assert(item.label.textColor[3] == 0.9 and not item.button and not modelArt.crop)
 assert(selection.euiAtlasSelection.color[4] == 0.2 and selection.coin.alpha == 1 and not selection.checkbox)
@@ -518,10 +536,20 @@ local scope = {InterfaceItems = {Frame = {Window = {frame = gargulRoot, type = '
 local iface = {Award = scope, set = function(_, s, id, item) s.InterfaceItems = {Frame = {[id] = item}}; return 'set-native' end,
     createWindow = function(_, details) return frame('Frame', details.name, UIParent) end}
 Gargul = {Interface = iface, UI = {components = {}}}
+local navigation = frame('Frame', nil, gargulRoot)
+local navRow = frame('Button', nil, navigation)
+local navLabel = navRow:CreateFontString(nil, 'ARTWORK', 'GameFontNormal'); navLabel:SetTextColor(0.1, 0.1, 0.1, 1)
+local overview = {InterfaceItems = {Frame = {Window = {frame = gargulRoot, type = 'Frame'}}, Table = {Sections = {frame = navigation}}}}
+local drawn
+overview.showSection = function() drawn = frame('CheckButton', nil, gargulRoot); return 'section-native' end
+iface.Settings = {Overview = overview}
 modules.Gargul.install(S, modules.Gargul); flush()
 assert(gargulRoot.shell and gargulRoot.accent and binding and input.input and input.font == 'eui')
 assert(overloaded.font == 'eui' and overloaded.textColor[2] == 0.8 and overloaded.textColor[4] == 0.6)
 assert(gear.Texture.crop and countdown.value == 17 and fills == 0 and not protected.button and protected.action == 'award-native')
+assert(navLabel.textColor[1] == 0.9 and not navRow.button, 'Gargul sidebar must be readable without boxed rows')
+navLabel:SetTextColor(0.1, 0.1, 0.1, 1); assert(navLabel.textColor[1] == 0.9)
+assert(overview:showSection() == 'section-native' and drawn.checkbox, 'Gargul section must be styled before returning')
 overloaded:SetFont(2); flush(); assert(overloaded.font == 'eui', 'Gargul relative-size updates must retain the EUI font')
 local dynamicRoot = iface:createWindow({name = 'GargulDynamic'}); local late = frame('CheckButton', nil, dynamicRoot)
 flush(); assert(dynamicRoot.shell and late.checkbox)

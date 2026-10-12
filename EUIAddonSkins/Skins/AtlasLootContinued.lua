@@ -1,6 +1,12 @@
 local ADDON, ns = ...
 
 local function GUI() return _G.AtlasLoot and _G.AtlasLoot.GUI end
+local function Favourites()
+    local atlas = _G.AtlasLoot
+    local addons = atlas and atlas.Addons
+    if addons and type(addons.GetAddon) == "function" then return addons:GetAddon("Favourites") end
+    return atlas and atlas.Favourites
+end
 local Visit
 local function DropdownMenus(C, owner, refresh)
     if InCombatLockdown and InCombatLockdown() then refresh(); return end
@@ -23,6 +29,14 @@ Visit = function(C, f, kind, refresh)
         -- The expansion logo is a foreground Texture on the main window itself.
         -- Retain that artwork while using EUI's fill, border and accent colours.
         H.ThinBackdrop(f)
+        if f.SetBackdropBorderColor then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
+        C.borderLock = C.borderLock or {}
+        H.Hook(f, "SetBackdropBorderColor", function(_, r, g, b)
+            if C.borderLock[f] or r == 0.2 and g == 0.2 and b == 0.22 then return end
+            C.borderLock[f] = true
+            f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1)
+            C.borderLock[f] = false
+        end)
         if f.SetBackdropColor and S.GetPanelColor then f:SetBackdropColor(S.GetPanelColor()) end
         ns.AttachAccent(S, f)
         if H.Allowed(f.CloseButton) then S.CloseButton(f.CloseButton) end
@@ -111,7 +125,7 @@ ns.RegisterScopedSkin("AtlasLootContinued", "AtlasLootClassic Continued", {
             if C.H.Allowed(frame) then roots[#roots + 1] = {frame = frame, mode = mode} end
         end
         Add(GUI() and GUI().frame, "controls")
-        local favourites = _G.AtlasLoot and _G.AtlasLoot.Favourites
+        local favourites = Favourites()
         Add(favourites and favourites.GUI and favourites.GUI.frame)
         if LibStub then
             local dialog = LibStub("AceConfigDialog-3.0", true)
@@ -128,7 +142,7 @@ ns.RegisterScopedSkin("AtlasLootContinued", "AtlasLootClassic Continued", {
         H.Hook(gui and gui.ItemFrame, "Refresh", refresh)
         H.Hook(gui and gui.SoundFrame, "Show", refresh)
         local atlas = _G.AtlasLoot
-        local favourites = atlas and atlas.Favourites
+        local favourites = Favourites()
         local favGUI = favourites and favourites.GUI
         for _, name in ipairs({"Create", "Toggle", "UpdateStyle", "UpdateDropDown", "ItemListUpdate", "SelectSlot"}) do
             H.Hook(favGUI, name, refresh)

@@ -6,6 +6,8 @@ ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
     -- DBM-GUI is load-on-demand. Never force it to load just to apply a skin.
     available = function() return type(_G.DBM_GUI) == "table" and Window() ~= nil end,
     preserveTextColors = true,
+    immediateShow = true,
+    panelOptions = {noBorder = true},
     roots = function(C)
         local f = Window()
         local exclude = setmetatable({}, {__index = function(_, child)
@@ -13,6 +15,26 @@ ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
             return child:GetObjectType() == "ScrollingMessageFrame" or child.mytype == "modelframe"
         end})
         if f and f.searchHighlightFrame then exclude[f.searchHighlightFrame] = true end
+        -- MinimalTabTemplate has child frames holding the Classic tab artwork.
+        -- Skin tabs before generic discovery can assign them a button backdrop.
+        for i in ipairs(f and f.tabs or {}) do
+            local tab = _G["DBM_GUI_OptionsFrameTab" .. i]
+            if C.H.Allowed(tab) then
+                local function Strip(child, depth)
+                    if depth > 4 or not C.H.Allowed(child) then return end
+                    for _, region in ipairs(C.H.Regions(child)) do if C.H.Texture(region) then C.H.Fade(region) end end
+                    for _, nested in ipairs(C.H.Children(child)) do Strip(nested, depth + 1) end
+                end
+                for _, child in ipairs(C.H.Children(tab)) do Strip(child, 0); exclude[child] = true end
+                C.H.Tab(tab, f.tab == i)
+            end
+        end
+        local list = _G.DBM_GUI_OptionsFrameList
+        local wrapper = C.H.Allowed(list) and list:GetParent()
+        if C.H.Allowed(wrapper) and wrapper ~= f then
+            C.Panel(wrapper)
+            wrapper:SetPoint("TOPLEFT", f, "TOPLEFT", 15, -72)
+        end
         local roots = {}
         if C.H.Allowed(f) then roots[1] = {frame = f, options = {bottomBar = 36}, exclude = exclude} end
         -- Older DBM versions use a private popup instead of Blizzard's Menu API.
@@ -25,17 +47,19 @@ ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
             C.H.Hook(_G.DBM_GUI, name, refresh)
         end
         for _, name in ipairs({"ShowTab", "DisplayFrame", "UpdateMenuFrame", "ClearSelection"}) do
-            C.H.Hook(Window(), name, refresh)
+            C.H.Hook(Window(), name, C.RefreshNow)
         end
+        local f = Window()
+        C.H.Hook(f and f.tabsGroup, "SelectAtIndex", C.RefreshNow)
     end,
     visit = function(C, f, kind)
         local H, S = C.H, C.S
         local name = f.GetName and f:GetName() or ""
+        local tab = tonumber(name:match("^DBM_GUI_OptionsFrameTab(%d+)$"))
+        if tab then H.Tab(f, Window().tab == tab); return true end
         if kind == "Slider" then H.LegacySlider(f); return true end
         if kind == "Button" then
             if name == "DBM_GUI_OptionsFrameClosePanelButton" then S.CloseButton(f); return true end
-            local tab = tonumber(name:match("^DBM_GUI_OptionsFrameTab(%d+)$"))
-            if tab then H.Tab(f, Window().tab == tab); return true end
             -- Do not fade or recolour DBM's colour-picker swatch textures.
             if type(f.SetColorRGB) == "function" then
                 for _, region in ipairs(H.Regions(f)) do H.Font(region) end
@@ -46,7 +70,15 @@ ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
                 local page = window.tabs and window.tabs[window.tab]
                 local selected = window.searchQuery and window.searchQuery ~= ""
                     and _G.DBM_GUI.currentViewing or page and page.selection
-                H.Selection(f, selected == f.element)
+                if not f.euiSelection then
+                    f.euiSelection = f:CreateTexture(nil, "BACKGROUND")
+                    f.euiSelection:SetAllPoints(f)
+                end
+                local r, g, b = S.GetAccentColor()
+                f.euiSelection:SetColorTexture(r, g, b, selected == f.element and 0.2 or 0)
+                local highlight = f.GetHighlightTexture and H.Texture(f:GetHighlightTexture())
+                if highlight then highlight:SetColorTexture(r, g, b, 0.08) end
+                H.Font(f.text)
                 H.Toggle(f.toggle, f.element.showSub)
                 return true
             end

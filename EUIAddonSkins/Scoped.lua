@@ -17,7 +17,7 @@ function ns.RegisterScopedSkin(id, label, config)
         end
         local H = ns.CreateSkinHelper(S, module)
         local styled, panels, checks = {}, {}, {}
-        local refresh, waiting
+        local refresh, waiting, applying
         local events = CreateFrame("Frame")
         events:RegisterEvent("ADDON_LOADED")
         events:RegisterEvent("PLAYER_LOGIN")
@@ -41,7 +41,7 @@ function ns.RegisterScopedSkin(id, label, config)
                     keep[r] = r:GetAlpha()
                 end
             end
-            S.Panel(f)
+            S.Panel(f, config.panelOptions)
             for r, a in pairs(keep) do r:SetAlpha(a) end
             if f.SetBackdrop then
                 f:SetBackdrop(nil)
@@ -147,17 +147,23 @@ function ns.RegisterScopedSkin(id, label, config)
                 if H.Allowed(f) then
                     if target.mode ~= "controls" and not styled[f] then
                         styled[f] = true
-                        H.Shell(f, refresh, target.options)
+                        H.Shell(f, config.immediateShow and C.RefreshNow or refresh, target.options)
                         -- Some addons redraw their original window backdrop.
                         H.Hook(f, "SetBackdrop", function(_, value)
                             if value then refresh() end
                         end)
                     end
                     if styled[f] and f.SetBackdrop then f:SetBackdrop(nil) end
-                    H.Script(f, "OnShow", refresh)
+                    H.Script(f, "OnShow", config.immediateShow and C.RefreshNow or refresh)
                     H.Scan(f, refresh, Visit, target.exclude)
                 end
             end
+        end
+        function C.RefreshNow()
+            if applying or not ns.IsEnabled(module) then return end
+            applying = true
+            H.Safe(Apply)
+            applying = false
         end
         refresh = function() H.Queue(module, Apply) end
         events:SetScript("OnEvent", function(_, event)

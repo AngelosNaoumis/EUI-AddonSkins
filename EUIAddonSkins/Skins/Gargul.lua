@@ -1,4 +1,5 @@
 local ADDON, ns = ...
+local navigationText = setmetatable({}, {__mode = "k"})
 
 local function Frame(item)
     local kind = type(item)
@@ -16,15 +17,34 @@ end
 
 ns.RegisterScopedSkin("Gargul", "Gargul", {
     available = function() return type(_G.Gargul) == "table" and type(_G.Gargul.Interface) == "table" end,
+    immediateShow = true,
     font = function(S, text, r, g, b)
+        local owner = navigationText[text]
+        if owner and owner.navigation[text:GetParent()] then r, g, b = 0.9, 0.9, 0.92 end
         local cr, cg, cb, ca
         if r == nil and text.GetTextColor then cr, cg, cb, ca = text:GetTextColor() end
+        -- LibScrollingTable defaults to dark text on a light native background.
+        -- Keep class/status colours, but make its near-black labels readable.
+        if cr and math.max(cr, cg, cb) < 0.25 then
+            local parent = text:GetParent()
+            if parent and parent.IsEnabled and not parent:IsEnabled() then r, g, b = 0.55, 0.55, 0.58
+            else r, g, b = 0.9, 0.9, 0.92 end
+        end
         Font(S, text, r, g, b)
-        if cr then text:SetTextColor(cr, cg, cb, ca) end
+        if cr then text:SetTextColor(r or cr, g or cg, b or cb, ca) end
     end,
     roots = function(C)
         C.windows = C.windows or setmetatable({}, {__mode = "k"})
         C.scopes = C.scopes or setmetatable({}, {__mode = "k"})
+        C.navigation = {}
+        local overview = _G.Gargul.Interface.Settings and _G.Gargul.Interface.Settings.Overview
+        local items = overview and overview.InterfaceItems
+        local sections = items and items.Table and items.Table.Sections
+        local sectionFrame = Frame(sections)
+        if C.H.Allowed(sectionFrame) and items.Frame and items.Frame.Window then
+            C.navigation[sectionFrame] = true
+            for _, name in ipairs({"Refresh", "SetSelection", "SetData"}) do C.H.Hook(sections, name, C.RefreshNow) end
+        end
         local roots, added = {}, {}
         local function Add(item)
             local f = Frame(item)
@@ -43,6 +63,8 @@ ns.RegisterScopedSkin("Gargul", "Gargul", {
         local function Scopes(t, depth)
             if type(t) ~= "table" or seen[t] or depth > 6 or C.H.Allowed(Frame(t)) then return end
             seen[t] = true
+            -- Finish each owned draw/open operation before the client renders it.
+            for _, name in ipairs({"draw", "open", "showSection"}) do C.H.Hook(t, name, C.RefreshNow) end
             Items(t.InterfaceItems, 0)
             for _, value in pairs(t) do if type(value) == "table" then Scopes(value, depth + 1) end end
         end
@@ -79,6 +101,21 @@ ns.RegisterScopedSkin("Gargul", "Gargul", {
     end,
     visit = function(C, f, kind, refresh)
         local H, S = C.H, C.S
+        if C.navigation[f:GetParent()] then C.navigation[f] = true end
+        if C.navigation[f] then
+            for _, text in ipairs(H.Regions(f)) do
+                if text:GetObjectType() == "FontString" then
+                    navigationText[text] = C
+                    H.Font(text, 0.9, 0.9, 0.92)
+                    local painting = false
+                    H.Hook(text, "SetTextColor", function(_, r, g, b)
+                        if painting or not C.navigation[f] or r == 0.9 and g == 0.9 and b == 0.92 then return end
+                        painting = true; text:SetTextColor(0.9, 0.9, 0.92, 1); painting = false
+                    end)
+                end
+            end
+            if kind ~= "Slider" then return true end
+        end
         for _, text in ipairs(H.Regions(f)) do
             if text:GetObjectType() == "FontString" and type(text._SetFont) == "function" then
                 H.Hook(text, "SetFont", refresh)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0-beta.3
+
+- Fixed Questie initialization failing when hooked coroutine functions yield.
+- Applied Gargul settings sections and DBM tab changes synchronously to avoid delayed skinning.
+- Improved Gargul text contrast and removed boxed navigation rows.
+- Completed DBM Classic tab styling and separated the search box from the content frame.
+- Fixed AtlasLoot Favourites discovery and the main window's white border.
+- Contained RXP header icons and styled its legacy scrollbar and resize grip.
+
 ## 1.1.0-beta.2
 
 - Added ThreatClassic2 monitor typography, window accents and settings controls while preserving threat values, class colours and warnings.

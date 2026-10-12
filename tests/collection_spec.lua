@@ -29,7 +29,7 @@ end
 local function frame(kind)
     local f = {kind = kind or 'Frame', children = {}, regions = {}, hooks = {}}
     function f:CreateTexture()
-        local t = {SetPoint = function() end, SetHeight = function() end,
+        local t = {SetPoint = function() end, SetHeight = function() end, SetWidth = function() end,
             SetColorTexture = function(self, ...) self.color = {...} end,
             SetAlpha = function(self, a) self.alpha = a end}
         return t
@@ -200,5 +200,29 @@ local passthrough = RXP:LoadActiveTheme(); assert(passthrough == source, 'disabl
 assert(renders == 0, 'skin refresh must not reload guide content')
 local r1, r2 = RXP.RenderFrame(); assert(r1 == nil and r2 == 'render-tail')
 assert(originalCalls >= 2 and renders == 1)
+-- Legacy chrome must also work when the guide root is implicitly protected.
+local header = frame(); guide.GuideName = header
+local function icon()
+    local t = region('native-logo', 'ARTWORK')
+    function t:ClearAllPoints() self.points = {} end
+    function t:SetPoint(...) self.points = {...} end
+    function t:SetSize(w, h) self.width, self.height = w, h end
+    return t
+end
+header.icon, header.classIcon = icon(), icon()
+S.SquareIcon = function(t) t.square = true end
+local scrollbar = frame('Slider'); local thumb = icon()
+function thumb:SetColorTexture(...) self.color = {...} end
+scrollbar.GetThumbTexture = function() return thumb end
+scrollbar.GetOrientation = function() return 'VERTICAL' end
+guide.ScrollFrame = {ScrollBar = scrollbar}
+guide.UpdateScrollBar = function() thumb.color = {1, 1, 1}; return 'scroll-native' end
+guide.protected = true
+enabled = true; modules.RXPGuides.refresh(); flush()
+assert(header.icon.width == 28 and header.classIcon.width == 12 and header.icon.points[1] == 'TOPLEFT')
+assert(header.icon.square and header.classIcon.square and thumb.color[1] == 0.1)
+local scrollbarReturn = guide.UpdateScrollBar()
+assert(scrollbarReturn == 'scroll-native' and thumb.color[1] == 0.1,
+    'RXP scrollbar must skin before the callback returns: ' .. tostring(scrollbarReturn) .. '/' .. tostring(thumb.color[1]) .. '/' .. table.concat(errors, '\n'))
 assert(#errors == 0, table.concat(errors, '\n'))
 print('PASS: optional/lazy targets, legacy border/fill alignment and tint after redraw, Active Targets/combat/hidden backgrounds, numeric close texture and clicks, source/profile immutability, portraits/icons/maps, disable')
