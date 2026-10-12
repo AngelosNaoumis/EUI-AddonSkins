@@ -29,9 +29,11 @@ end
 local function frame(kind)
     local f = {kind = kind or 'Frame', children = {}, regions = {}, hooks = {}}
     function f:CreateTexture()
-        local t = {SetPoint = function() end, SetHeight = function() end, SetWidth = function() end,
+        self.created = self.created or {}
+        local t = {SetPoint = function(self, ...) self.points = self.points or {}; self.points[#self.points + 1] = {...} end, ClearAllPoints = function(self) self.points = {} end, SetHeight = function() end, SetWidth = function(self, w) self.width = w end,
             SetColorTexture = function(self, ...) self.color = {...} end,
             SetAlpha = function(self, a) self.alpha = a end}
+        self.created[#self.created + 1] = t
         return t
     end
     function f:GetObjectType() return self.kind end
@@ -224,5 +226,13 @@ assert(header.icon.square and header.classIcon.square and thumb.color[1] == 0.1)
 local scrollbarReturn = guide.UpdateScrollBar()
 assert(scrollbarReturn == 'scroll-native' and thumb.color[1] == 0.1,
     'RXP scrollbar must skin before the callback returns: ' .. tostring(scrollbarReturn) .. '/' .. tostring(thumb.color[1]) .. '/' .. table.concat(errors, '\n'))
+local thin = scrollbar.created[2]
+assert(thin.width == 4 and thin.points[1][2] == thumb and thin.color[1] == 0.1)
+thin.GetTexture = function() return "white" end
+scrollbar.regions = {thin}
+local created = #scrollbar.created
+for _ = 1, 5 do guide.UpdateScrollBar() end
+assert(#scrollbar.created == created and thin.color[1] == 0.1 and thin.alpha ~= 0, 'warm slider styling must retain the slim visual')
+assert(thumb.alpha == 0 and not thumb.width, 'native thumb hit geometry must be preserved')
 assert(#errors == 0, table.concat(errors, '\n'))
 print('PASS: optional/lazy targets, legacy border/fill alignment and tint after redraw, Active Targets/combat/hidden backgrounds, numeric close texture and clicks, source/profile immutability, portraits/icons/maps, disable')

@@ -4,9 +4,9 @@
 ## Notes: EllesmereUI skins for World of Warcraft addons.
 ## Author: Smarre
 ## X-License: MIT
-## Version: 1.1.0-beta.3
+## Version: 1.1.0-beta.4
 ## Dependencies: EllesmereUI, EllesmereUIBlizzardSkin
-## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides, Auctionator, Spy, CrossGambling, WhatsTraining, ItemRack, ItemRackOptions, KiwiFarm, Myslot, BugSack, Altoholic, Attune, TwitchEmotes, Questie, DBM-Core, DBM-GUI, AtlasLootContinued, AtlasLootContinued_Options, AtlasLootContinued_Favourites, GTFO, ThreatClassic2, Gargul
+## OptionalDeps: ForeverCompanion, ForeverDungeonJournal, RXPGuides, Auctionator, Spy, WhatsTraining, ItemRack, ItemRackOptions, KiwiFarm, Myslot, BugSack, Altoholic, Attune, TwitchEmotes, Questie, DBM-Core, DBM-GUI, AtlasLootContinued, AtlasLootContinued_Options, AtlasLootContinued_Favourites, GTFO, Gargul
 ## SavedVariables: EUIAddonSkinsDB
 
 Core.lua
@@ -19,7 +19,6 @@ Skins\ForeverDungeonJournal.lua
 Skins\RXPGuides.lua
 Skins\Auctionator.lua
 Skins\Spy.lua
-Skins\CrossGambling.lua
 Skins\WhatsTraining.lua
 Skins\ItemRack.lua
 Skins\KiwiFarm.lua
@@ -32,5 +31,4 @@ Skins\Questie.lua
 Skins\DBM.lua
 Skins\AtlasLootContinued.lua
 Skins\GTFO.lua
-Skins\ThreatClassic2.lua
 Skins\Gargul.lua

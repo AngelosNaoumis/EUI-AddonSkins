@@ -103,6 +103,7 @@ end, function(S, module)
     local function CombatLocked()
         return InCombatLockdown and InCombatLockdown()
     end
+    local slimThumbs = {}
     local function LegacyChrome(f)
         if CombatLocked() or not f then return end
         local header = f.GuideName
@@ -123,7 +124,28 @@ end, function(S, module)
             end
         end
         local scroll = f.ScrollFrame and f.ScrollFrame.ScrollBar
-        if H.Allowed(scroll) then H.LegacySlider(scroll) end
+        if H.Allowed(scroll) then
+            local visual = slimThumbs[scroll]
+            H.LegacySlider(scroll, visual and visual.fill)
+            local thumb = scroll.GetThumbTexture and H.Texture(scroll:GetThumbTexture())
+            if thumb then
+                if not visual then
+                    visual = {fill = scroll:CreateTexture(nil, "OVERLAY")}
+                    slimThumbs[scroll] = visual
+                    visual.fill:SetWidth(4)
+                end
+                if visual.thumb ~= thumb then
+                    visual.thumb = thumb
+                    visual.fill:ClearAllPoints()
+                    visual.fill:SetPoint("TOP", thumb, "TOP")
+                    visual.fill:SetPoint("BOTTOM", thumb, "BOTTOM")
+                end
+                -- Retain the native thumb geometry and drag hit area.
+                H.Fade(thumb)
+                local r, g, b = S.GetAccentColor()
+                visual.fill:SetColorTexture(r, g, b, 0.8)
+            end
+        end
         if f.Footer and H.Allowed(f.Footer.icon) then H.Resize(f.Footer.icon, true) end
     end
     SyncShell = function(f, entry)

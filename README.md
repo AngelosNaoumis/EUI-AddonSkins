@@ -9,7 +9,6 @@ EllesmereUI skins for World of Warcraft addons.
 - RestedXP Guides (legacy and V2 windows)
 - Auctionator
 - Spy
-- CrossGambling
 - What’s Training?
 - ItemRack
 - KiwiFarm
@@ -22,7 +21,6 @@ EllesmereUI skins for World of Warcraft addons.
 - Deadly Boss Mods (beta: options window and controls)
 - AtlasLootClassic Continued
 - GTFO (settings controls)
-- ThreatClassic2 (monitor and settings)
 - Gargul (windows, dialogs and menus)
 
 Each skin is optional and only activates when its addon is loaded.

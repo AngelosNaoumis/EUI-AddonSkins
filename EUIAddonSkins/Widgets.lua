@@ -257,12 +257,12 @@ function ns.CreateSkinHelper(S, module)
             if t then H.Fade(t) end
         end
     end
-    function H.LegacySlider(f)
+    function H.LegacySlider(f, keep)
         if not H.Allowed(f) then return end
         if not f.GetThumbTexture then if S.ScrollBar then S.ScrollBar(f) end; return end
         local thumb = f:GetThumbTexture()
         if not thumb then return end
-        for _, r in ipairs(H.Regions(f)) do if r ~= thumb and r ~= sliders[f] and r.GetTexture then H.Fade(r) end end
+        for _, r in ipairs(H.Regions(f)) do if r ~= thumb and r ~= sliders[f] and r ~= keep and r.GetTexture then H.Fade(r) end end
         if f.SetBackdrop then f:SetBackdrop(nil) end
         local r, g, b = S.GetAccentColor()
         if thumb.SetColorTexture then thumb:SetColorTexture(r, g, b, 0.8) end

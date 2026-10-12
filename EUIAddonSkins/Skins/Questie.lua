@@ -17,6 +17,30 @@ local function Menus(C)
     end
     if ns.RefreshPopupMenusNow then ns.RefreshPopupMenusNow() end
 end
+local function QuestToggle(C, button)
+    local H = C.H
+    if not H.Allowed(button) then return end
+    local function Paint()
+        if InCombatLockdown and InCombatLockdown() then C.module.refresh(); return end
+        H.Toggle(button, button.mode == 1)
+        local art = H.Texture(button.texture)
+        if art then H.Fade(art) end
+    end
+    Paint()
+    H.Hook(button, "SetMode", Paint)
+end
+local function TreeToggle(C, button)
+    local H = C.H
+    if not H.Allowed(button) then return end
+    local function Paint()
+        if InCombatLockdown and InCombatLockdown() then C.module.refresh(); return end
+        local art = button.GetNormalTexture and H.Texture(button:GetNormalTexture())
+        local path = art and art:GetTexture()
+        H.Toggle(button, path == 130821 or (type(path) == "string" and path:lower():find("minusbutton") ~= nil))
+    end
+    Paint()
+    H.Hook(button, "SetNormalTexture", Paint)
+end
 local function Tracker(C)
     local H, S = C.H, C.S
     local base = _G.Questie_BaseFrame
@@ -27,6 +51,8 @@ local function Tracker(C)
     if H.Allowed(base.sizer) then H.Resize(base.sizer, true) end
     local function walk(f, depth)
         if depth > 16 or not H.Allowed(f) or (f.IsShown and not f:IsShown()) then return end
+        -- Zone toggles cover the whole heading; only quest toggles have icons.
+        QuestToggle(C, f.expandQuest)
         for _, region in ipairs(H.Regions(f)) do H.Font(region) end
         for _, child in ipairs(H.Children(f)) do walk(child, depth + 1) end
     end
@@ -37,7 +63,7 @@ local function Tracker(C)
         H.Font(header.trackedQuests and header.trackedQuests.label, r, g, b)
         local button = header.questieIcon
         local icon = button and H.Texture(button.texture)
-        if H.Allowed(button) and icon then S.SquareIcon(icon, button) end
+        if H.Allowed(button) and icon then S.SquareIcon(icon) end
     end
     -- SecureActionButtonTemplate quest-item buttons are UIParent-owned and are
     -- deliberately never discovered or modified by this skin.
@@ -95,9 +121,37 @@ ns.RegisterScopedSkin("Questie", "Questie", {
     end,
     visit = function(C, f, kind, refresh)
         local H, S = C.H, C.S
+        if kind == "Button" and f.treeline and H.Allowed(f.toggle) then
+            TreeToggle(C, f.toggle)
+            H.Font(f.text)
+            return true
+        end
         if kind == "Slider" then H.LegacySlider(f); return true end
         local widget = f.obj
         if widget and widget.frame == f then
+            if widget.type == "Dropdown" and H.Allowed(widget.dropdown) then
+                -- AceGUI offsets compensate for Blizzard's transparent borders.
+                -- EUI fills the entire frame, so those offsets must be removed.
+                local function Align()
+                    if InCombatLockdown and InCombatLockdown() then refresh(); return end
+                    local label = widget.label
+                    local y = label and label.IsShown and label:IsShown() and -14 or 0
+                    widget.dropdown:ClearAllPoints()
+                    widget.dropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 0, y)
+                    widget.dropdown:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
+                    if H.Allowed(widget.button) then
+                        widget.button:ClearAllPoints()
+                        widget.button:SetPoint("RIGHT", widget.dropdown, "RIGHT", -2, 0)
+                        for _, art in ipairs(H.Regions(widget.button)) do if H.Texture(art) then H.Fade(art) end end
+                    end
+                    if widget.text then
+                        widget.text:ClearAllPoints()
+                        widget.text:SetPoint("LEFT", widget.dropdown, "LEFT", 8, 2)
+                        widget.text:SetPoint("RIGHT", widget.dropdown, "RIGHT", -26, 2)
+                    end
+                end
+                Align(); H.Hook(widget, "SetLabel", Align)
+            end
             if widget.type == "TabGroup" then
                 for _, tab in pairs(widget.tabs or {}) do
                     if H.Allowed(tab) then H.Tab(tab, tab.selected and true or false) end

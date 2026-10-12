@@ -82,7 +82,7 @@ function S.FadeNineSlice() end
 function S.Dropdown(f) f.drop = true end
 assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
 assert(loadfile('EUIAddonSkins/Scoped.lua'))('EUIAddonSkins', ns)
-local ids = {'CrossGambling', 'WhatsTraining', 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune'}
+local ids = {'WhatsTraining', 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune'}
 for _, id in ipairs(ids) do _G[id] = nil end
 WhatsTrainingFrame = nil
 local lib = nil
@@ -91,7 +91,6 @@ for _, id in ipairs(ids) do
     assert(loadfile('EUIAddonSkins/Skins/' .. id .. '.lua'))('EUIAddonSkins', ns)
     assert(not modules[id].available(), 'target must be optional: ' .. id)
 end
-CrossGambling = {DrawMainEvents = function() CrossGamblingSlick = frame(); _G.CrossGamblingSlick = CrossGamblingSlick; return 'constructed' end}
 ItemRack = {ToggleOptions = function() return 'options' end}
 ItemRackOpt = {TabOnClick = function() end}
 KiwiFarm = frame('Frame', 'KiwiFarm')
@@ -152,7 +151,6 @@ assert(check.obj.check.color[1] == accent)
 accent = 0.8; for _, fn in ipairs(looks) do fn() end; flush(); assert(check.obj.check.color[1] == 0.8)
 check.obj:SetDisabled(true); flush(); assert(check.obj.check.color[1] == 0.5)
 check.obj:SetDisabled(false); flush(); assert(check.obj.check.color[1] == 0.8)
-assert(CrossGambling:DrawMainEvents() == 'constructed'); flush(); assert(CrossGamblingSlick.shell and CrossGamblingSlick.accent)
 assert(BugSack:OpenSack() == 99); flush(); assert(BugSackFrame.shell and BugSackFrame.accent)
 assert(BugSackTabSession.selected and BatchNumericClose.close and BatchNumericClose.scripts.OnClick() == 'close-original')
 local pooled = frame('EditBox', nil, BugSackFrame); BugSackFrame.hooks.OnShow(); flush(); assert(pooled.padded)
@@ -162,6 +160,6 @@ combat = false
 for _, f in ipairs(events) do if f.events and f.events.PLAYER_REGEN_ENABLED then f.scripts.OnEvent(f, 'PLAYER_REGEN_ENABLED') end end
 flush(); assert(ItemRackLogFrame.shell)
 enabled = false
-CrossGamblingLedgerExport = frame('Frame', 'CrossGamblingLedgerExport'); modules.CrossGambling.refresh(); flush(); assert(not CrossGamblingLedgerExport.shell)
+ItemRackLogFrame = frame('Frame', 'ItemRackLogFrame'); modules.ItemRack.refresh(); flush(); assert(not ItemRackLogFrame.shell)
 assert(#errors == 0, table.concat(errors, '\n'))
-print('PASS: eight optional adapters, lazy/pooled controls, accents/AceGUI checks, multiline output, semantic icons/rows, native tabs, protected gear/map/graph, combat and disabled skins')
+print('PASS: seven optional adapters, lazy/pooled controls, accents/AceGUI checks, multiline output, semantic icons/rows, native tabs, protected gear/map/graph, combat and disabled skins')

@@ -33,6 +33,7 @@ local function texture(kind, parent)
     function t:SetText(s) assert(self.font, "FontString:SetText(): Font not set"); self.text = s end
     function t:GetFont() return self.font, self.font and 12, '' end
     function t:SetFont(v) self.font = v end
+    function t:SetFontObject(v) self.font = v end
     function t:SetTextColor(...) self.textColor = {...} end
     function t:GetTextColor() return table.unpack(self.textColor or {1, 1, 1, 1}) end
     function t:GetParent() return self.parent end
@@ -95,6 +96,7 @@ function S.SetTabSelection(f, selected) f.selected = selected end
 function S.CloseButton(f) f.close = true end
 function S.Checkbox(f) f.checkbox = true end
 function S.EditBox(f) f.input = true end
+function S.Dropdown(f) f.dropdown = true end
 function S.FadeNineSlice() end
 SetPortraitTexture = function(t) t:SetTexture('player-face') end
 assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
@@ -287,16 +289,37 @@ Questie_BaseFrame = frame(); local base = Questie_BaseFrame
 base:SetBackdrop({bgFile = 'white', edgeFile = 'native', edgeSize = 16}); base:SetBackdropColor(0.2, 0.3, 0.4, 0.25)
 local line = frame('Frame', nil, base); local progress = line:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
 progress:SetTextColor(0.8, 0.2, 0.1, 0.7)
+local questToggle = frame('Button', nil, line); line.expandQuest = questToggle
+questToggle.texture = questToggle:CreateTexture()
+questToggle.SetMode = function(self, mode) self.mode = mode; self.texture:SetTexture(mode == 1 and 'UI-MinusButton-Up' or 'UI-PlusButton-Up') end
+questToggle:SetMode(1)
 local protectedItem = frame('Button', nil, base); protectedItem.protected = true; protectedItem.attributes = {type = 'item', item = 'quest item'}
 protectedItem.Icon = protectedItem:CreateTexture()
 local map = frame(); map.pin = map:CreateTexture(); local pinPath = map.pin.path
 Questie_HeaderFrame = frame('Button', nil, base)
 Questie_HeaderFrame.trackedQuests = {label = Questie_HeaderFrame:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')}
+Questie_HeaderFrame.questieIcon = frame('Button', nil, Questie_HeaderFrame)
+Questie_HeaderFrame.questieIcon.texture = Questie_HeaderFrame.questieIcon:CreateTexture()
+local journeyRow = frame('Button', nil, journeyRoot); journeyRow.treeline = {}
+journeyRow.toggle = frame('Button', nil, journeyRow)
+journeyRow.toggle.normal = texture()
+journeyRow.toggle.SetNormalTexture = function(self, path) self.normal:SetTexture(path) end
+journeyRow.toggle:SetNormalTexture(130821)
+local dropdownWrapper = frame('Frame', nil, journeyRoot)
+local dropdownWidget = {type = 'Dropdown', frame = dropdownWrapper, dropdown = frame('Frame', nil, dropdownWrapper), button = frame('Button', nil, dropdownWrapper), text = dropdownWrapper:CreateFontString(nil, nil, 'GameFontNormal'), SetLabel = function() end}
+dropdownWrapper.obj = dropdownWidget
 QuestieTrackerMenuFrame = frame()
 local bound = false; ns.BindPopupOwner = function(_, module, owner) if owner == QuestieTrackerMenuFrame then assert(module == modules.Questie); bound = true end end
 local dialog = {OpenFrames = {}, FeedGroup = function() return 'feed-native' end}
 LibStub = function(name) if name == 'AceConfigDialog-3.0' then return dialog end end
 modules.Questie.install(S, modules.Questie); flush()
+assert(not Questie_HeaderFrame.questieIcon.texture.borderParent)
+assert(questToggle.texture.alpha == 0 and questToggle.regions[2].text == '-')
+questToggle:SetMode(0); assert(questToggle.regions[2].text == '+', 'tracker toggles must update synchronously')
+assert(journeyRow.toggle.regions[1].text == '-')
+journeyRow.toggle:SetNormalTexture(130838); assert(journeyRow.toggle.regions[1].text == '+')
+assert(dropdownWidget.dropdown.points[1][4] == 0 and dropdownWidget.dropdown.points[2][4] == 0)
+dropdownWidget:SetLabel('Continent'); assert(dropdownWidget.dropdown.points[1][4] == 0)
 assert(tracker.Initialize == init and linePool.Initialize == init, 'yielding Questie initializers must remain unhooked')
 local initializer = coroutine.create(init)
 local ok, value = coroutine.resume(initializer); assert(ok and value == 'initializing')
@@ -337,6 +360,7 @@ local dbmTab1 = frame('Button', 'DBM_GUI_OptionsFrameTab1', dbm)
 local dbmTab2 = frame('Button', 'DBM_GUI_OptionsFrameTab2', dbm)
 local tabArt = frame('Frame', nil, dbmTab2); local stockTab = tabArt:CreateTexture()
 dbmTab2.kind = 'CheckButton'
+local rootStockTab = dbmTab2:CreateTexture()
 local wrapper = frame('Frame', nil, dbm)
 frame('ScrollFrame', 'DBM_GUI_OptionsFrameList', wrapper)
 local close = frame('Button', 'DBM_GUI_OptionsFrameClosePanelButton', dbm)
@@ -353,11 +377,22 @@ local dropdown = frame('DropdownButton', nil, page); dropdown.mytype = 'dropdown
 local check = frame('CheckButton', nil, page); check.checked = true
 local slider = frame('Slider', nil, page); slider.GetThumbTexture = function() return thumb end
 slider.GetOrientation = function() return 'HORIZONTAL' end; slider.value = 0.7
+S.GetFont = function() return 'eui', 'OUTLINE' end
+local html = frame('SimpleHTML', nil, page)
+html.GetFont = function(self, tag) assert(tag == 'p'); return self.font or 'native', 13 end
+html.SetFont = function(self, tag, path, size, flags) assert(tag == 'p'); self.font, self.fontSize, self.flags = path, size, flags end
+html.SetFontObject = function(self, tag, path) assert(tag == 'p'); self.font = path end
+local dbmLabel = page:CreateFontString(nil, nil, 'GameFontNormal'); dbmLabel:SetTextColor(0.2, 0.7, 0.3, 0.8)
 local warning = frame(); local alert = warning:CreateFontString(nil, 'OVERLAY', 'DBMAlertFont')
 local area = frame('Frame', nil, page); area.mytype = 'area'; area:SetBackdrop({bgFile = 'native'})
 assert(modules.DBM.available())
 S.Dropdown = function(f) f.dropdown = true end
 modules.DBM.install(S, modules.DBM); flush()
+assert(html.font == 'eui' and html.fontSize == 13 and html.flags == 'OUTLINE')
+html:SetFontObject('p', 'native'); assert(html.font == 'eui', 'HTML styles must survive font object changes immediately')
+html:SetFont('p', 'native', 13); assert(html.font == 'eui')
+dbmLabel:SetFontObject('native'); assert(dbmLabel.font == 'eui' and dbmLabel.textColor[4] == 0.8)
+rootStockTab:SetAlpha(1); assert(rootStockTab.alpha == 0, 'native tab artwork must remain hidden')
 assert(dbm.shell and dbm.accent and dbmTab1.selected and not dbmTab2.selected and close.close)
 assert(stockTab.alpha == 0 and wrapper.panelOptions.noBorder and wrapper.points[1][5] == -72)
 assert(row.euiSelection.color[4] == 0.2 and row.toggle.regions[1].text == '-')
@@ -371,12 +406,14 @@ local dbmHook, objects = dbm.ShowTab, #row.regions + #row.toggle.regions + #slid
 for _ = 1, 5 do modules.DBM.refresh(); flush() end
 assert(dbm.ShowTab == dbmHook and objects == #row.regions + #row.toggle.regions + #slider.regions)
 accent = 0.9; dbm:DisplayFrame(page); flush(); assert(row.euiSelection.color[1] == accent and thumb.color[1] == accent)
-combat = true; local deferred = frame('CheckButton', nil, page)
+combat = true; dbmLabel:SetFontObject('combat-native'); assert(dbmLabel.font == 'combat-native')
+local deferred = frame('CheckButton', nil, page)
 DBM_GUI:CreateNewPanel(); flush(); assert(not deferred.checkbox)
 combat = false
 for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
-flush(); assert(deferred.checkbox)
-enabled = false; local skipped = frame('CheckButton', nil, page)
+flush(); assert(deferred.checkbox and dbmLabel.font == 'eui')
+enabled = false; dbmLabel:SetFontObject('disabled-native'); assert(dbmLabel.font == 'disabled-native')
+local skipped = frame('CheckButton', nil, page)
 DBM_GUI:CreateNewPanel(); flush(); assert(not skipped.checkbox)
 enabled = true
 print('PASS: DBM lazy GUI, dynamic controls, selection, swatches/previews, theme refresh, combat/toggles and idempotence')
@@ -478,40 +515,7 @@ enabled = false; local skipped = frame('CheckButton', nil, GTFO_MainFrame)
 GTFO_RefreshOptions(); flush(); assert(not skipped.checkbox)
 enabled = true
 print('PASS: GTFO late options, settings-only roots, preserved sound/actions/values, themes, combat/toggles and idempotence')
--- ThreatClassic2: never route semantic threat bars through the generic fill skin.
-ThreatClassic2BarFrame = nil
-assert(loadfile('EUIAddonSkins/Skins/ThreatClassic2.lua'))('EUIAddonSkins', ns)
-assert(not modules.ThreatClassic2.available())
-local threat = frame('Frame', 'ThreatClassic2BarFrame')
-threat.bg = threat:CreateTexture(); threat.bg:SetVertexColor(0.2, 0.4, 0.6, 0.25)
-threat.header = frame('StatusBar', nil, threat)
-threat.header.text = threat.header:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-local threatBar = frame('StatusBar', nil, threat)
-threatBar.value, threatBar.barColor, threatBar.barTexture = 83, {0.9, 0.2, 0.1, 0.7}, 'tc2-user-texture'
-threatBar.name = threatBar:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-threatBar.name:SetTextColor(0.8, 0.2, 0.9, 1)
-local updates = 0
-threat.hooks.OnUpdate = function() updates = updates + 1 end
-local update = threat.hooks.OnUpdate
 local fills = 0; S.ApplyBarFill = function() fills = fills + 1 end
-modules.ThreatClassic2.install(S, modules.ThreatClassic2); flush()
-assert(threat.header.accent and not threat.shell and threat.bg.color[4] == 0.25)
-assert(threatBar.name.font == 'eui' and threatBar.name.textColor[1] == 0.8 and fills == 0)
-for _ = 1, 20 do threat.hooks.OnUpdate(); end
-assert(updates == 20 and threat.hooks.OnUpdate == update and #timers == 0)
-assert(threatBar.value == 83 and threatBar.barColor[1] == 0.9 and threatBar.barTexture == 'tc2-user-texture')
-threatBar.name:SetFont('profile-font'); flush(); assert(threatBar.name.font == 'eui')
-local threatHook = threatBar.name.SetFont
-for _ = 1, 5 do modules.ThreatClassic2.refresh(); flush() end
-assert(threatBar.name.SetFont == threatHook and #timers == 0)
-combat = true; threatBar.name:SetFont('combat-profile-font'); flush()
-assert(threatBar.name.font == 'combat-profile-font')
-combat = false
-for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
-flush(); assert(threatBar.name.font == 'eui')
-enabled = false; threatBar.name:SetFont('disabled-font'); flush(); assert(threatBar.name.font == 'disabled-font')
-enabled = true
-print('PASS: ThreatClassic2 semantic bars/opacity, native update loop, profile fonts, idempotence, combat and toggles')
 -- Gargul's SetFont(rem, flags) overload must never receive a font path.
 Gargul = nil
 assert(loadfile('EUIAddonSkins/Skins/Gargul.lua'))('EUIAddonSkins', ns)

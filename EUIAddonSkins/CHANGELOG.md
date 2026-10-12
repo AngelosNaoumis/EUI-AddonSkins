@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0-beta.4
+
+- Removed the boxed Questie tracker icon and styled tracker/Journey expand and collapse controls.
+- Aligned Questie Journey dropdowns with their containing panels.
+- Slimmed the RXP scrollbar thumb while preserving its drag area.
+- Styled DBM paragraph fonts and native font changes immediately, including lazy panels.
+- Prevented native DBM tab artwork from returning.
+- Removed CrossGambling and ThreatClassic2 skins.
+
 ## 1.1.0-beta.3
 
 - Fixed Questie initialization failing when hooked coroutine functions yield.

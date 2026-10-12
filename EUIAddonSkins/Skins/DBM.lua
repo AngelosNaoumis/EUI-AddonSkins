@@ -1,6 +1,38 @@
 local ADDON, ns = ...
 
 local function Window() return _G.DBM_GUI_OptionsFrame end
+local nativeTabs = setmetatable({}, {__mode = "k"})
+local fontPaints = setmetatable({}, {__mode = "k"})
+local function Fonts(C, f, kind)
+    local H, S = C.H, C.S
+    local function Bind(text, html)
+        if fontPaints[text] then fontPaints[text](); return end
+        local painting = false
+        local function Paint()
+            if painting then return end
+            if InCombatLockdown and InCombatLockdown() then C.module.refresh(); return end
+            painting = true
+            H.Safe(function()
+                if html and S.GetFont then
+                    -- SimpleHTML regenerates its text regions when DBM resizes
+                    -- a page. Style its paragraph font, not the transient regions.
+                    local _, size = text:GetFont("p")
+                    local path, flags = S.GetFont()
+                    text:SetFont("p", path, size or 12, flags or "")
+                elseif not html then H.Font(text) end
+            end)
+            painting = false
+        end
+        fontPaints[text] = Paint
+        Paint()
+        H.Hook(text, "SetFontObject", Paint)
+        H.Hook(text, "SetFont", Paint)
+    end
+    if kind == "SimpleHTML" then Bind(f, true); return true end
+    for _, text in ipairs(H.Regions(f)) do
+        if H.Allowed(text) and text:GetObjectType() == "FontString" then Bind(text, false) end
+    end
+end
 
 ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
     -- DBM-GUI is load-on-demand. Never force it to load just to apply a skin.
@@ -20,6 +52,13 @@ ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
         for i in ipairs(f and f.tabs or {}) do
             local tab = _G["DBM_GUI_OptionsFrameTab" .. i]
             if C.H.Allowed(tab) then
+                if not nativeTabs[tab] then
+                    nativeTabs[tab] = {}
+                    for _, region in ipairs(C.H.Regions(tab)) do
+                        if C.H.Texture(region) then nativeTabs[tab][#nativeTabs[tab] + 1] = region end
+                    end
+                end
+                for _, region in ipairs(nativeTabs[tab]) do C.H.Fade(region) end
                 local function Strip(child, depth)
                     if depth > 4 or not C.H.Allowed(child) then return end
                     for _, region in ipairs(C.H.Regions(child)) do if C.H.Texture(region) then C.H.Fade(region) end end
@@ -44,7 +83,7 @@ ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
     end,
     hooks = function(C, refresh)
         for _, name in ipairs({"CreateNewPanel", "CreateBossModPanel", "CreateDropdown"}) do
-            C.H.Hook(_G.DBM_GUI, name, refresh)
+            C.H.Hook(_G.DBM_GUI, name, C.RefreshNow)
         end
         for _, name in ipairs({"ShowTab", "DisplayFrame", "UpdateMenuFrame", "ClearSelection"}) do
             C.H.Hook(Window(), name, C.RefreshNow)
@@ -54,6 +93,7 @@ ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
     end,
     visit = function(C, f, kind)
         local H, S = C.H, C.S
+        if Fonts(C, f, kind) then return true end
         local name = f.GetName and f:GetName() or ""
         local tab = tonumber(name:match("^DBM_GUI_OptionsFrameTab(%d+)$"))
         if tab then H.Tab(f, Window().tab == tab); return true end
