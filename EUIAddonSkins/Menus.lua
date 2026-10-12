@@ -3,7 +3,8 @@ local owners = setmetatable({}, {__mode = "k"})
 local records = setmetatable({}, {__mode = "k"})
 local hooks, lookHooks, queued = {}, {}, false
 local unpack = unpack or table.unpack
-local Refresh
+local extraLists = setmetatable({}, {__mode = "k"})
+local applying = false
 
 local function Allowed(f)
     return f and f.GetObjectType and not (f.IsForbidden and f:IsForbidden())
@@ -33,6 +34,7 @@ local function Restore(f)
         if same then texture:SetVertexColor(unpack(value)) end
     end
     if r.layer then r.layer:SetAlpha(0) end
+    for _, marker in pairs(r.markers or {}) do marker:SetAlpha(0) end
     r.active = false
 end
 local function Hook(object, method, callback)
@@ -63,14 +65,28 @@ local function Tint(r, texture, red, green, blue, alpha)
     texture:SetVertexColor(red, green, blue, alpha)
     r.appliedColors[texture] = {red, green, blue, alpha}
 end
+local function Marker(r, button, native, checked, S)
+    if not native or not native.IsShown or not button.CreateTexture then return end
+    r.markers = r.markers or {}
+    local marker = r.markers[native]
+    if not marker then
+        marker = button:CreateTexture(nil, "OVERLAY")
+        marker:SetSize(8, 8); marker:SetPoint("CENTER", native, "CENTER")
+        r.markers[native] = marker
+    end
+    local red, green, blue = S.GetAccentColor()
+    marker:SetColorTexture(checked and red or 0.3, checked and green or 0.3, checked and blue or 0.3, 1)
+    marker:SetAlpha(native:IsShown() and 1 or 0)
+    Fade(r, native)
+end
 local function Style(f, binding)
     if not Allowed(f) or not Enabled(binding) then Restore(f); return end
     if InCombatLockdown and InCombatLockdown() then return end
     local r = records[f]
     if not r then
-        r = {layers = {}}; records[f] = r
+        r = {layers = {}, rowHooks = {}}; records[f] = r
         f:HookScript("OnHide", function() Restore(f); ns.RefreshPopupMenus() end)
-        f:HookScript("OnShow", function() ns.RefreshPopupMenus() end)
+        f:HookScript("OnShow", function() ns.RefreshPopupMenusNow() end)
     end
     if r.active and (r.binding ~= binding or r.owner ~= f.dropdown) then Restore(f) end
     if not r.active then
@@ -114,16 +130,24 @@ local function Style(f, binding)
             if arrow and arrow.GetNormalTexture then arrow = arrow:GetNormalTexture() end
             local red, green, blue = S.GetAccentColor()
             Tint(r, arrow, red, green, blue, 1)
-            local highlight = button.GetHighlightTexture and button:GetHighlightTexture()
+            local highlight = button.Highlight or (button.GetHighlightTexture and button:GetHighlightTexture())
             Tint(r, highlight, 1, 1, 1, 0.1)
+            Marker(r, button, button.Check, true, S)
+            Marker(r, button, button.UnCheck, false, S)
+            if not r.rowHooks[button] and button.HookScript then
+                r.rowHooks[button] = true
+                button:HookScript("OnClick", ns.RefreshPopupMenusNow)
+            end
             -- Checkmarks, disabled/title colors, embedded emotes and row actions
             -- retain their native state. No labels, anchors or handlers change.
         end
     end
 end
 local function Apply()
-    queued = false
     if InCombatLockdown and InCombatLockdown() then return end
+    for f in pairs(extraLists) do
+        if f.IsShown and f:IsShown() then Style(f, owners[f.dropdown]) else Restore(f) end
+    end
     for _, prefix in ipairs({"DropDownList", "L_DropDownList"}) do
         local root = _G[prefix .. "1"]
         local owner = root and root.dropdown
@@ -139,10 +163,26 @@ local function Apply()
         end
     end
 end
+-- Render-completion hooks must paint in this frame, before the next screen draw.
+function ns.RefreshPopupMenusNow()
+    if applying then return end
+    applying = true
+    local ok, err = pcall(Apply)
+    applying = false
+    if not ok then geterrorhandler()(ADDON .. " / popup menus: " .. tostring(err)) end
+end
+function ns.BindPopupList(S, module, owner, list)
+    if not Allowed(list) then return end
+    ns.BindPopupOwner(S, module, owner)
+    extraLists[list] = true
+    Hook(list, "Toggle", ns.RefreshPopupMenusNow)
+    ns.RefreshPopupMenusNow()
+end
 function ns.RefreshPopupMenus()
     if queued then return end
     queued = true
     C_Timer.After(0, function()
+        queued = false
         local ok, err = pcall(Apply)
         if not ok then geterrorhandler()(ADDON .. " / popup menus: " .. tostring(err)) end
     end)
@@ -158,17 +198,17 @@ function ns.BindPopupOwner(S, module, owner)
         lookHooks[module] = true
         S.OnLooksChanged(ns.RefreshPopupMenus)
     end
-    if changed then ns.RefreshPopupMenus() end
+    if changed then ns.RefreshPopupMenusNow() end
 end
 -- Observe shared renderer completion, with all mutation gated by known owner.
 local function InstallHooks()
-    Hook(_G, "ToggleDropDownMenu", ns.RefreshPopupMenus)
-    Hook(_G, "UIDropDownMenu_AddButton", ns.RefreshPopupMenus)
+    Hook(_G, "ToggleDropDownMenu", ns.RefreshPopupMenusNow)
+    Hook(_G, "UIDropDownMenu_AddButton", ns.RefreshPopupMenusNow)
     if LibStub then
         local lib = LibStub("LibUIDropDownMenu-4.0", true)
         if lib then
-            Hook(lib, "ToggleDropDownMenu", ns.RefreshPopupMenus)
-            Hook(lib, "UIDropDownMenu_AddButton", ns.RefreshPopupMenus)
+            Hook(lib, "ToggleDropDownMenu", ns.RefreshPopupMenusNow)
+            Hook(lib, "UIDropDownMenu_AddButton", ns.RefreshPopupMenusNow)
         end
     end
 end

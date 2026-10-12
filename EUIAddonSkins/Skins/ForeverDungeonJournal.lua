@@ -62,6 +62,34 @@ end, function(S, module)
                     and ((x == -3 and y == -3) or (x == -2 and y == -2)) then S.CloseButton(f) end
             end
         end
+        if kind == "Slider" then H.LegacySlider(f); return true end
+        H.Resize(f, root and f == root.resizeGrip)
+        if kind == "Button" and f.art and f.dungeonName then
+            -- Keep every artwork/status region and its native opacity, not just the image.
+            H.ThinBackdrop(f)
+            local r, g, b = S.GetAccentColor()
+            H.Font(f.title, r, g, b)
+            if f.innerGlow then f.innerGlow:SetColorTexture(r, g, b, 0.3) end
+            for _, text in ipairs(H.Regions(f)) do H.Font(text) end
+            return true
+        end
+        if kind == "Button" and f.SetBackdrop and not f.icon and not f.Icon and not f.itemID and not f.itemId then
+            local label = (f.GetFontString and f:GetFontString()) or f.text or f.Text
+            local parent = f.GetParent and f:GetParent()
+            if label or (root and (f == root.languageSelectorButton or f == root.hideDungeonsButton
+                or f == root.bugReportButton or f == root.favouritesButton or f == root.lootFilterButton
+                or parent == root.homePanel or parent == root.languageMenu)) then
+                local keep = {}
+                for i, region in ipairs(H.Regions(f)) do
+                    if region.GetTexture and region.GetDrawLayer and region:GetDrawLayer() == "ARTWORK" then
+                        local key = "euiHeaderArtwork" .. i; f[key] = region; keep[#keep + 1] = key
+                    end
+                end
+                H.Action(f, keep)
+                for _, r in ipairs(H.Regions(f)) do H.Font(r, 1, 1, 1) end
+                return true
+            end
+        end
         -- Brown text from the original parchment becomes unreadable on a dark panel.
         -- Keep item names/rarity, quest status indicators and portrait artwork intact.
         for _, key in ipairs({"slot", "meta"}) do H.Font(f[key], 0.65, 0.65, 0.68) end
@@ -70,6 +98,7 @@ end, function(S, module)
     local function Watch(f)
         if not H.Allowed(f) then return end
         H.Shell(f, refresh)
+        ns.AttachAccent(S, f)
         for _, key in ipairs({"fdjCloseButton", "CloseButton", "closeButton"}) do
             if H.Allowed(f[key]) then S.CloseButton(f[key]) end
         end
@@ -101,7 +130,26 @@ end, function(S, module)
             local r, g, b = S.GetAccentColor()
             H.Font(f.mainTitle, 1, 1, 1)
             H.Font(f.selectedQuestName, r, g, b)
+            H.Font(f.homeTitle, r, g, b)
+            H.Font(f.homeSubtitle, 0.65, 0.65, 0.68)
             H.Font(f.dungeonTitle, r, g, b)
+            if f.homePanel then
+                for _, t in ipairs(H.Regions(f.homePanel)) do
+                    if t.GetHeight and t:GetHeight() == 1 and t.SetColorTexture then t:SetColorTexture(r, g, b, 0.7) end
+                end
+            end
+            if f.languageMenu then Panel(f.languageMenu); H.Scan(f.languageMenu, refresh, Visit) end
+            if f.languageSelectorButton then
+                H.Action(f.languageSelectorButton)
+                local button = f.languageSelectorButton
+                if not button.euiCaret and button.CreateFontString then
+                    local caret = button:CreateFontString(nil, "OVERLAY")
+                    caret:SetPoint("RIGHT", button, "RIGHT", -7, -3); caret:SetText("v")
+                    button.euiCaret = caret
+                end
+                H.Font(button.euiCaret, 1, 1, 1)
+                H.Font(f.languageSelectorText, 1, 1, 1)
+            end
             H.Font(f.selectedBossName, r, g, b)
             for _, key in ipairs({"backButton"}) do
                 if H.Allowed(f[key]) then S.Button(f[key]) end

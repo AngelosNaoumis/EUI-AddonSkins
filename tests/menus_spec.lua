@@ -21,6 +21,10 @@ end
 local function region(kind)
     local r = {kind = kind or 'Texture', alpha = 0.8, color = {1, 0.82, 0, 1}, font = {'native-font', 13, 'OUTLINE'}, text = '|Temote-art:0|t xqcA'}
     function r:GetObjectType() return self.kind end
+    function r:IsShown() return self.shown ~= false end
+    function r:SetSize() end
+    function r:SetPoint() end
+    function r:SetColorTexture(...) self.color = {...} end
     function r:GetAlpha() return self.alpha end
     function r:SetAlpha(a) self.alpha = a end
     function r:GetDrawLayer() return 'BACKGROUND' end
@@ -33,6 +37,7 @@ end
 local function frame(kind, name, parent)
     local f = {kind = kind or 'Frame', name = name, shown = false, alpha = 1, children = {}, regions = {}, hooks = {}, scripts = {}}
     function f:GetObjectType() return self.kind end
+    function f:CreateTexture() local r = region(); self.regions[#self.regions + 1] = r; return r end
     function f:GetName() return self.name end
     function f:IsProtected() return self.protected end
     function f:IsForbidden() return self.forbidden end
@@ -90,7 +95,9 @@ assert(layer.shell and layer.accent and layer.mouse == false and layer.level < D
 DropDownList2 = frame('Frame', 'DropDownList2'); DropDownList2.shown = true; DropDownList2.dropdown = button
 DropDownList2.Backdrop = frame('Frame', nil, DropDownList2)
 local sub = frame('Button', nil, DropDownList2); sub.regions = {region('FontString')}
-local a, b, c = ToggleDropDownMenu(); assert(a == 'native-original' and b == nil and c == 9); flush()
+local a, b, c = ToggleDropDownMenu(); assert(a == 'native-original' and b == nil and c == 9)
+assert(DropDownList2.Backdrop.alpha == 0 and sub.regions[1].font[1] == 'eui-font', 'submenu exposed native style until timer')
+flush()
 assert(DropDownList2.Backdrop.alpha == 0 and sub.regions[1].font[1] == 'eui-font')
 accent = 0.9; for _, fn in ipairs(looks) do fn() end; flush(); assert(arrow.color[1] == 0.9)
 DropDownList1:Hide(); DropDownList2:Hide()
@@ -116,5 +123,28 @@ assert(L_DropDownList1.Backdrop.alpha == 1)
 emoteModule.enabled = true; combat = true; ns.RefreshPopupMenus(); flush(); assert(L_DropDownList1.Backdrop.alpha == 1)
 combat = false; events.scripts.OnEvent(events, 'PLAYER_REGEN_ENABLED'); flush(); assert(L_DropDownList1.Backdrop.alpha == 0)
 L_DropDownList1:Hide()
+-- AddonFactory's unnamed pool is registered explicitly and restores on reuse.
+local custom = frame('Button'); custom.Backdrop = frame('Frame', nil, custom)
+local customRow = frame('Button', nil, custom); local customText = region('FontString')
+customRow.regions = {customText}; customRow.GetFontString = function() return customText end
+customRow.callback = function() return 'original-options-action' end
+customRow.Check, customRow.UnCheck = region(), region()
+customRow.UnCheck.shown = false
+function custom:Toggle(dropdown) self.dropdown = dropdown; self.shown = true; return nil, 31 end
+ns.BindPopupList(S, emoteModule, emoteOwner, custom)
+local missing, extra = custom:Toggle(emoteOwner)
+assert(missing == nil and extra == 31 and custom.Backdrop.alpha == 0, 'custom menu first-frame paint/returns lost')
+assert(customText.font[1] == 'eui-font' and customRow.callback() == 'original-options-action')
+assert(customRow.Check.alpha == 0 and customRow.regions[2].alpha == 1 and customRow.regions[3].alpha == 0)
+customRow.Check.shown, customRow.UnCheck.shown = false, true
+customRow.hooks.OnClick()
+assert(customRow.regions[2].alpha == 0 and customRow.regions[3].alpha == 1, 'live menu marker state lost')
+local customLayer = custom.children[#custom.children]
+custom:Hide(); assert(custom.Backdrop.alpha == 1 and customLayer.alpha == 0)
+assert(customRow.Check.alpha == 0.8 and customRow.regions[2].alpha == 0 and customRow.regions[3].alpha == 0, 'native marker restoration lost')
+custom:Toggle(unrelated)
+assert(customText.font[1] == 'native-font' and custom.Backdrop.alpha == 1 and customLayer.alpha == 0, 'unrelated pool owner inherited skin')
+custom:Toggle(emoteOwner); assert(custom.Backdrop.alpha == 0)
+flush()
 assert(#errors == 0, table.concat(errors, '\n'))
 print('PASS: scoped legacy/library popup/submenu styling, native reuse/restoration, preserved emotes/actions/colors, live accents, independent toggles and combat deferral')

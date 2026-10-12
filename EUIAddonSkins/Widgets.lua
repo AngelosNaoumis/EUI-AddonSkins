@@ -180,5 +180,131 @@ function ns.CreateSkinHelper(S, module)
         end
         if ns.IsEnabled(module) then walk(root, 0) end
     end
+    -- Legacy controls used by the three older window integrations. Preserve actions.
+    local actions, sliders, glyphs, portraits, grips, thin = {}, {}, {}, {}, {}, {}
+    function H.Action(f, keep)
+        if not H.Allowed(f) then return end
+        S.Button(f, keep)
+        if f.SetBackdrop then
+            f:SetBackdrop(nil)
+            if not actions[f] then
+                actions[f] = true
+                H.Hook(f, "SetBackdrop", function(_, value)
+                    if value and H.Allowed(f) then f:SetBackdrop(nil) end
+                end)
+            end
+        end
+        for _, r in ipairs(H.Regions(f)) do H.Font(r) end
+    end
+    function H.ThinBackdrop(f)
+        if not H.Allowed(f) or not f.SetBackdrop or not f.GetBackdrop then return end
+        local backdrop = f:GetBackdrop()
+        if not backdrop then return end -- Spacer nodes intentionally have no fill.
+        if backdrop.edgeFile == "Interface/Buttons/WHITE8X8" and backdrop.edgeSize == 1 then return end
+        local color = f.GetBackdropColor and {f:GetBackdropColor()}
+        local border = f.GetBackdropBorderColor and {f:GetBackdropBorderColor()}
+        f:SetBackdrop({bgFile = backdrop.bgFile or "Interface/Buttons/WHITE8X8",
+            edgeFile = "Interface/Buttons/WHITE8X8", edgeSize = 1,
+            insets = {left = 1, right = 1, top = 1, bottom = 1}})
+        local unpack = unpack or table.unpack
+        if color and f.SetBackdropColor then f:SetBackdropColor(unpack(color)) end
+        if border and f.SetBackdropBorderColor then f:SetBackdropBorderColor(unpack(border)) end
+        if not thin[f] then
+            thin[f] = true
+            H.Hook(f, "SetBackdrop", function(_, value) if value then H.ThinBackdrop(f) end end)
+        end
+    end
+    function H.Selection(f, selected)
+        if not H.Allowed(f) then return end
+        if not f.euiSelection and f.CreateTexture then
+            local fill = f:CreateTexture(nil, "BACKGROUND", nil, 6)
+            fill:SetAllPoints(f); f.euiSelection = fill
+        end
+        H.Action(f, {"icon", "Icon", "euiSelection"})
+        if f.euiSelection then
+            local r, g, b = S.GetAccentColor()
+            f.euiSelection:SetColorTexture(r, g, b, selected and 0.2 or 0)
+        end
+    end
+    function H.Toggle(f, expanded)
+        if not H.Allowed(f) then return end
+        H.Action(f)
+        local text = glyphs[f]
+        if not text and f.CreateFontString then
+            text = f:CreateFontString(nil, "OVERLAY"); glyphs[f] = text
+            text:SetPoint("CENTER")
+        end
+        if text then
+            text:SetText(expanded and "-" or "+")
+            H.Font(text, 1, 1, 1)
+        end
+        for _, getter in ipairs({"GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture"}) do
+            local t = f[getter] and f[getter](f)
+            if t then H.Fade(t) end
+        end
+    end
+    function H.LegacySlider(f)
+        if not H.Allowed(f) then return end
+        if not f.GetThumbTexture then if S.ScrollBar then S.ScrollBar(f) end; return end
+        local thumb = f:GetThumbTexture()
+        if not thumb then return end
+        for _, r in ipairs(H.Regions(f)) do if r ~= thumb and r ~= sliders[f] and r.GetTexture then H.Fade(r) end end
+        if f.SetBackdrop then f:SetBackdrop(nil) end
+        local r, g, b = S.GetAccentColor()
+        if thumb.SetColorTexture then thumb:SetColorTexture(r, g, b, 0.8) end
+        local track = sliders[f]
+        if not track and f.CreateTexture then
+            track = f:CreateTexture(nil, "BACKGROUND"); sliders[f] = track
+            if f.GetOrientation and f:GetOrientation() == "HORIZONTAL" then
+                track:SetPoint("LEFT"); track:SetPoint("RIGHT"); track:SetHeight(2)
+            else
+                track:SetPoint("TOP"); track:SetPoint("BOTTOM"); track:SetWidth(2)
+            end
+        end
+        if track then track:SetColorTexture(0.2, 0.2, 0.22, 1) end
+        local name = f.GetName and f:GetName()
+        local up = f.ScrollUpButton or (name and _G[name .. "ScrollUpButton"])
+        local down = f.ScrollDownButton or (name and _G[name .. "ScrollDownButton"])
+        if up and S.PageButton then S.PageButton(up, "^") end
+        if down and S.PageButton then S.PageButton(down, "v") end
+    end
+    function H.Portrait(f, player)
+        if not H.Allowed(f) or InCombatLockdown and InCombatLockdown() then return end
+        local pc = f.PortraitContainer
+        local original = pc and pc.portrait or f.Portrait or f.portrait
+        if type(original) == "table" and not original.GetTexture then original = original.portrait end
+        if not original or not original.GetTexture or not f.CreateTexture then return end
+        local entry = portraits[f]
+        if not entry then
+            local icon = f:CreateTexture(nil, "OVERLAY", nil, 6)
+            icon:SetSize(28, 28); icon:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -6)
+            entry = {icon = icon}; portraits[f] = entry
+        end
+        if player and SetPortraitTexture then SetPortraitTexture(entry.icon, "player")
+        else entry.icon:SetTexture(original:GetTexture()) end
+        entry.icon:SetAlpha(1)
+        S.SquareIcon(entry.icon, f)
+        if player and entry.icon.SetTexCoord then entry.icon:SetTexCoord(0.2, 0.8, 0.2, 0.8) end
+        if pc and pc.GetRegions then
+            for _, t in ipairs(H.Regions(pc)) do if t.GetTexture then H.Fade(t) end end
+        end
+        H.Fade(original)
+        -- Our unmasked texture never inherits PortraitFrameTemplate's round mask.
+        ns.AttachAccent(S, f)
+    end
+    function H.Resize(f, force)
+        if not H.Allowed(f) then return end
+        local found = force
+        for _, region in ipairs(H.Regions(f)) do
+            local path = region.GetTexture and region:GetTexture()
+            if region.GetTexture and (force or type(path) == "string" and path:find("SizeGrabber")) then H.Fade(region); found = true end
+        end
+        if not found and not grips[f] then return end
+        if not grips[f] and f.CreateFontString then
+            local label = f:CreateFontString(nil, "OVERLAY"); label:SetPoint("BOTTOMRIGHT", -2, 2)
+            label:SetText("+"); grips[f] = label
+        end
+        if grips[f] then H.Font(grips[f], 0.65, 0.65, 0.68) end
+    end
     return H
 end

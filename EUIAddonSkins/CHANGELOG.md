@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1
+
+- Removed the deferred native-menu flash when opening supported popup menus and submenus.
+- Added scoped Altoholic options-menu styling and completed its legacy controls and header portrait.
+- Styled Attune quest cards, zoom controls, tree selection and header portrait while preserving graph/status information.
+- Completed Dungeon Journal header buttons, language picker, dungeon-card borders and legacy scrollbars.
+- Flattened native control borders and resize artwork; preserved actions, icons and status colours.
+
 ## 1.0.0
 
 - First stable release with fourteen optional addon skins and independent EllesmereUI toggles.

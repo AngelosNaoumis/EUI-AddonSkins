@@ -46,7 +46,7 @@ Include the affected addon's version, any Lua error and a screenshot.
 
 See [CHANGELOG.md](CHANGELOG.md) for changes.
 
-ItemRack’s secure equipment buttons and Attune’s quest graph/map retain their artwork and status colors. Myslot’s private import-progress dialog and shared Blizzard tooltips keep their existing styling. KiwiFarm, RestedXP and TwitchEmotes popup menus use temporary EUI styling while open.
+ItemRack’s secure equipment buttons and Attune’s quest graph/map retain their artwork and status colors. Myslot’s private import-progress dialog and shared Blizzard tooltips keep their existing styling. Altoholic, KiwiFarm, RestedXP and TwitchEmotes popup menus use temporary EUI styling while open.
 
 ## License
 

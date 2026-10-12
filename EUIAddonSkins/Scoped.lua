@@ -12,7 +12,7 @@ function ns.RegisterScopedSkin(id, label, config)
         events:RegisterEvent("PLAYER_LOGIN")
         events:RegisterEvent("PLAYER_ENTERING_WORLD")
         events:RegisterEvent("PLAYER_REGEN_ENABLED")
-        local C = {S = S, H = H}
+        local C = {S = S, H = H, module = module}
         function C.MenuOwner(owner)
             if ns.BindPopupOwner then ns.BindPopupOwner(S, module, owner) end
         end
