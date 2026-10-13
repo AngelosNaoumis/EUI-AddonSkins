@@ -1,6 +1,7 @@
 local ADDON, ns = ...
 
 ns.RegisterScopedSkin("GTFO", "GTFO", {
+    softBorders = true,
     available = function() return type(_G.GTFO) == "table" end,
     preserveTextColors = true,
     roots = function(C)

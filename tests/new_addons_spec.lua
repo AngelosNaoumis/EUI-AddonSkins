@@ -48,13 +48,13 @@ end
 local config = {OpenFrames = {}, FeedGroup = function() end}
 LibStub = function() return config end
 local S = {OnLooksChanged = function(fn) looks[#looks + 1] = fn end}
-function S.Shell(f) assert(not combat); f.shell = true end
+function S.Shell(f, opts) assert(not combat); f.shell = true; f.shellOptions = opts end
 function S.Panel(f) assert(not f.protected); f.panel = true end
 function S.Tab(f) assert(not f.protected); f.tab = true end
 function S.SetTabSelection(f, v) f.selected = v end
 function S.CloseButton(f) f.close = true end
 function S.PageButton(f, glyph) f.glyph = glyph end
-function S.EditBox(f, opts) assert(not f.protected); f.padded = opts.padInput end
+function S.EditBox(f, opts) assert(not f.protected); f.padded = opts.padInput; f.inputOptions = opts end
 function S.Button(f) f.button = true end
 function S.ScrollBar(f) f.scroll = true end
 function S.Font() end
@@ -144,6 +144,7 @@ assert(Spy.MainWindow.CloseButton.close and Spy.MainWindow.LeftButton.glyph == '
 assert(row.attributes.macrotext == '/target Enemy' and row.click() == 'target-original' and bar.color[1] == 1)
 assert(Spy.AlertWindow.Icon.backdrop.bgFile == 'alert-icon')
 local bg = Spy.MainWindow.children[#Spy.MainWindow.children]
+assert(bg.shellOptions.noBorder and bg.shellOptions.noTopBar and filter.inputOptions.noBorder, 'Spy soft shell/input missing')
 assert(bg.shell and bg.accent and bg.mouse == false and bg.level < Spy.MainWindow:GetFrameLevel())
 local dialog, extra = Spy:CreateFrame('SpyExtraWindow'); assert(extra == 'extra'); flush()
 assert(dialog.children[1].shell)

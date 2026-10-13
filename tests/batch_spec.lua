@@ -67,7 +67,7 @@ local S = {GetAccentColor = function() return accent, 0.5, 0.6 end, GetFont = fu
 function S.Shell(f, options) f.shellOptions = options; assert(not combat and not f.protected); f.shell = true end
 function S.Panel(f) assert(not f.protected); f.panel = true; for _, r in ipairs(f.regions) do if r.kind == 'Texture' then r:SetAlpha(0) end end end
 function S.Button(f) assert(not f.protected); f.button = true end
-function S.EditBox(f, opts) assert(not f.multiline); f.padded = opts.padInput end
+function S.EditBox(f, opts) assert(not f.multiline); f.padded = opts.padInput; f.inputOptions = opts end
 function S.Checkbox(f) assert(not f.name or not f.name:match('ItemRackOptInv')); f.checkSkin = true end
 function S.Tab(f) f.tab = true end
 function S.SetTabSelection(f, v) f.selected = v end
@@ -139,6 +139,8 @@ check.obj = {frame = check, type = 'CheckBox', checkbg = texture(), check = text
 local progress = frame('StatusBar', nil, Attune_MainFrame)
 for _, id in ipairs(ids) do assert(modules[id].available()); modules[id].install(S, modules[id]) end
 flush()
+assert(KiwiFarm.shellOptions.noBorder and KiwiFarm.shellOptions.noTopBar, 'KiwiFarm soft shell missing')
+assert(lib.MainFrame.shellOptions.noBorder and lib.MainFrame.shellOptions.bottomBar == 38 and input.inputOptions.noBorder, 'Myslot soft shell/input missing')
 assert(input.padded and exportText.font == 'eui-font' and exportText.content == 'encoded-profile' and not exportText.padded)
 assert(inv.regions[1].square and not inv.checkSkin and secure.attributes.macro == 'equip')
 assert(ItemRackOptTab1.tab and ItemRackOptTab1.selected)

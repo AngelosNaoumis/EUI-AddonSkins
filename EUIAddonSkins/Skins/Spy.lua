@@ -2,6 +2,7 @@ local ADDON, ns = ...
 ns.RegisterModule("Spy", "Spy", function()
     return _G.Spy and type(_G.Spy.CreateMainWindow) == "function"
 end, function(S, module)
+    S = ns.CreateSoftSkin(S, module)
     local spy = _G.Spy
     local H = ns.CreateSkinHelper(S, module)
     local windows, styled, layers, options = {}, {}, {}, {}
@@ -38,8 +39,8 @@ end, function(S, module)
                 if type(path) == "string" and (path:find("UI%-DialogBox") or path:find("UI%-Tooltip")) then H.Fade(region) end
             end
             if H.Allowed(f.CloseButton) then S.CloseButton(f.CloseButton) end
-            if H.Allowed(f.LeftButton) and S.PageButton then S.PageButton(f.LeftButton, "<") end
-            if H.Allowed(f.RightButton) and S.PageButton then S.PageButton(f.RightButton, ">") end
+            if H.Allowed(f.LeftButton) and S.SoftPageButton then S.SoftPageButton(f.LeftButton, "<") end
+            if H.Allowed(f.RightButton) and S.SoftPageButton then S.SoftPageButton(f.RightButton, ">") end
         end
         H.Font(f.Title)
         -- Scan individual unprotected children; secure rows and their bars keep
@@ -68,6 +69,7 @@ end, function(S, module)
             if H.Allowed(f) then H.Script(f, "OnShow", refresh); H.Scan(f, refresh) end
         end
         for f in pairs(options) do H.Scan(f, refresh) end
+        S.RefreshSoftBorders()
     end
     refresh = function() H.Queue(module, Apply) end
     H.Hook(config, "FeedGroup", function(_, appName, _, root)

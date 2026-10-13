@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 ns.RegisterScopedSkin("KiwiFarm", "KiwiFarm", {
+    softBorders = true,
     available = function() return _G.KiwiFarm ~= nil end,
     panels = false,
     roots = function() return ns.SkinRoots({"KiwiFarm"}, {noTopBar = true}) end,

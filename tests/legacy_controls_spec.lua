@@ -580,7 +580,9 @@ testButton.action = function() return GTFO.PlaySound() end
 local volume = frame('Slider', nil, GTFO_MainFrame); volume.GetThumbTexture = function() return thumb end
 volume.GetOrientation = function() return 'HORIZONTAL' end; volume.value = 3
 local ignore = frame('CheckButton', nil, GTFO_IgnoreOptionsFrame)
+local gtfoInput = frame('EditBox', nil, GTFO_MainFrame)
 flush()
+assert(gtfoInput.inputOptions.noBorder, 'GTFO soft input missing')
 assert(GTFO_MainFrame.accent and not GTFO_MainFrame.shell and not GTFO_IgnoreOptionsFrame.shell)
 assert(gtfoCheck.checkbox and gtfoCheck.checked and ignore.checkbox and testButton.button and testButton.action() == 'alert-native')
 assert(volume.value == 3 and GTFO.Settings.Volume == 3 and GTFO.Settings.Enabled)

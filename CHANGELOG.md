@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1-alpha.6
+
+- Extended softer panels, inputs and ordinary controls to GTFO, KiwiFarm, Myslot and Spy.
+- Softened Spy page controls while retaining scrollbar styling and secure targeting rows.
+- Preserved accents, status colours, GTFO alerts and Myslot import/export behaviour.
+
 ## 1.1.1-alpha.5
 
 - Extended softer panels, inputs and ordinary controls to Forever Companion, Forever Dungeon Journal and Gargul.
