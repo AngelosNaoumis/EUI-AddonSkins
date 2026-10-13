@@ -2,6 +2,7 @@ local ADDON, ns = ...
 ns.RegisterModule("Auctionator", "Auctionator", function()
     return _G.Auctionator and _G.Auctionator.Tabs and _G.Auctionator.Tabs.State
 end, function(S, module)
+    S = ns.CreateSoftSkin(S, module)
     local A = _G.Auctionator
     local H = ns.CreateSkinHelper(S, module)
     local roots, shells, panels = {}, {}, {}
@@ -230,6 +231,7 @@ end, function(S, module)
             if H.Allowed(f) then H.Shell(f, refresh); H.Scan(f, refresh, Visit) end
             index = index + 1
         end
+        S.RefreshSoftBorders()
     end
     refresh = function() H.Queue(module, Apply) end
     -- Post-hooks see complete controls without replacing constructors or callbacks.

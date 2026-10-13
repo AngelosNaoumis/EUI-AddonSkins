@@ -95,7 +95,7 @@ function S.Tab(f) f.tab = true end
 function S.SetTabSelection(f, selected) f.selected = selected end
 function S.CloseButton(f) f.close = true end
 function S.Checkbox(f) f.checkbox = true end
-function S.EditBox(f) f.input = true end
+function S.EditBox(f, options) f.input = true; f.inputOptions = options end
 function S.Dropdown(f) f.dropdown = true end
 function S.FadeNineSlice() end
 SetPortraitTexture = function(t) t:SetTexture('player-face') end
@@ -296,6 +296,8 @@ local prices = frame('Frame', nil, shopping); prices.CurrentPrices = frame('Fram
 prices.HistoryPrices = frame('Frame', nil, prices); prices.HistoryPrices.hidden = true
 prices.HistoryButton = frame('Button', nil, prices)
 modules.Auctionator.install(S, modules.Auctionator); flush()
+assert(shopping.shellOptions.noBorder and shopping.ListsContainer.panelOptions.noBorder and shopping.ListsContainer.panelOptions.inset)
+assert(options.SearchString.inputOptions.noBorder and options.SearchString.inputOptions.padInput)
 assert(shopping.Refresh() == 'native-refresh-result')
 assert(tab.selected and AuctionFrameTab1.selected == false and AuctionFrame.selectedTab == 1)
 assert(options.SearchButton.points[1][1] == 'LEFT' and shopping.ListsContainer.points[1][5] == -84)
@@ -464,6 +466,7 @@ html:SetFontObject('p', 'native'); assert(html.font == 'eui', 'HTML styles must 
 html:SetFont('p', 'native', 13); assert(html.font == 'eui')
 dbmLabel:SetFontObject('native'); assert(dbmLabel.font == 'eui' and dbmLabel.textColor[4] == 0.8)
 rootStockTab:SetAlpha(1); assert(rootStockTab.alpha == 0, 'native tab artwork must remain hidden')
+assert(dbm.shellOptions.noBorder and wrapper.panelOptions.inset and area.panelOptions.inset)
 assert(dbm.shell and dbm.accent and dbmTab1.selected and not dbmTab2.selected and close.close)
 assert(stockTab.alpha == 0 and wrapper.panelOptions.noBorder and wrapper.points[1][5] == -72)
 assert(row.euiSelection.color[4] == 0.2 and row.toggle.regions[1].text == '-')

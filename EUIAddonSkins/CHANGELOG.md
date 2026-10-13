@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1-alpha.4
+
+- Extended softer panels, inputs and ordinary controls to Auctionator, BugSack and Deadly Boss Mods.
+- Softened BugSack's page controls while retaining scrollbar styling.
+- Preserved auction item-quality borders, DBM colour swatches/previews and existing selection feedback.
+
 ## 1.1.1-alpha.3
 
 - Extended softer, fill-based panels and controls to AtlasLootClassic Continued and Attune.

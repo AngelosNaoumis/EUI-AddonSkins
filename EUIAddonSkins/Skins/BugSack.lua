@@ -5,6 +5,7 @@ local function Owned(tab)
     return name and (name == "BugSackTabAll" or name == "BugSackTabSession" or name == "BugSackTabLast" or name == "BugSackTabOptions")
 end
 ns.RegisterScopedSkin("BugSack", "BugSack", {
+    softBorders = true,
     available = function() return _G.BugSack ~= nil end,
     roots = function() return ns.SkinRoots({"BugSackFrame"}, {bottomBar = 28}) end,
     hooks = function(C, refresh)
@@ -26,8 +27,8 @@ ns.RegisterScopedSkin("BugSack", "BugSack", {
         local name = f.GetName and f:GetName() or ""
         if kind == "Button" then
             if name:match("^BugSackTab") then return C.H.Tab(f, selected[name]) end
-            if name == "BugSackNextButton" then C.S.PageButton(f, ">"); return true end
-            if name == "BugSackPrevButton" then C.S.PageButton(f, "<"); return true end
+            if name == "BugSackNextButton" then C.S.SoftPageButton(f, ">"); return true end
+            if name == "BugSackPrevButton" then C.S.SoftPageButton(f, "<"); return true end
         end
     end,
 })

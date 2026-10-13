@@ -64,7 +64,7 @@ end
 CreateFrame = function() local f = frame(); events[#events + 1] = f; return f end
 local S = {GetAccentColor = function() return accent, 0.5, 0.6 end, GetFont = function() return 'eui-font', '' end,
     OnLooksChanged = function(fn) looks[#looks + 1] = fn end}
-function S.Shell(f) assert(not combat and not f.protected); f.shell = true end
+function S.Shell(f, options) f.shellOptions = options; assert(not combat and not f.protected); f.shell = true end
 function S.Panel(f) assert(not f.protected); f.panel = true; for _, r in ipairs(f.regions) do if r.kind == 'Texture' then r:SetAlpha(0) end end end
 function S.Button(f) assert(not f.protected); f.button = true end
 function S.EditBox(f, opts) assert(not f.multiline); f.padded = opts.padInput end
@@ -153,6 +153,9 @@ check.obj:SetDisabled(true); flush(); assert(check.obj.check.color[1] == 0.5)
 check.obj:SetDisabled(false); flush(); assert(check.obj.check.color[1] == 0.8)
 assert(BugSack:OpenSack() == 99); flush(); assert(BugSackFrame.shell and BugSackFrame.accent)
 assert(BugSackTabSession.selected and BatchNumericClose.close and BatchNumericClose.scripts.OnClick() == 'close-original')
+assert(BugSackFrame.shellOptions.noBorder, 'BugSack must use the scoped soft window style')
+local bugNext = frame('Button', 'BugSackNextButton', BugSackFrame)
+modules.BugSack.refresh(); flush(); assert(bugNext.glyph == '>')
 local pooled = frame('EditBox', nil, BugSackFrame); BugSackFrame.hooks.OnShow(); flush(); assert(pooled.padded)
 combat = true
 ItemRackLogFrame = frame('Frame', 'ItemRackLogFrame'); modules.ItemRack.refresh(); flush(); assert(not ItemRackLogFrame.shell)

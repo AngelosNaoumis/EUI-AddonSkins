@@ -35,6 +35,7 @@ local function Fonts(C, f, kind)
 end
 
 ns.RegisterScopedSkin("DBM", "Deadly Boss Mods", {
+    softBorders = true,
     -- DBM-GUI is load-on-demand. Never force it to load just to apply a skin.
     available = function() return type(_G.DBM_GUI) == "table" and Window() ~= nil end,
     preserveTextColors = true,
