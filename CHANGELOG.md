@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Promoted 1.1.0-beta.4 to stable with the same skin implementations.
+- Added Questie, Deadly Boss Mods options, AtlasLootClassic Continued, GTFO settings and Gargul skins.
+- Includes Questie toggle/dropdown, DBM font/tab, RXP scrollbar and AtlasLoot border fixes from the beta series.
+- CrossGambling and ThreatClassic2 are no longer included.
+
 ## 1.1.0-beta.4
 
 - Removed the boxed Questie tracker icon and styled tracker/Journey expand and collapse controls.
