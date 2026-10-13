@@ -16,6 +16,7 @@ local function Font(S, text, r, g, b)
 end
 
 ns.RegisterScopedSkin("Gargul", "Gargul", {
+    softBorders = true,
     available = function() return type(_G.Gargul) == "table" and type(_G.Gargul.Interface) == "table" end,
     immediateShow = true,
     font = function(S, text, r, g, b)

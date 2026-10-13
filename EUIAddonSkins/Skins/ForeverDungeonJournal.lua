@@ -3,10 +3,12 @@ ns.RegisterModule("ForeverDungeonJournal", "Forever Dungeon Journal", function()
     local journal = _G.ForeverDungeonJournal_NS
     return journal and type(journal.ToggleJournal) == "function"
 end, function(S, module)
+    S = ns.CreateSoftSkin(S, module)
     local journal = _G.ForeverDungeonJournal_NS
     local H = ns.CreateSkinHelper(S, module)
     local refresh
     local panels, watched = {}, {}
+    local borderLocks = {}
     local unpack = unpack or table.unpack
 
     local function Palette()
@@ -21,7 +23,7 @@ end, function(S, module)
             theme.row = {0.06, 0.06, 0.07, 0.92}
             theme.lootRow = {0.06, 0.06, 0.07, 0.92}
             theme.rowSelected = {r * 0.25, g * 0.25, b * 0.25, 0.95}
-            theme.border = {0.2, 0.2, 0.22, 1}
+            theme.border = {0.055, 0.055, 0.055, 1}
             theme.title = {r, g, b}
             theme.text = {0.9, 0.9, 0.92}
             theme.muted = {0.65, 0.65, 0.68}
@@ -83,6 +85,18 @@ end, function(S, module)
         if kind == "Button" and f.art and f.dungeonName then
             -- Keep every artwork/status region and its native opacity, not just the image.
             H.ThinBackdrop(f)
+            local function Border(_, r, g, b)
+                if borderLocks[f] then return end
+                if InCombatLockdown and InCombatLockdown() then refresh(); return end
+                if r == nil and f.GetBackdropBorderColor then r, g, b = f:GetBackdropBorderColor() end
+                if r and g and b and (math.abs(r - g) > 0.04 or math.abs(r - b) > 0.04) then return end
+                if f.SetBackdropBorderColor then
+                    borderLocks[f] = true
+                    f:SetBackdropBorderColor(0.055, 0.055, 0.055, 1)
+                    borderLocks[f] = false
+                end
+            end
+            Border(); H.Hook(f, "SetBackdropBorderColor", Border)
             local r, g, b = S.GetAccentColor()
             H.Font(f.title, r, g, b)
             if f.innerGlow then f.innerGlow:SetColorTexture(r, g, b, 0.3) end
@@ -137,7 +151,7 @@ end, function(S, module)
             for _, key in ipairs({"homeParchment", "contentParchment", "headerParchment", "leftParchment",
                 "rightParchment", "questLeftParchment", "questRightParchment", "questParchment", "atmosphere"}) do H.Fade(f[key]) end
             for _, edge in ipairs(f.questInsetEdges or {}) do
-                edge:SetColorTexture(0.18, 0.18, 0.2, 1)
+                edge:SetColorTexture(0.055, 0.055, 0.055, 1)
             end
             for _, key in ipairs({"questDetailText", "questTurninText", "questRewardSummary", "selectedQuestMeta",
                 "questStartsText", "questNotesText", "noQuestMessage", "selectedBossQuestion",
@@ -172,8 +186,8 @@ end, function(S, module)
             for _, key in ipairs({"backButton"}) do
                 if H.Allowed(f[key]) then S.Button(f[key]) end
             end
-            if H.Allowed(f.questPrevStepButton) and S.PageButton then S.PageButton(f.questPrevStepButton, "<") end
-            if H.Allowed(f.questNextStepButton) and S.PageButton then S.PageButton(f.questNextStepButton, ">") end
+            if H.Allowed(f.questPrevStepButton) and S.SoftPageButton then S.SoftPageButton(f.questPrevStepButton, "<") end
+            if H.Allowed(f.questNextStepButton) and S.SoftPageButton then S.SoftPageButton(f.questNextStepButton, ">") end
             for _, key in ipairs({"bugReportWindow", "lootFilterWindow", "favouritesWindow"}) do
                 if f[key] then Watch(f[key]) end
             end
@@ -192,6 +206,7 @@ end, function(S, module)
         for _, name in ipairs({"OpenBossPage", "OpenQuestPage", "RefreshLootNow", "OpenSearchResult"}) do
             H.Hook(journal, name, refresh) -- Some exports appear only after first opening.
         end
+        S.RefreshSoftBorders()
     end
     refresh = function() H.Queue(module, Apply) end
     for _, name in ipairs({"ToggleJournal", "ShowUpdateNotice", "ToggleSettingsPanel", "ToggleLootFilterWindow",

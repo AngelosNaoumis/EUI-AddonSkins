@@ -55,7 +55,7 @@ local function Palette()
     if not c then return end
     local r, g, b = S.GetAccentColor()
     c.pane = { 0.025, 0.025, 0.03 }
-    c.border = { 0.18, 0.18, 0.20 }
+    c.border = { 0.055, 0.055, 0.055 }
     c.bar = { 0.065, 0.065, 0.075 }
     c.light = { center = { 0.085, 0.085, 0.095 }, edge = { 0.055, 0.055, 0.065 } }
     c.dark = { center = { 0.05, 0.05, 0.06 }, edge = { 0.025, 0.025, 0.035 } }
@@ -202,6 +202,7 @@ Queue = function(f)
         pending = {}
         if not Enabled() then return end
         for frame in pairs(batch) do Safe(Scan, frame) end
+        if S.RefreshSoftBorders then Safe(S.RefreshSoftBorders) end
     end)
 end
 
@@ -279,7 +280,7 @@ end
 
 local function Install(skin)
     if installed then return end
-    S = skin
+    S = ns.CreateSoftSkin(skin, moduleOwner)
     if not Enabled() then return end
     installed = true
     Palette()

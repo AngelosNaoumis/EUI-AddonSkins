@@ -246,6 +246,10 @@ journal.languageSelectorButton = frame('Button', nil, journal)
 journal.languageSelectorText = journal.languageSelectorButton:CreateFontString()
 local caret = journal.languageSelectorButton:CreateTexture(); caret.path = 'native-caret'
 modules.ForeverDungeonJournal.install(S, modules.ForeverDungeonJournal); flush()
+assert(journal.shellOptions.noBorder, 'journal soft shell missing')
+assert(cover.border[1] == 0.055, 'journal card outline too bright')
+cover:SetBackdropBorderColor(1, 1, 1, 1); assert(cover.border[1] == 0.055, 'neutral card redraw restored a bright border')
+cover:SetBackdropBorderColor(0.2, 0.8, 0.2, 1); assert(cover.border[2] == 0.8, 'semantic card border lost')
 assert(cover.backdrop.edgeSize == 1 and cover.art.path == 'dungeon-art' and cover.art.alpha == 1 and cover.counts.textColor[1] == 1 and cover.action() == 'open-dungeon')
 assert(journal.homeTitle.textColor[1] == accent and journal.bugReportButton.button and bug.alpha == 1)
 assert(caret.alpha == 0 and journal.languageSelectorButton.euiCaret.text == 'v')
@@ -626,6 +630,7 @@ local drawn
 overview.showSection = function() drawn = frame('CheckButton', nil, gargulRoot); return 'section-native' end
 iface.Settings = {Overview = overview}
 modules.Gargul.install(S, modules.Gargul); flush()
+assert(gargulRoot.shellOptions.noBorder and input.inputOptions.noBorder, 'Gargul soft shell/input missing')
 assert(gargulRoot.shell and gargulRoot.accent and binding and input.input and input.font == 'eui')
 assert(overloaded.font == 'eui' and overloaded.textColor[2] == 0.8 and overloaded.textColor[4] == 0.6)
 assert(gear.Texture.crop and countdown.value == 17 and fills == 0 and not protected.button and protected.action == 'award-native')

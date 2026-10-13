@@ -69,7 +69,7 @@ local skin = {
 }
 for _, name in ipairs({ "Shell", "Panel", "Button", "EditBox", "Dropdown", "Inset", "FadeRegions",
     "FadeNineSlice", "Font", "CloseButton", "ScrollBar", "SquareIcon", "Checkbox", "StateButtonLabel" }) do
-    skin[name] = function(f) assert(f, name .. " missing frame"); count(name); if name == "Button" then f.buttonSkinned = true end end
+    skin[name] = function(f, options) assert(f, name .. " missing frame"); count(name); if name == "Button" then f.buttonSkinned = true end; if name == "Shell" or name == "EditBox" then f.softOptions = options end end
 end
 local callback
 EllesmereUI = { RegisterSkin = function(name, fn) count("registration"); callback = fn end }
@@ -96,6 +96,7 @@ local integration = assert(loadfile("EUIAddonSkins/Skins/ForeverCompanion.lua"))
 local ns = {}
 chunk("EUIAddonSkins", ns)
 assert(loadfile("EUIAddonSkins/Accent.lua"))("EUIAddonSkins", ns)
+assert(loadfile("EUIAddonSkins/Widgets.lua"))("EUIAddonSkins", ns)
 integration("EUIAddonSkins", ns)
 assert(calls.registration == 1 and not calls.Shell, "must wait for API dispatch")
 local existingLauncher = frame("Button", "ForeverCompanionTalentBtn")
@@ -150,7 +151,7 @@ local headerCheck = frame('CheckButton', nil, f); headerCheck:SetPoint('TOPRIGHT
 local originalHelp = function() return 'tour-native' end; f.helpBtn:SetScript('OnClick', originalHelp)
 local b = api.CreateMenuButton(f)
 local clicks = 0; b:SetScript("OnClick", function() clicks = clicks + 1 end)
-api.CreateSearchBox(f); api.CreateDropdown(f); api.CreateScrollFrame(f)
+local search = api.CreateSearchBox(f); api.CreateDropdown(f); api.CreateScrollFrame(f)
 local sc = frame("Frame", nil, f)
 local list = api.VirtualList(nil, sc)
 local tab = api.CreateSideTab(f)
@@ -167,6 +168,7 @@ flush()
 assert(headerCheck.point[1] == 'RIGHT' and headerCheck.point[2] == f.helpBtn and headerCheck.width == 20)
 assert(f.CloseButton.point[4] == -8 and f.CloseButton.point[5] == -8 and f.CloseButton.width == 20)
 assert(f.optionsBtn.point[2] == f.CloseButton and f.helpBtn.point[2] == f.optionsBtn and f.helpBtn.scripts.OnClick == originalHelp)
+assert(f.softOptions.noBorder and search.softOptions.noBorder and api.COLORS.border[1] == 0.055, "Companion soft chrome missing")
 assert(calls.EditBox == edits + 1, "must skin the ordinary input exactly once; skip restricted frames")
 assert(light.color[4] == 0.045 and right.color[4] == 0.045)
 assert(inset.color[1] == 0.025)
@@ -204,6 +206,7 @@ local collection = {}
 chunk("EUIAddonSkins", collection)
 assert(loadfile("EUIAddonSkins/Accent.lua"))("EUIAddonSkins", collection)
 local coreEvents = lastCreated
+assert(loadfile("EUIAddonSkins/Widgets.lua"))("EUIAddonSkins", collection)
 integration("EUIAddonSkins", collection)
 callback(skin)
 assert(not collection.modules[1].attempted, "absent target must stay dormant")

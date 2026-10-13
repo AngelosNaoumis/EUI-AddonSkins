@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1-alpha.5
+
+- Extended softer panels, inputs and ordinary controls to Forever Companion, Forever Dungeon Journal and Gargul.
+- Darkened neutral Companion and Journal outlines while preserving status colours and selection feedback.
+- Kept scrollbars, accents, protected actions and Gargul font handling unchanged.
+
 ## 1.1.1-alpha.4
 
 - Extended softer panels, inputs and ordinary controls to Auctionator, BugSack and Deadly Boss Mods.
