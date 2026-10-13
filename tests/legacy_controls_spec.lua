@@ -101,6 +101,47 @@ function S.FadeNineSlice() end
 SetPortraitTexture = function(t) t:SetTexture('player-face') end
 assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
 local H = ns.CreateSkinHelper(S, {})
+-- Scoped soft borders preserve EUI fill, hover, icons, scrollbars and other skins.
+local softAPI = setmetatable({}, {__index = S})
+local createdBorders = 0
+local function primitive(f)
+    if f.softFixture then return end
+    f.softFixture = true
+    f.fill = f:CreateTexture(); f.fill:SetColorTexture(0.08, 0.08, 0.08, 0.92)
+    f.hover = f:CreateTexture(); f.hover:SetColorTexture(1, 1, 1, 0.1)
+    local border = frame('Frame', nil, f); f.pixelBorder = border; createdBorders = createdBorders + 1
+    for i = 1, 4 do
+        local edge = border:CreateTexture(); edge:SetColorTexture(0.2, 0.2, 0.2, 1)
+        edge.GetDrawLayer = function() return 'BORDER' end
+        edge.GetWidth = function() return i <= 2 and 100 or 1 end
+        edge.GetHeight = function() return i <= 2 and 1 or 24 end
+    end
+end
+softAPI.Button, softAPI.Dropdown, softAPI.Checkbox = primitive, primitive, primitive
+softAPI.Panel = function(f, options) f.options = options end
+softAPI.EditBox = softAPI.Panel
+softAPI.Shell = softAPI.Panel
+local soft = ns.CreateSoftSkin(softAPI, {})
+local ordinary = frame('Button'); ordinary.Icon = ordinary:CreateTexture(); ordinary.Icon.path = 'semantic-icon'
+local unrelated = frame('Frame', nil, ordinary); local line = unrelated:CreateTexture(); line:SetColorTexture(0.2, 0.2, 0.2, 1)
+soft.Button(ordinary)
+assert(ordinary.pixelBorder.regions[1].color[1] == 0.055 and line.color[1] == 0.2)
+assert(ordinary.fill.color[1] == 0.08 and ordinary.hover.color[4] == 0.1 and ordinary.Icon.path == 'semantic-icon')
+local hook = ordinary.pixelBorder.regions[1].SetColorTexture
+ordinary.pixelBorder.regions[1]:SetColorTexture(0.25, 0.25, 0.25, 1)
+assert(ordinary.pixelBorder.regions[1].color[1] == 0.055)
+for _ = 1, 5 do soft.Button(ordinary); soft.RefreshSoftBorders() end
+assert(createdBorders == 1 and ordinary.pixelBorder.regions[1].SetColorTexture == hook)
+local stock = frame('Button'); softAPI.Button(stock); assert(stock.pixelBorder.regions[1].color[1] == 0.2)
+local panel, input = frame(), frame('EditBox')
+local opts = {padInput = true}; soft.Panel(panel); soft.EditBox(input, opts)
+assert(panel.options.noBorder and panel.options.inset and input.options.noBorder and input.options.padInput and not opts.noBorder)
+assert(soft.ScrollBar == S.ScrollBar and soft.PageButton == S.PageButton and soft.SquareIcon == S.SquareIcon)
+combat = true; ordinary.pixelBorder.regions[1]:SetColorTexture(0.2, 0.2, 0.2, 1)
+assert(ordinary.pixelBorder.regions[1].color[1] == 0.2)
+combat = false; soft.RefreshSoftBorders(); assert(ordinary.pixelBorder.regions[1].color[1] == 0.055)
+enabled = false; ordinary.pixelBorder.regions[1]:SetColorTexture(0.2, 0.2, 0.2, 1); assert(ordinary.pixelBorder.regions[1].color[1] == 0.2)
+enabled = true
 -- Asset identifiers must never reach SquareIcon; mixed rows retain the real Texture.
 for _, asset in ipairs({134400, "Interface/Icons/Test", true}) do
     local row = frame('Button'); row.icon = asset; row.Icon = texture()
@@ -180,6 +221,7 @@ ns.BindPopupOwner = function() end
 ns.BindPopupList = function(_, _, boundOwner, list) assert(boundOwner == owner and list == pool); bindings = bindings + 1 end
 modules.Altoholic.install(S, modules.Altoholic); flush()
 assert(mixedRow.Icon.crop and mixedRow.button)
+assert(AltoholicFrame.shellOptions.noBorder, 'Altoholic soft chrome must stay scoped to its window')
 assert(owner:Initialize() == 'init-original' and owner:Toggle() == 'toggle-original' and bindings >= 3)
 assert(loadfile('EUIAddonSkins/Skins/ForeverDungeonJournal.lua'))('EUIAddonSkins', ns)
 ForeverDungeonJournal_NS = {THEMES = {}, ToggleJournal = function() end}

@@ -2,6 +2,7 @@ local ADDON, ns = ...
 ns.RegisterModule("RXPGuides", "RestedXP Guides", function()
     return _G.RXP and type(_G.RXP.LoadActiveTheme) == "function"
 end, function(S, module)
+    S = ns.CreateSoftSkin(S, module)
     local addon = _G.RXP
     local H = ns.CreateSkinHelper(S, module)
     local refresh, applyWaiting, themeWaiting
@@ -29,7 +30,7 @@ end, function(S, module)
             out.backgroundColors.activeStepCheckboxChecked = {r, g, b, 1}
             out.borderColors = Copy(source.borderColors)
             for _, key in ipairs({"common", "commonEdge", "inactivePartyTab"}) do
-                out.borderColors[key] = {0.2, 0.2, 0.22, 1}
+                out.borderColors[key] = {0.055, 0.055, 0.055, 1}
             end
             out.borderColors.activeStepCheckboxChecked = {r, g, b, 1}
             out.textColor = Copy(source.textColor)
@@ -78,18 +79,36 @@ end, function(S, module)
         end
     end
     local SyncShell
+    local borderLocks = {}
     local function TintBackdrop(f)
         if InCombatLockdown and InCombatLockdown() then return end
         if not f or (f.IsForbidden and f:IsForbidden()) then return end
+        -- Legacy scrollbar geometry and its track/arrow chrome stay unchanged.
+        if f.GetObjectType and f:GetObjectType() == "Slider" then return end
+        local legacy = addon.RXPFrame or _G.RXPFrame
+        local bar = legacy and legacy.ScrollFrame and legacy.ScrollFrame.ScrollBar
+        if bar and (f == bar.ScrollUpButton or f == bar.ScrollDownButton
+            or f.GetParent and f:GetParent() == bar) then return end
         if f.GetBackdrop and f.SetBackdropBorderColor then
             local backdrop = f:GetBackdrop()
-            if backdrop and backdrop.edgeFile then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
+            local function PaintBorder(_, r, g, b)
+                if borderLocks[f] then return end
+                if InCombatLockdown and InCombatLockdown() then if refresh then refresh() end; return end
+                if r == nil and f.GetBackdropBorderColor then r, g, b = f:GetBackdropBorderColor() end
+                -- Checked/status borders retain their semantic accent colour.
+                if r and g and b and (math.abs(r - g) > 0.04 or math.abs(r - b) > 0.04) then return end
+                borderLocks[f] = true
+                f:SetBackdropBorderColor(0.055, 0.055, 0.055, 1)
+                borderLocks[f] = false
+            end
+            if backdrop and backdrop.edgeFile then PaintBorder() end
+            H.Hook(f, "SetBackdropBorderColor", PaintBorder)
             -- Native SetBackdrop resets border color to white. Correct it in
             -- the same call stack, before the client can draw another frame.
             H.Hook(f, "SetBackdrop", function()
                 if InCombatLockdown and InCombatLockdown() then return end
                 local current = f:GetBackdrop()
-                if current and current.edgeFile then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
+                if current and current.edgeFile then PaintBorder() end
                 local entry = themed[f]
                 if entry then
                     SyncShell(f, entry)
@@ -279,6 +298,7 @@ end, function(S, module)
             end
             H.Hook(importer, "UpdateTheme", refresh)
         end
+        S.RefreshSoftBorders()
     end
     refresh = function() H.Queue(module, Apply) end
     local function UpdateTheme()

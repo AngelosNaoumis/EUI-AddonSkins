@@ -4,6 +4,7 @@ local ADDON, ns = ...
 -- or global frame-creation/AceGUI replacement is used.
 function ns.RegisterScopedSkin(id, label, config)
     ns.RegisterModule(id, label, config.available, function(S, module)
+        if config.softBorders then S = ns.CreateSoftSkin(S, module) end
         if config.preserveTextColors or config.font then
             local font, original = S.Font, S
             S = setmetatable({Font = function(text, r, g, b)
@@ -158,6 +159,7 @@ function ns.RegisterScopedSkin(id, label, config)
                     H.Scan(f, refresh, Visit, target.exclude)
                 end
             end
+            if S.RefreshSoftBorders then S.RefreshSoftBorders() end
         end
         function C.RefreshNow()
             if applying or not ns.IsEnabled(module) then return end

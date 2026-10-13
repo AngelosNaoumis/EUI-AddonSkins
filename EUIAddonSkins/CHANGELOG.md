@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1-alpha.2
+
+- Tried softer, fill-based styling for RestedXP and Altoholic panels and controls.
+- Darkened neutral outlines while preserving scrollbars, accents and status colours.
+- Kept all other skins unchanged.
+
 ## 1.1.1-alpha
 
 - Applied Questie tracker fonts before row measurement and avoided repeated font application.

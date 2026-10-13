@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 ns.RegisterScopedSkin("Altoholic", "Altoholic", {
+    softBorders = true,
     available = function() return _G.Altoholic ~= nil end,
     roots = function() return ns.SkinRoots({"AltoholicFrame", "AltoMessageBox"}, {bottomBar = 24}) end,
     hooks = function(C, refresh)

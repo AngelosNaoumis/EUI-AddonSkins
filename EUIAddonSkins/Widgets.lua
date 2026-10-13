@@ -323,3 +323,70 @@ function ns.CreateSkinHelper(S, module)
     end
     return H
 end
+
+-- Opt-in treatment for owned addon controls. Keep EUI primitives and their
+-- fills/hover states; soften only their newly created pixel-border containers.
+function ns.CreateSoftSkin(S, module)
+    local H = ns.CreateSkinHelper(S, module)
+    local proxy, inspected, paints = {}, {}, {}
+    local function Options(options, inset)
+        local out = {}
+        for k, v in pairs(options or {}) do out[k] = v end
+        out.noBorder = true
+        if inset and out.inset == nil then out.inset = true end
+        return out
+    end
+    for _, name in ipairs({"Shell", "Panel", "EditBox"}) do
+        if S[name] then
+            proxy[name] = function(f, options) return S[name](f, Options(options, name == "Panel")) end
+        end
+    end
+    for _, name in ipairs({"Button", "Dropdown", "Checkbox"}) do
+        if S[name] then
+            proxy[name] = function(f, ...)
+                if not H.Allowed(f) then return end
+                local before
+                if not inspected[f] then
+                    before = {}
+                    for _, child in ipairs(H.Children(f)) do before[child] = true end
+                end
+                S[name](f, ...)
+                if not before then return end
+                inspected[f] = true
+                for _, child in ipairs(H.Children(f)) do
+                    if not before[child] and H.Allowed(child) and child:GetObjectType() == "Frame" then
+                        local edges = H.Regions(child)
+                        local border = #edges == 4
+                        for _, edge in ipairs(edges) do
+                            local layer = edge.GetDrawLayer and edge:GetDrawLayer()
+                            local w, h = edge.GetWidth and edge:GetWidth(), edge.GetHeight and edge:GetHeight()
+                            if not H.Texture(edge) or layer ~= "BORDER" or not w or not h
+                                or not ((w > 0 and w <= 4) or (h > 0 and h <= 4)) then border = false; break end
+                        end
+                        if border then
+                            for _, edge in ipairs(edges) do
+                                local painting = false
+                                local function Paint()
+                                    if painting then return end
+                                    if InCombatLockdown and InCombatLockdown() then
+                                        if module.refresh then module.refresh() end
+                                        return
+                                    end
+                                    painting = true; edge:SetColorTexture(0.055, 0.055, 0.055, 1); painting = false
+                                end
+                                paints[#paints + 1] = Paint
+                                Paint()
+                                H.Hook(edge, "SetColorTexture", Paint)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    function proxy.RefreshSoftBorders()
+        for _, Paint in ipairs(paints) do Paint() end
+    end
+    -- ScrollBar/PageButton/SquareIcon and accent/status primitives pass through.
+    return setmetatable(proxy, {__index = S})
+end

@@ -45,6 +45,7 @@ local function frame(kind)
     function f:GetBackdrop() return self.backdropValue end
     function f:SetBackdropColor() end
     function f:SetBackdropBorderColor(...) self.borderColor = {...} end
+    function f:GetBackdropBorderColor() return table.unpack(self.borderColor or {1, 1, 1, 1}) end
     return f
 end
 local combat, combatEvents = false
@@ -97,10 +98,12 @@ RXP = {targeting = {CreateTargetFrame = function(self) self.activeTargetFrame = 
         end}}
 assert(modules.RXPGuides.available())
 modules.RXPGuides.install(S, modules.RXPGuides); flush()
-assert(guide.BottomFrame.borderColor[1] == 0.2 and step.borderColor[1] == 0.2 and step.number.borderColor[1] == 0.2, 'legacy border tint missing')
+assert(guide.BottomFrame.borderColor[1] == 0.055 and step.borderColor[1] == 0.055 and step.number.borderColor[1] == 0.055, 'legacy border tint missing')
 guide.protected = true
-step:SetBackdrop({edgeFile = 'old'}); assert(step.borderColor[1] == 0.2, 'white border visible before queued refresh'); flush()
-assert(step.borderColor[1] == 0.2, 'reused step backdrop became white on a protected guide root')
+step:SetBackdrop({edgeFile = 'old'}); assert(step.borderColor[1] == 0.055, 'white border visible before queued refresh'); flush()
+assert(step.borderColor[1] == 0.055, 'reused step backdrop became white on a protected guide root')
+step:SetBackdropBorderColor(0.1, 0.8, 0.6, 1); assert(step.borderColor[2] == 0.8, 'semantic status border changed')
+step:SetBackdropBorderColor(0.2, 0.2, 0.22, 1); assert(step.borderColor[1] == 0.055, 'neutral border must stay subdued')
 guide.protected = false
 assert(guideCreates == 0, 'skin must not create lazy guide windows')
 assert(edits == 1 and guide.GuideName.icon.alpha == 0.8, 'restricted controls and icons must survive')
@@ -147,8 +150,8 @@ RXP.targeting:CreateTargetFrame(); flush()
 assert(targetUpdates == 0, 'target updates must wait until combat ends')
 combat = false
 combatEvents.hooks.OnEvent(); flush()
-assert(targetUpdates > 0 and target.borderColor[1] == 0.2 and target.title.borderColor[1] == 0.2)
-target:UpdateVisuals(); assert(target.borderColor[1] == 0.2, 'target border flashed before deferred refresh'); flush(); assert(target.borderColor[1] == 0.2, 'target tint lost after native redraw')
+assert(targetUpdates > 0 and target.borderColor[1] == 0.055 and target.title.borderColor[1] == 0.055)
+target:UpdateVisuals(); assert(target.borderColor[1] == 0.055, 'target border flashed before deferred refresh'); flush(); assert(target.borderColor[1] == 0.055, 'target tint lost after native redraw')
 RXP.settings.profile.hideActiveTargetsBackground = true
 function target:UpdateVisuals() targetUpdates = targetUpdates + 1; self:SetBackdrop(nil) end
 modules.RXPGuides.refresh(); flush()
