@@ -1,47 +1,13 @@
 # Changelog
 
-## 1.1.1-alpha.7
+## 1.1.1 — Styling improvements
 
-- Sized GTFO slider thumbs to fit the controls and removed native slider border artwork.
-- Extended softer panels, inputs and ordinary controls to Questie and What's Training?.
-- Preserved scrollbars, accents, quest tracker layout, spell/status colours and slider values.
-
-## 1.1.1-alpha.6
-
-- Extended softer panels, inputs and ordinary controls to GTFO, KiwiFarm, Myslot and Spy.
-- Softened Spy page controls while retaining scrollbar styling and secure targeting rows.
-- Preserved accents, status colours, GTFO alerts and Myslot import/export behaviour.
-
-## 1.1.1-alpha.5
-
-- Extended softer panels, inputs and ordinary controls to Forever Companion, Forever Dungeon Journal and Gargul.
-- Darkened neutral Companion and Journal outlines while preserving status colours and selection feedback.
-- Kept scrollbars, accents, protected actions and Gargul font handling unchanged.
-
-## 1.1.1-alpha.4
-
-- Extended softer panels, inputs and ordinary controls to Auctionator, BugSack and Deadly Boss Mods.
-- Softened BugSack's page controls while retaining scrollbar styling.
-- Preserved auction item-quality borders, DBM colour swatches/previews and existing selection feedback.
-
-## 1.1.1-alpha.3
-
-- Extended softer, fill-based panels and controls to AtlasLootClassic Continued and Attune.
-- Darkened AtlasLoot's outer border and ordinary dropdown/page controls.
-- Preserved scrollbars, item colours, overlays, maps and Attune graph/progress indicators.
-
-## 1.1.1-alpha.2
-
-- Tried softer, fill-based styling for RestedXP and Altoholic panels and controls.
-- Darkened neutral outlines while preserving scrollbars, accents and status colours.
-- Kept all other skins unchanged.
-
-## 1.1.1-alpha
-
-- Applied Questie tracker fonts before row measurement and avoided repeated font application.
-- Removed the dark strip splitting Dungeon Journal and Questie window headers.
-- Inset Forever Companion title controls below the accent line.
-- Centered Companion side-tab icons and separated them from the window border.
+- Softer window, panel and control styling, with darker outlines and clearer background contrast.
+- Updated RestedXP, Altoholic, AtlasLootClassic Continued, Attune, Auctionator, BugSack, DBM, Forever Companion, Forever Dungeon Journal, Gargul, GTFO, KiwiFarm, Myslot, Spy, Questie and What's Training?.
+- Improved Questie tracker font timing and continuous Questie/Dungeon Journal headers.
+- Aligned Forever Companion header controls and side-tab icons.
+- Fixed oversized GTFO slider thumbs and removed native slider border artwork.
+- Retained accents, scrollbar styling, selection feedback and meaningful status/item colours.
 
 ## 1.1.0
 
