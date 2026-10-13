@@ -119,6 +119,7 @@ local function primitive(f)
 end
 softAPI.Button, softAPI.Dropdown, softAPI.Checkbox = primitive, primitive, primitive
 softAPI.Panel = function(f, options) f.options = options end
+softAPI.PageButton = function(f, glyph) primitive(f); f.glyph = glyph end
 softAPI.EditBox = softAPI.Panel
 softAPI.Shell = softAPI.Panel
 local soft = ns.CreateSoftSkin(softAPI, {})
@@ -136,7 +137,11 @@ local stock = frame('Button'); softAPI.Button(stock); assert(stock.pixelBorder.r
 local panel, input = frame(), frame('EditBox')
 local opts = {padInput = true}; soft.Panel(panel); soft.EditBox(input, opts)
 assert(panel.options.noBorder and panel.options.inset and input.options.noBorder and input.options.padInput and not opts.noBorder)
-assert(soft.ScrollBar == S.ScrollBar and soft.PageButton == S.PageButton and soft.SquareIcon == S.SquareIcon)
+assert(soft.ScrollBar == S.ScrollBar and soft.PageButton == softAPI.PageButton and soft.SquareIcon == S.SquareIcon)
+local page, stepper = frame('Button'), frame('Button')
+soft.SoftPageButton(page, '>'); soft.PageButton(stepper, '^')
+assert(page.glyph == '>' and page.pixelBorder.regions[1].color[1] == 0.055)
+assert(stepper.glyph == '^' and stepper.pixelBorder.regions[1].color[1] == 0.2, 'scroll steppers must keep their chrome')
 combat = true; ordinary.pixelBorder.regions[1]:SetColorTexture(0.2, 0.2, 0.2, 1)
 assert(ordinary.pixelBorder.regions[1].color[1] == 0.2)
 combat = false; soft.RefreshSoftBorders(); assert(ordinary.pixelBorder.regions[1].color[1] == 0.055)
@@ -196,6 +201,7 @@ local function flush()
     while #timers > 0 do local batch = timers; timers = {}; for _, fn in ipairs(batch) do fn() end end
 end
 flush()
+assert(Attune_MainFrame.shellOptions.noBorder, 'Attune soft window border missing')
 assert(card.backdrop.edgeSize == 1 and card.color[1] == 0.8 and text.font == 'eui' and text.textColor[1] == 1)
 assert(not card.button and icon.normal.path == 'quest-icon' and icon.normal.crop and graphLine.color[1] == 0.8)
 local tree = frame('Button', nil, Attune_MainFrame)
@@ -524,12 +530,16 @@ modules.AtlasLootContinued.install(S, modules.AtlasLootContinued); flush()
 assert(atlasRoot.accent and not atlasRoot.shell and atlasRoot.backdrop.edgeSize == 1 and atlasRoot.color[4] == 0.9)
 assert(atlasRoot.CloseButton.close and favourites.GUI.frame.shell and logo.alpha == 1 and map.path == 'dungeon-map')
 atlasRoot:SetBackdropBorderColor(1, 1, 1, 1)
-assert(atlasRoot.border[1] == 0.2, 'AtlasLoot native redraw must not restore a white outer border')
+assert(atlasRoot.border[1] == 0.055, 'AtlasLoot native redraw must not restore a white outer border')
 assert(item.icon.crop and item.overlay.alpha == 1 and item.phaseIndicator.alpha == 1 and item.overlay.color[3] == 0.9)
 assert(item.label.textColor[3] == 0.9 and not item.button and not modelArt.crop)
 assert(selection.euiAtlasSelection.color[4] == 0.2 and selection.coin.alpha == 1 and not selection.checkbox)
 assert(dropdown.dropdown and dropdown.button.glyph == 'v')
+assert(selectFrame.panelOptions.noBorder and selectFrame.panelOptions.inset and favourites.GUI.frame.shellOptions.noBorder)
+local pageButton = frame('Button', 'AtlasLoot-nextPageButton', atlasRoot)
+modules.AtlasLootContinued.refresh(); flush(); assert(pageButton.glyph == '>')
 assert(dropdown.par:Toggle() == 'popup-native')
+assert(popup.panelOptions.noBorder and popup.panelOptions.inset)
 assert(popup.panel and popupRow.button and popupRow.check.alpha == 1 and popupRow.label.textColor[2] == 0.8,
     'AtlasLoot popup must be styled synchronously, without waiting for a timer')
 flush(); selection:SetChecked(false); flush(); assert(selection.euiAtlasSelection.color[4] == 0)

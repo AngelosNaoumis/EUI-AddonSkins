@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1-alpha.3
+
+- Extended softer, fill-based panels and controls to AtlasLootClassic Continued and Attune.
+- Darkened AtlasLoot's outer border and ordinary dropdown/page controls.
+- Preserved scrollbars, item colours, overlays, maps and Attune graph/progress indicators.
+
 ## 1.1.1-alpha.2
 
 - Tried softer, fill-based styling for RestedXP and Altoholic panels and controls.

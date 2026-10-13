@@ -29,12 +29,13 @@ Visit = function(C, f, kind, refresh)
         -- The expansion logo is a foreground Texture on the main window itself.
         -- Retain that artwork while using EUI's fill, border and accent colours.
         H.ThinBackdrop(f)
-        if f.SetBackdropBorderColor then f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1) end
+        if f.SetBackdropBorderColor then f:SetBackdropBorderColor(0.055, 0.055, 0.055, 1) end
         C.borderLock = C.borderLock or {}
         H.Hook(f, "SetBackdropBorderColor", function(_, r, g, b)
-            if C.borderLock[f] or r == 0.2 and g == 0.2 and b == 0.22 then return end
+            if C.borderLock[f] or r == 0.055 and g == 0.055 and b == 0.055 then return end
+            if InCombatLockdown and InCombatLockdown() then refresh(); return end
             C.borderLock[f] = true
-            f:SetBackdropBorderColor(0.2, 0.2, 0.22, 1)
+            f:SetBackdropBorderColor(0.055, 0.055, 0.055, 1)
             C.borderLock[f] = false
         end)
         if f.SetBackdropColor and S.GetPanelColor then f:SetBackdropColor(S.GetPanelColor()) end
@@ -50,7 +51,7 @@ Visit = function(C, f, kind, refresh)
     if name:match("^AtlasLoot%-DropDown%-%d+$") then
         S.Dropdown(f)
         if H.Allowed(f.button) then
-            S.PageButton(f.button, "v")
+            S.SoftPageButton(f.button, "v")
         end
         if f.par then
             H.Hook(f.par, "SetSelected", refresh)
@@ -99,8 +100,8 @@ Visit = function(C, f, kind, refresh)
             for _, region in ipairs(H.Regions(f)) do H.Font(region) end
             return true
         end
-        if name:match("%-nextPageButton$") then S.PageButton(f, ">"); return true end
-        if name:match("%-prevPageButton$") then S.PageButton(f, "<"); return true end
+        if name:match("%-nextPageButton$") then S.SoftPageButton(f, ">"); return true end
+        if name:match("%-prevPageButton$") then S.SoftPageButton(f, "<"); return true end
         H.Resize(f)
     end
     local widget = f.obj
@@ -117,6 +118,7 @@ Visit = function(C, f, kind, refresh)
 end
 
 ns.RegisterScopedSkin("AtlasLootContinued", "AtlasLootClassic Continued", {
+    softBorders = true,
     available = function() return type(GUI()) == "table" end,
     preserveTextColors = true,
     roots = function(C)

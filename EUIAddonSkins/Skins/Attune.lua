@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 ns.RegisterScopedSkin("Attune", "Attune", {
+    softBorders = true,
     available = function() return _G.Attune ~= nil end,
     roots = function()
         local result = ns.SkinRoots({"Attune_MainFrame", "AttuneBronzeChrome", "Attune_MainRaidFrame", "Attune_SurveyMenuFrame",

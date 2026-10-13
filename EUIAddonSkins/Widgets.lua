@@ -341,8 +341,9 @@ function ns.CreateSoftSkin(S, module)
             proxy[name] = function(f, options) return S[name](f, Options(options, name == "Panel")) end
         end
     end
-    for _, name in ipairs({"Button", "Dropdown", "Checkbox"}) do
-        if S[name] then
+    for _, name in ipairs({"Button", "Dropdown", "Checkbox", "SoftPageButton"}) do
+        local method = name == "SoftPageButton" and "PageButton" or name
+        if S[method] then
             proxy[name] = function(f, ...)
                 if not H.Allowed(f) then return end
                 local before
@@ -350,7 +351,7 @@ function ns.CreateSoftSkin(S, module)
                     before = {}
                     for _, child in ipairs(H.Children(f)) do before[child] = true end
                 end
-                S[name](f, ...)
+                S[method](f, ...)
                 if not before then return end
                 inspected[f] = true
                 for _, child in ipairs(H.Children(f)) do
