@@ -1,5 +1,6 @@
 local ADDON, ns = ...
 ns.RegisterScopedSkin("WhatsTraining", "What's Training?", {
+    softBorders = true,
     available = function() return _G.WhatsTrainingFrame ~= nil or (C_AddOns and C_AddOns.IsAddOnLoaded("WhatsTraining")) end,
     roots = function()
         local roots = ns.SkinRoots({"WhatsTrainingFrame"}, {noTopBar = true})

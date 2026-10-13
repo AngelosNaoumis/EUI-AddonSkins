@@ -96,6 +96,7 @@ local function Tracker(C)
 end
 
 ns.RegisterScopedSkin("Questie", "Questie", {
+    softBorders = true,
     available = function() return _G.Questie ~= nil and Module("QuestieJourney") ~= nil end,
     preserveTextColors = true,
     roots = function(C)

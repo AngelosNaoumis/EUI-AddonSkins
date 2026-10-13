@@ -22,6 +22,20 @@ ns.RegisterScopedSkin("GTFO", "GTFO", {
         C.H.Hook(_G, "GTFO_RefreshOptions", refresh)
     end,
     visit = function(C, f, kind)
-        if kind == "Slider" then C.H.LegacySlider(f); return true end
+        if kind == "Slider" then
+            C.H.LegacySlider(f)
+            -- OptionsSliderTemplate keeps chrome in a separate NineSlice frame
+            -- and its oversized atlas thumb must be sized after recolouring.
+            if C.H.Allowed(f.NineSlice) then
+                for _, art in ipairs(C.H.Regions(f.NineSlice)) do
+                    if C.H.Texture(art) then C.H.Fade(art) end
+                end
+            end
+            local thumb = f.GetThumbTexture and C.H.Texture(f:GetThumbTexture())
+            if thumb and thumb.SetSize and f.GetOrientation and f:GetOrientation() == "HORIZONTAL" then
+                thumb:SetSize(8, 14)
+            end
+            return true
+        end
     end,
 })

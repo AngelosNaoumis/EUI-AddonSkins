@@ -380,6 +380,7 @@ assert(tracker.Initialize == init and linePool.Initialize == init, 'yielding Que
 local initializer = coroutine.create(init)
 local ok, value = coroutine.resume(initializer); assert(ok and value == 'initializing')
 ok, value = coroutine.resume(initializer); assert(ok and value == 'initialized')
+assert(journeyRoot.shellOptions.noBorder and input.inputOptions.noBorder, 'Questie soft shell/input missing')
 assert(journeyRoot.shellOptions.noTopBar, 'Journey header must not be split by a 25px strip')
 assert(journeyRoot.shell and QuestieConfigFrame.frame.shell and input.input and first.selected and not second.selected)
 assert(detail.font == 'eui' and detail.textColor[1] == 0.2 and detail.textColor[4] == 0.8)
@@ -579,12 +580,22 @@ testButton.label = testButton:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
 testButton.action = function() return GTFO.PlaySound() end
 local volume = frame('Slider', nil, GTFO_MainFrame); volume.GetThumbTexture = function() return thumb end
 volume.GetOrientation = function() return 'HORIZONTAL' end; volume.value = 3
+thumb:SetSize(32, 32)
+volume.NineSlice = frame('Frame', nil, volume)
+local nativeSliderEdge = volume.NineSlice:CreateTexture()
+volume.SetScript = function(self, event, fn) self.hooks[event] = fn end
+local sliderChanges = 0
+volume:SetScript('OnValueChanged', function() sliderChanges = sliderChanges + 1 end)
+local valueHandler = volume.hooks.OnValueChanged
 local ignore = frame('CheckButton', nil, GTFO_IgnoreOptionsFrame)
 local gtfoInput = frame('EditBox', nil, GTFO_MainFrame)
 flush()
 assert(gtfoInput.inputOptions.noBorder, 'GTFO soft input missing')
 assert(GTFO_MainFrame.accent and not GTFO_MainFrame.shell and not GTFO_IgnoreOptionsFrame.shell)
 assert(gtfoCheck.checkbox and gtfoCheck.checked and ignore.checkbox and testButton.button and testButton.action() == 'alert-native')
+assert(thumb.width == 8 and thumb.height == 14 and nativeSliderEdge.alpha == 0, 'GTFO slider geometry/chrome incorrect')
+nativeSliderEdge:SetAlpha(1); assert(nativeSliderEdge.alpha == 0, 'GTFO slider native border returned')
+assert(volume.hooks.OnValueChanged == valueHandler and sliderChanges == 0, 'GTFO slider action changed')
 assert(volume.value == 3 and GTFO.Settings.Volume == 3 and GTFO.Settings.Enabled)
 local gtfoHook, objects = GTFO_RefreshOptions, #volume.regions
 accent = 0.35; assert(GTFO_RefreshOptions() == 'refresh-native'); flush(); assert(thumb.color[1] == accent)

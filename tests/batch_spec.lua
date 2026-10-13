@@ -139,6 +139,7 @@ check.obj = {frame = check, type = 'CheckBox', checkbg = texture(), check = text
 local progress = frame('StatusBar', nil, Attune_MainFrame)
 for _, id in ipairs(ids) do assert(modules[id].available()); modules[id].install(S, modules[id]) end
 flush()
+assert(WhatsTrainingFrame.shellOptions.noBorder and WhatsTrainingFrame.shellOptions.noTopBar, 'Whats Training soft shell missing')
 assert(KiwiFarm.shellOptions.noBorder and KiwiFarm.shellOptions.noTopBar, 'KiwiFarm soft shell missing')
 assert(lib.MainFrame.shellOptions.noBorder and lib.MainFrame.shellOptions.bottomBar == 38 and input.inputOptions.noBorder, 'Myslot soft shell/input missing')
 assert(input.padded and exportText.font == 'eui-font' and exportText.content == 'encoded-profile' and not exportText.padded)

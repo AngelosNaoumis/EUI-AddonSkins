@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1-alpha.7
+
+- Sized GTFO slider thumbs to fit the controls and removed native slider border artwork.
+- Extended softer panels, inputs and ordinary controls to Questie and What's Training?.
+- Preserved scrollbars, accents, quest tracker layout, spell/status colours and slider values.
+
 ## 1.1.1-alpha.6
 
 - Extended softer panels, inputs and ordinary controls to GTFO, KiwiFarm, Myslot and Spy.
