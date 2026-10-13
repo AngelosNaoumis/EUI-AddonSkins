@@ -113,7 +113,7 @@ end, function(S, module)
 
     local function Watch(f)
         if not H.Allowed(f) then return end
-        H.Shell(f, refresh)
+        H.Shell(f, refresh, {noTopBar = true})
         ns.AttachAccent(S, f)
         for _, key in ipairs({"fdjCloseButton", "CloseButton", "closeButton"}) do
             if H.Allowed(f[key]) then S.CloseButton(f[key]) end

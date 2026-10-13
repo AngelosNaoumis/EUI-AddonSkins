@@ -8,8 +8,10 @@ local seen = setmetatable({}, { __mode = "k" })
 local hooked = setmetatable({}, { __mode = "k" })
 local paints = setmetatable({}, { __mode = "k" })
 local tabs = setmetatable({}, { __mode = "k" })
+local sideTabs = setmetatable({}, { __mode = "k" })
 local pending, queued = {}, false
 local Scan, Queue
+local chromeWaiting
 local failures = {}
 local refreshMethods = { "ShowPage", "Render", "RenderList", "Update", "RefreshAll" }
 
@@ -70,8 +72,65 @@ local function HookMethod(f, name, callback)
     hooksecurefunc(f, name, callback)
 end
 
+local function HeaderChrome(f)
+    if f ~= _G.ForeverCompanionFrame then return end
+    if InCombatLockdown and InCombatLockdown() then chromeWaiting = true; return end
+    local close, options, help = f.CloseButton, f.optionsBtn, f.helpBtn
+    if Allowed(close) then
+        close:ClearAllPoints(); close:SetSize(20, 20)
+        close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -8)
+    end
+    local previous = close
+    for _, button in ipairs({options or false, help or false}) do
+        if Allowed(button) and Allowed(previous) then
+            button:ClearAllPoints(); button:SetSize(20, 20)
+            button:SetPoint("RIGHT", previous, "LEFT", -4, 0)
+            previous = button
+        end
+    end
+    -- Some FC versions add a small title-row toggle beside the tour button.
+    -- Match only direct header controls, leaving content checkboxes untouched.
+    if Allowed(help) and f.GetChildren then
+        for _, button in ipairs({f:GetChildren()}) do
+            if Allowed(button) and button ~= close and button ~= options and button ~= help
+                and button.GetPoint and button.GetWidth and button.GetHeight then
+                local kind = button:GetObjectType()
+                local point, relative, _, x, y = button:GetPoint(1)
+                local width, height = button:GetWidth(), button:GetHeight()
+                if (kind == "Button" or kind == "CheckButton") and point == "TOPRIGHT" and relative == f
+                    and x and x >= -120 and x <= -28 and y and y >= -14 and y <= 4
+                    and width >= 12 and width <= 32 and height >= 12 and height <= 32 then
+                    button:ClearAllPoints(); button:SetSize(20, 20)
+                    button:SetPoint("RIGHT", help, "LEFT", -4, 0)
+                end
+            end
+        end
+    end
+end
+
+local function SideIcon(tab)
+    if not Allowed(tab) or not sideTabs[tab] or not tab.icon then return end
+    if InCombatLockdown and InCombatLockdown() then chromeWaiting = true; return end
+    -- Native side-tab masks offset the icon left; square tabs need equal insets.
+    tab.icon:ClearAllPoints()
+    tab.icon:SetPoint("TOPLEFT", tab, "TOPLEFT", 3, -3)
+    tab.icon:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -3, 3)
+    local parent = tab.GetParent and tab:GetParent()
+    if parent and tab.SetFrameLevel and parent.GetFrameLevel then
+        tab:SetFrameLevel(parent:GetFrameLevel() + 8)
+    end
+    if parent and tab.GetPoint then
+        local point, relative, relativePoint, x, y = tab:GetPoint(1)
+        if point == "TOPLEFT" and relative == parent and relativePoint == "TOPRIGHT" and x and x < 6 then
+            tab:SetPoint(point, relative, relativePoint, 6, y)
+        end
+    end
+end
+
 local function SkinNode(f)
     if not Allowed(f) then return end
+    HeaderChrome(f)
+    SideIcon(f)
     local fresh = not seen[f]
     if fresh then
         seen[f] = true
@@ -236,6 +295,10 @@ local function Install(skin)
     externalEvents:RegisterEvent("AUCTION_HOUSE_SHOW")
     externalEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
     externalEvents:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_REGEN_ENABLED" and chromeWaiting then
+            chromeWaiting = false
+            for f in pairs(roots) do Queue(f) end
+        end
         if event == "AUCTION_HOUSE_SHOW" then
             -- FC may construct the private footer later in this same event.
             C_Timer.After(0, ExternalButtons)
@@ -282,6 +345,14 @@ local function Install(skin)
         if tab.border then tab.border:SetAlpha(0) end
         if tab.hl then tab.hl:SetAlpha(0) end
         if tab.icon then S.SquareIcon(tab.icon, tab) end
+        -- Keep the native order, size and actions; only correct icon/border overlap.
+        sideTabs[tab] = true
+        SideIcon(tab)
+        local placing = false
+        HookMethod(tab, "SetPoint", function()
+            if not Enabled() or placing then return end
+            placing = true; Safe(SideIcon, tab); placing = false
+        end)
         if not tabs[tab] then Paint(tab.sel, "selection") end
         Queue(tab)
     end)

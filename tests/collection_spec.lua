@@ -60,7 +60,7 @@ local S = {GetAccentColor = function() return 0.1, 0.8, 0.6 end,
     GetFont = function() return 'EUI-font', 'OUTLINE' end,
     OnLooksChanged = function(fn) looks[#looks + 1] = fn end}
 local shells, edits = 0, 0
-function S.Shell(f) shells = shells + 1; for _, r in ipairs(f.regions) do r:SetAlpha(0) end end
+function S.Shell(f, options) f.shellOptions = options; shells = shells + 1; for _, r in ipairs(f.regions) do r:SetAlpha(0) end end
 function S.Panel(f) for _, r in ipairs(f.regions) do r:SetAlpha(0) end end
 function S.EditBox(f) edits = edits + 1; assert(not f.protected) end
 for _, key in ipairs({'Font', 'Button', 'StateButtonLabel', 'Checkbox', 'Dropdown', 'ScrollBar', 'CloseButton', 'FadeNineSlice', 'PageButton'}) do S[key] = function(f) if key == 'CloseButton' then f.euiClose = true end end end
@@ -185,6 +185,7 @@ modules.ForeverDungeonJournal.install(S, modules.ForeverDungeonJournal); flush()
 assert(shells == 0, 'journal skin created a window eagerly')
 local missing, result = ForeverDungeonJournal_NS.ToggleJournal(); flush()
 assert(missing == nil and result == 'journal-tail')
+assert(ForeverDungeonJournalFrame.shellOptions.noTopBar, 'journal header must keep a continuous background')
 assert(ForeverDungeonJournalFrame.portrait.alpha == 0.8, 'boss portrait faded')
 assert(ForeverDungeonJournalFrame.close.euiClose, 'numeric-texture close button missed')
 ForeverDungeonJournalFrame.close.onClick(); assert(ForeverDungeonJournalFrame.closeClicks() == 1, 'close action lost')

@@ -1,4 +1,28 @@
 local ADDON, ns = ...
+local trackerFonts, wrapped = {}, {}
+local function TrackerFont(C, text)
+    local H, S = C.H, C.S
+    if not H.Allowed(text) or text:GetObjectType() ~= "FontString" then return end
+    local Paint = trackerFonts[text]
+    if not Paint then
+        local painting = false
+        Paint = function()
+            if painting then return end
+            if InCombatLockdown and InCombatLockdown() then C.module.refresh(); return end
+            local path, flags
+            if S.GetFont then path, flags = S.GetFont() end
+            local current, _, currentFlags = text:GetFont()
+            if path and current == path and (currentFlags or "") == (flags or "") then return end
+            painting = true
+            H.Safe(function() H.Font(text) end)
+            painting = false
+        end
+        trackerFonts[text] = Paint
+        H.Hook(text, "SetFont", Paint)
+        H.Hook(text, "SetFontObject", Paint)
+    end
+    Paint()
+end
 
 local function Module(name)
     local loader = _G.QuestieLoader
@@ -53,14 +77,16 @@ local function Tracker(C)
         if depth > 16 or not H.Allowed(f) or (f.IsShown and not f:IsShown()) then return end
         -- Zone toggles cover the whole heading; only quest toggles have icons.
         QuestToggle(C, f.expandQuest)
-        for _, region in ipairs(H.Regions(f)) do H.Font(region) end
+        for _, region in ipairs(H.Regions(f)) do TrackerFont(C, region) end
         for _, child in ipairs(H.Children(f)) do walk(child, depth + 1) end
     end
     walk(base, 0)
     local header = _G.Questie_HeaderFrame
     if H.Allowed(header) then
         local r, g, b = S.GetAccentColor()
-        H.Font(header.trackedQuests and header.trackedQuests.label, r, g, b)
+        local label = header.trackedQuests and header.trackedQuests.label
+        TrackerFont(C, label)
+        if H.Allowed(label) then label:SetTextColor(r, g, b) end
         local button = header.questieIcon
         local icon = button and H.Texture(button.texture)
         if H.Allowed(button) and icon then S.SquareIcon(icon) end
@@ -77,7 +103,7 @@ ns.RegisterScopedSkin("Questie", "Questie", {
         local result = {}
         local function Add(widget)
             local f = Frame(widget)
-            if C.H.Allowed(f) then result[#result + 1] = {frame = f, options = {bottomBar = 24}} end
+            if C.H.Allowed(f) then result[#result + 1] = {frame = f, options = {bottomBar = 24, noTopBar = true}} end
         end
         Add(_G.QuestieJourneyFrame); Add(_G.QuestieConfigFrame)
         local journey = Module("QuestieJourney")
@@ -90,6 +116,33 @@ ns.RegisterScopedSkin("Questie", "Questie", {
     end,
     hooks = function(C, refresh)
         local H = C.H
+        -- GetNextLine returns before Questie chooses a row font and measures it.
+        -- Lua wrappers preserve coroutine boundaries and all native return values.
+        local pool = Module("TrackerLinePool")
+        if pool and type(pool.GetNextLine) == "function" and not wrapped[pool] then
+            wrapped[pool] = true
+            local original = pool.GetNextLine
+            local function After(...)
+                local line = ...
+                if ns.IsEnabled(C.module) and H.Allowed(line) then
+                    H.Safe(function() TrackerFont(C, line.label); QuestToggle(C, line.expandQuest) end)
+                end
+                return ...
+            end
+            pool.GetNextLine = function(...) return After(original(...)) end
+        end
+        local headerModule = Module("TrackerHeaderFrame")
+        if headerModule and type(headerModule.Update) == "function" and not wrapped[headerModule] then
+            wrapped[headerModule] = true
+            local original = headerModule.Update
+            headerModule.Update = function(...)
+                if ns.IsEnabled(C.module) then
+                    local header = _G.Questie_HeaderFrame
+                    H.Safe(function() TrackerFont(C, header and header.trackedQuests and header.trackedQuests.label) end)
+                end
+                return original(...)
+            end
+        end
         local journey, options = Module("QuestieJourney"), Module("QuestieOptions")
         for _, name in ipairs({"BuildMainFrame", "ToggleJourneyWindow"}) do H.Hook(journey, name, refresh) end
         H.Hook(journey and journey.private, "HandleTabChange", refresh)

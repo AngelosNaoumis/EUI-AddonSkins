@@ -5,10 +5,12 @@ local function count(k) calls[k] = (calls[k] or 0) + 1 end
 local function texture(kind)
     return { GetObjectType = function() return kind or "Texture" end,
         SetColorTexture = function(self, ...) self.color = {...} end,
-        SetAlpha = function(self, a) self.alpha = a end }
+        SetAlpha = function(self, a) self.alpha = a end,
+        ClearAllPoints = function(self) self.points = {} end,
+        SetPoint = function(self, ...) self.points = self.points or {}; self.points[#self.points + 1] = {...} end }
 end
 local function frame(kind, name, parent)
-    local f = { kind = kind or "Frame", regions = {}, children = {}, scripts = {}, hooks = {} }
+    local f = { kind = kind or "Frame", parent = parent, regions = {}, children = {}, scripts = {}, hooks = {} }
     function f:CreateTexture()
         local t = {SetPoint = function() end, SetHeight = function() end,
             SetColorTexture = function(self, ...) self.color = {...} end,
@@ -16,6 +18,12 @@ local function frame(kind, name, parent)
         return t
     end
     function f:GetObjectType() return self.kind end
+    function f:GetParent() return self.parent end
+    function f:GetPoint() if self.point then return table.unpack(self.point) end end
+    function f:GetFrameLevel() return self.level or 1 end
+    function f:SetFrameLevel(level) self.level = level end
+    function f:GetWidth() return self.width or 24 end
+    function f:GetHeight() return self.height or 24 end
     function f:IsForbidden() return self.forbidden end
     function f:IsProtected() return self.protected end
     function f:GetRegions() return table.unpack(self.regions) end
@@ -137,12 +145,18 @@ AuctionFrame = nil
 local api = ForeverCompanionAPI
 local f, missing, sentinel = api.CreateWindow("ForeverCompanionFrame")
 assert(f and missing == nil and sentinel == "sentinel", "factory return values changed")
+f.CloseButton = frame('Button', nil, f); f.optionsBtn = api.CreateOptionsButton(f); f.helpBtn = frame('Button', nil, f)
+local headerCheck = frame('CheckButton', nil, f); headerCheck:SetPoint('TOPRIGHT', f, 'TOPRIGHT', -84, -4)
+local originalHelp = function() return 'tour-native' end; f.helpBtn:SetScript('OnClick', originalHelp)
 local b = api.CreateMenuButton(f)
 local clicks = 0; b:SetScript("OnClick", function() clicks = clicks + 1 end)
 api.CreateSearchBox(f); api.CreateDropdown(f); api.CreateScrollFrame(f)
 local sc = frame("Frame", nil, f)
 local list = api.VirtualList(nil, sc)
 local tab = api.CreateSideTab(f)
+tab:SetPoint('TOPLEFT', f, 'TOPRIGHT', -2, -30)
+assert(tab.point[4] == 6 and tab.point[5] == -30 and tab.level == f:GetFrameLevel() + 8)
+assert(tab.icon.points[1][1] == 'TOPLEFT' and tab.icon.points[2][4] == -3)
 local light, right = api.StripedBackground(f, "light")
 local inset = api.AddInset(f)
 local check = frame("CheckButton", nil, f)
@@ -150,6 +164,9 @@ local secret = frame("EditBox", nil, f); secret.forbidden = true
 local protected = frame("EditBox", nil, f); protected.protected = true
 local edits = calls.EditBox or 0
 flush()
+assert(headerCheck.point[1] == 'RIGHT' and headerCheck.point[2] == f.helpBtn and headerCheck.width == 20)
+assert(f.CloseButton.point[4] == -8 and f.CloseButton.point[5] == -8 and f.CloseButton.width == 20)
+assert(f.optionsBtn.point[2] == f.CloseButton and f.helpBtn.point[2] == f.optionsBtn and f.helpBtn.scripts.OnClick == originalHelp)
 assert(calls.EditBox == edits + 1, "must skin the ordinary input exactly once; skip restricted frames")
 assert(light.color[4] == 0.045 and right.color[4] == 0.045)
 assert(inset.color[1] == 0.025)

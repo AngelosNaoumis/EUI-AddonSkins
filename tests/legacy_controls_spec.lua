@@ -32,7 +32,7 @@ local function texture(kind, parent)
     function t:GetNumMaskTextures() return self.masked and 1 or 0 end
     function t:SetText(s) assert(self.font, "FontString:SetText(): Font not set"); self.text = s end
     function t:GetFont() return self.font, self.font and 12, '' end
-    function t:SetFont(v) self.font = v end
+    function t:SetFont(v) self.font = v; self.fontWrites = (self.fontWrites or 0) + 1 end
     function t:SetFontObject(v) self.font = v end
     function t:SetTextColor(...) self.textColor = {...} end
     function t:GetTextColor() return table.unpack(self.textColor or {1, 1, 1, 1}) end
@@ -90,7 +90,7 @@ function S.SquareIcon(t, parent) if t:GetNumMaskTextures() > 0 then return end; 
 function S.PageButton(f, label) f.glyph = label end
 function S.ScrollBar(f) f.scroll = true end
 function S.Panel(f, options) f.panel = true; f.panelOptions = options end
-function S.Shell(f) f.shell = true end
+function S.Shell(f, options) f.shell = true; f.shellOptions = options end
 function S.Tab(f) f.tab = true end
 function S.SetTabSelection(f, selected) f.selected = selected end
 function S.CloseButton(f) f.close = true end
@@ -265,6 +265,7 @@ local count = #item.regions + #radio.RadioButton.regions
 accent = 0.2; spinner:SetAlpha(0); modules.Auctionator.refresh(); flush()
 assert(spinner.alpha == 1 and radio.RadioButton.regions[1].color[1] == accent)
 assert(count == #item.regions + #radio.RadioButton.regions, 'warm refresh created more UI objects')
+S.GetFont = function() return 'eui', '' end
 -- Questie: actual adapter with AceGUI wrapper roots and independent tracker updates.
 Questie, QuestieLoader = nil, nil
 assert(loadfile('EUIAddonSkins/Skins/Questie.lua'))('EUIAddonSkins', ns)
@@ -274,7 +275,8 @@ local journey = {BuildMainFrame = function() return 'journey-native' end, Toggle
 local tracker = {Update = function() return 'tracker-native' end}
 local init = function() coroutine.yield('initializing'); return 'initialized' end
 tracker.Initialize = init
-local linePool = {Initialize = init}
+local nextLine
+local linePool = {Initialize = init, GetNextLine = function() return nextLine, nil, 'native-tail' end}
 QuestieLoader = {_modules = {QuestieJourney = journey, QuestieTracker = tracker, QuestieOptions = {ToggleConfigWindow = function() end}}}
 QuestieLoader._modules.TrackerLinePool = linePool
 QuestieJourneyFrame = {frame = frame()}; local journeyRoot = QuestieJourneyFrame.frame
@@ -324,6 +326,7 @@ assert(tracker.Initialize == init and linePool.Initialize == init, 'yielding Que
 local initializer = coroutine.create(init)
 local ok, value = coroutine.resume(initializer); assert(ok and value == 'initializing')
 ok, value = coroutine.resume(initializer); assert(ok and value == 'initialized')
+assert(journeyRoot.shellOptions.noTopBar, 'Journey header must not be split by a 25px strip')
 assert(journeyRoot.shell and QuestieConfigFrame.frame.shell and input.input and first.selected and not second.selected)
 assert(detail.font == 'eui' and detail.textColor[1] == 0.2 and detail.textColor[4] == 0.8)
 assert(base.backdrop.edgeSize == 1 and base.color[4] == 0.25 and base.accent and not base.shell)
@@ -334,8 +337,28 @@ group:SelectTab(2); flush(); assert(not first.selected and second.selected)
 local lateLine = frame('Frame', nil, base); local lateText = lateLine:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
 lateText:SetTextColor(0.1, 0.5, 0.9, 1)
 assert(tracker:Update() == 'tracker-native'); flush(); assert(lateText.font == 'eui' and lateText.textColor[3] == 0.9)
+local pooled = frame('Button', nil, base); pooled.label = pooled:CreateFontString(nil, nil, 'GameFontNormal'); nextLine = pooled
+local returned, hole, tail = linePool.GetNextLine(); assert(returned == pooled and hole == nil and tail == 'native-tail')
+pooled.label:SetFont('questie-native'); assert(pooled.label.font == 'eui', 'font must be final before Questie measures a pooled row')
+local fontHook = pooled.label.SetFont
+for _ = 1, 5 do linePool.GetNextLine(); pooled.label:SetFont('questie-native'); end
+assert(pooled.label.SetFont == fontHook)
+local acquiring = coroutine.create(function()
+    local row = linePool.GetNextLine(); coroutine.yield('acquired')
+    row.label:SetFont('questie-native'); assert(row.label.font == 'eui'); return 'ready'
+end)
+local yielded, state = coroutine.resume(acquiring); assert(yielded and state == 'acquired')
+yielded, state = coroutine.resume(acquiring); assert(yielded and state == 'ready')
+combat = true; pooled.label:SetFont('combat-native'); assert(pooled.label.font == 'combat-native'); flush()
+combat = false
+for _, eventFrame in ipairs(events) do if eventFrame.events and eventFrame.events.PLAYER_REGEN_ENABLED then eventFrame.hooks.OnEvent(eventFrame, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(pooled.label.font == 'eui')
+enabled = false; linePool.GetNextLine(); pooled.label:SetFont('disabled-native'); assert(pooled.label.font == 'disabled-native')
+enabled = true; modules.Questie.refresh(); flush(); assert(pooled.label.font == 'eui')
+local fontWrites = pooled.label.fontWrites
 local hook = tracker.Update; local count = #base.regions
 for _ = 1, 10 do modules.Questie.refresh(); flush() end
+assert(pooled.label.fontWrites == fontWrites, 'warm tracker refresh must not reload its font')
 assert(tracker.Update == hook and #base.regions == count, 'Questie refresh duplicated hooks/objects')
 combat = true; local combatLine = frame('Frame', nil, base); local combatText = combatLine:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
 tracker:Update(); flush(); assert(combatText.font == 'GameFontNormal')

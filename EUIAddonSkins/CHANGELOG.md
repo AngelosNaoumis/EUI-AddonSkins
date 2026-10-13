@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1-alpha
+
+- Applied Questie tracker fonts before row measurement and avoided repeated font application.
+- Removed the dark strip splitting Dungeon Journal and Questie window headers.
+- Inset Forever Companion title controls below the accent line.
+- Centered Companion side-tab icons and separated them from the window border.
+
 ## 1.1.0
 
 - Promoted 1.1.0-beta.4 to stable with the same skin implementations.
