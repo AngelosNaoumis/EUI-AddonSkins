@@ -14,14 +14,14 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
         originals[f] = old
         return old
     end
-    local function CanLayout()
-        if not active() then return false end
+    local function CanLayout(instance)
+        if not active(instance) then return false end
         if InCombatLockdown and InCombatLockdown() then defer(); return false end
         return true
     end
     function L.Title(instance)
         local entry = windows[instance]
-        if not entry or not active() then return end
+        if not entry or not active(instance) then return end
         local name = instance.GetInstanceAttributeText and instance:GetInstanceAttributeText()
         if not Plain(name) or type(name) ~= "string" then return end
         if entry.lastName ~= name then entry.name:SetText(name); entry.lastName = name end
@@ -45,7 +45,7 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
         {"reset", "dm_reset.png"}, {"novo", "dm_open.png"}, {"fechar", "dm_close.png"},
     }
     function L.Window(instance, look)
-        if not CanLayout() or not H.Allowed(instance.baseframe) then return end
+        if not CanLayout(instance) or not H.Allowed(instance.baseframe) then return end
         local f = instance.baseframe
         local entry = windows[instance]
         if not entry then
@@ -89,14 +89,14 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                     -- fades cannot leave an invisible but hoverable control.
                     control.icon = entry.frame:CreateTexture(nil, "OVERLAY")
                     control.icon:SetPoint("CENTER", button, "CENTER", 0, 0)
-                    H.Script(button, "OnEnter", function() if active() then control.icon:SetVertexColor(1, 1, 1, 1) end end)
-                    H.Script(button, "OnLeave", function() if active() then control.icon:SetVertexColor(0.55, 0.55, 0.55, 1) end end)
+                    H.Script(button, "OnEnter", function() if active(instance) then control.icon:SetVertexColor(1, 1, 1, 1) end end)
+                    H.Script(button, "OnLeave", function() if active(instance) then control.icon:SetVertexColor(0.55, 0.55, 0.55, 1) end end)
                     H.Script(button, "OnHide", function()
                         control.icon:SetAlpha(0)
-                        if active() then defer() end
+                        if active(instance) then defer() end
                     end)
                     H.Script(button, "OnShow", function()
-                        if active() then
+                        if active(instance) then
                             control.icon:SetAlpha(control.hasMedia and 1 or 0)
                             defer()
                         end
@@ -117,7 +117,7 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                 else control.icon:SetAlpha(0) end
                 control.previous = previous
                 local function Align()
-                    if control.aligning or not CanLayout() then return end
+                    if control.aligning or not CanLayout(instance) then return end
                     control.aligning = true
                     button:ClearAllPoints(); button:SetSize(look.iconSize, look.iconSize)
                     button:SetFrameLevel(f:GetFrameLevel() + 7)

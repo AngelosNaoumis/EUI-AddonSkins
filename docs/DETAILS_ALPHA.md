@@ -1,6 +1,6 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.11`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.12`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
@@ -12,9 +12,10 @@ The existing tag-only CurseForge webhook does not package this branch push.
 - Details-owned Cooltip menus and submenus. Shared popup backdrops/fonts are restored when ownership changes.
 - Optional EUI meter appearance matching, without a dependency on its renderer.
 
-Install the test ZIP's `EUIAddonSkins` folder in `Interface/AddOns/`, replacing the previous folder. Details, EllesmereUI and EllesmereUIBlizzardSkin are installed separately. The Details! master toggle appears with the other third-party skins in EllesmereUI. Open `/euidetails` (or Settings > AddOns > EUI AddonSkins: Details) for two independent switches:
+Install the test ZIP's `EUIAddonSkins` folder in `Interface/AddOns/`, replacing the previous folder. Details, EllesmereUI and EllesmereUIBlizzardSkin are installed separately. The Details! master toggle appears with the other third-party skins in EllesmereUI. Open `/euidetails` (or Settings > AddOns > EUI AddonSkins: Details) for three independent switches. Quick access is also available by hovering Details' settings icon > **EUI AddonSkins**:
 
 - **Skin menus and options**: enabled by default; reload after changing it.
+- **Style Tiny Threat**: independent of normal Details meters; controls the active Tiny Threat host window and plugin row fonts/texture. New installs default to off. Existing alpha users inherit their previous meter setting once to preserve their appearance.
 - **Match EUI meter appearance**: disabled by default. Enabling it captures the current managed appearance settings. Disabling restores those settings; UI work waits until out of combat.
 
 Backups are scoped to character, realm, Details profile and window ID. A recovery path restores saved row settings even if EUI does not dispatch the disabled skin after a reload. Settings captured by an older alpha cannot be reconstructed retroactively. The original first alpha changed cosmetic row settings without a backup; this version captures the current settings when first enabled.
@@ -40,3 +41,5 @@ Details-owned Cooltip pop-outs and submenus use flat EUI panels, accent hover fi
 Options category buttons use EUI tabs with native page visibility as their selected state. Scoped hooks on category template/icon updates and the native page-selection method keep navigation consistent during page switches. The regression suite simulates template resets around page OnShow and queued refreshes.
 
 DF text entries keep their native layout without Blizzard input expansion. The lazy Designer editor is bound only once it exists: its native selector populates once, selector refreshes style pooled labels directly, and object-selection/disabled-state refreshes synchronously style new controls. Input values, commit functions, editor actions and native lazy construction are retained.
+
+Tiny Threat uses its native plugin ID and host window to select the appropriate styling switch. Native threat text, colours, row anchors and actions remain unchanged. Switching a host between a normal meter and Tiny Threat restores its captured appearance before applying the selected style. Quick controls append to the native settings pop-out; they do not replace its entries. Regression tests cover independent combinations, plugin redraws, view changes, repeated menu builds, restoration and combat deferral.

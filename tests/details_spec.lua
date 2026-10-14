@@ -195,6 +195,7 @@ Details = {
     GetShowingCombat = function(self) return {GetCombatTime = function() return self.elapsed or 6 end} end,
     SetTitleBarText = function() return 'title-native' end,
     RefreshMainWindow = function() return 'refresh-native' end,
+    SetMenuOwner = function(_, owner) GameCooltip:SetHost(owner); return 'owner-native' end,
     SetBarRightTextSettings = function(self, total, ps, percent, bracket, sep)
         self.row_info.textR_show_data = {total, ps, percent}; self.row_info.textR_bracket = bracket; self.row_info.textR_separator = sep
     end,
@@ -240,7 +241,10 @@ for _, f in ipairs({tip1, tip2}) do
     line.leftIcon:SetVertexColor(1, 0, 0, 1)
     line.action = function() return 'delete-native' end
 end
-GameCooltip = {frame1 = tip1, frame2 = tip2, GetOwner = function(self) return self.owner end,
+GameCooltip = {entries = {}, Reset = function(self) self.entries = {} end,
+    AddLine = function(self, text, right, level) self.entries[#self.entries + 1] = {text = text, right = right, level = level or 1} end,
+    AddMenu = function(self, level, action) self.entries[#self.entries].action = action end,
+    Hide = function(self) self.hidden = true end, frame1 = tip1, frame2 = tip2, GetOwner = function(self) return self.owner end,
     SetHost = function(self, owner) self.owner = owner end,
     ShowCooltip = function() return 'menu-native' end, BuildCooltip = function() end,
     BuildTooltip = function() end, BuildTooltipSecondFrame = function() end,
@@ -473,4 +477,70 @@ meter.row_info.height, meter.row_info.space.between, meter.row_info.texture = 35
 callbacks.DETAILS_PROFILE_APPLYED('DETAILS_PROFILE_APPLYED'); flush()
 ns.SetDetailsSetting('meter', false); flush()
 assert(meter.row_info.height == 35 and meter.row_info.space.between == 4 and meter.row_info.texture == 'profile-b', 'restoration crossed profile boundaries')
-print('PASS: Details meter styles, native actions/data/positions, lazy controls, shared menu restoration, pooled rows, warm reuse, theme/combat/toggle guards')
+-- Quick controls append to the settings pop-out without replacing native entries.
+assert(ns.DetailsSettings().tiny == false, 'Tiny Threat must be opt-in for new installations')
+GameCooltip:Reset(); GameCooltip:AddLine('Native entry')
+Details:SetMenuOwner(meter.baseframe.cabecalho.fechar, meter)
+assert(#GameCooltip.entries == 1, 'submenu added to an unrelated pop-out')
+local gear = meter.baseframe.cabecalho.modo_selecao.widget
+assert(Details:SetMenuOwner(gear, meter) == 'owner-native')
+assert(#GameCooltip.entries == 6 and GameCooltip.entries[1].text == 'Native entry')
+assert(GameCooltip.entries[2].text == 'EUI AddonSkins' and GameCooltip.entries[3].level == 2)
+Details:SetMenuOwner(gear, meter); assert(#GameCooltip.entries == 6, 'submenu duplicated during reuse')
+GameCooltip.entries[6].action(); assert(openedCategory == 123)
+GameCooltip.entries[4].action(); flush()
+assert(ns.DetailsSettings().tiny and GameCooltip.hidden, 'Tiny Threat menu toggle did not apply')
+GameCooltip.entries[4].action(); flush(); assert(not ns.DetailsSettings().tiny)
+assert(GameCooltip.entries[5].text:find('reload'), 'menu setting must explain reload')
+GameCooltip:Reset(); Details:SetMenuOwner(gear, meter)
+assert(#GameCooltip.entries == 5, 'reset did not rebuild the submenu exactly once')
+-- Tiny Threat is a plugin hosted by one Details instance; DF rows are wrappers.
+local tinyHost = instance(); tinyHost.modo = 4; tinyHost.current_raid_plugin = 'DETAILS_PLUGIN_TINY_THREAT'
+Details.instances[3] = tinyHost
+local bar = frame('StatusBar'); bar.fill = bar:CreateTexture()
+bar.lefttext, bar.righttext = font(bar), font(bar)
+bar.lefttext:SetText('Tank'); bar.righttext:SetText('100%'); bar.lefttext:SetTextColor(1, 0, 0, 1)
+bar.GetStatusBarTexture = function(self) return self.fill end
+local tinyRow = {widget = bar}
+local tiny = {Rows = {tinyRow}, GetPluginInstance = function() return tinyHost end,
+    RefreshRow = function(_, r)
+        r.widget.fill:SetTexture('tiny-native'); r.widget.lefttext:SetFont('tiny-font'); r.widget.righttext:SetFont('tiny-font')
+        return 'tiny-native-return'
+    end}
+tiny.RefreshRows = function(self) for _, r in ipairs(self.Rows) do self:RefreshRow(r) end end
+Details.GetPlugin = function(_, id) if id == 'DETAILS_PLUGIN_TINY_THREAT' then return tiny end end
+tiny:RefreshRows(); ns.SetDetailsSetting('meter', true); flush()
+assert(meter.row_info.height == 18 and tinyHost.row_info.height == 24 and bar.lefttext.font == 'tiny-font', 'Details toggle leaked into Tiny Threat')
+ns.SetDetailsSetting('tiny', true); flush()
+assert(tinyHost.row_info.height == 18 and bar.lefttext.font == 'eui-meter-font' and bar.fill.path == 'Interface\\Buttons\\WHITE8X8')
+assert(tinyHost.use_multi_fontstrings and tinyHost.row_info.textR_show_data[3], 'Tiny Threat inherited damage-number formatting')
+for _ = 1, 3 do modules.Details.refresh(); flush() end
+local writes = bar.lefttext.writes
+assert(tiny:RefreshRow(tinyRow) == 'tiny-native-return' and bar.lefttext.font == 'eui-meter-font', 'native Tiny redraw lost styling or return value')
+assert(bar.lefttext.writes - writes == 2, 'Tiny Threat refresh hook was duplicated')
+assert(bar.lefttext.text == 'Tank' and bar.righttext.text == '100%' and bar.lefttext.textColor[2] == 0, 'Tiny Threat data/colours changed')
+ns.SetDetailsSetting('meter', false); flush()
+assert(meter.row_info.height == 35 and tinyHost.row_info.height == 18 and bar.lefttext.font == 'eui-meter-font', 'independent Tiny-only mode failed')
+ns.SetDetailsSetting('tiny', false); flush()
+assert(tinyHost.row_info.height == 24 and bar.lefttext.font == 'tiny-font' and bar.fill.path == 'tiny-native', 'Tiny Threat toggle did not restore native style')
+ns.SetDetailsSetting('tiny', true); flush()
+tinyHost.modo = 2; modules.Details.refresh(); flush()
+assert(tinyHost.row_info.height == 24, 'leaving Tiny Threat retained its host styling')
+tinyHost.modo = 4; modules.Details.refresh(); flush()
+assert(tinyHost.row_info.height == 18 and bar.lefttext.font == 'eui-meter-font', 'returning to Tiny Threat did not restyle')
+combat = true; ns.SetDetailsSetting('tiny', false); flush()
+assert(tinyHost.row_info.height == 18, 'combat toggle changed UI immediately')
+combat = false
+for _, f in ipairs(events) do if f.events and f.events.PLAYER_REGEN_ENABLED then f.hooks.OnEvent(f, 'PLAYER_REGEN_ENABLED') end end
+flush()
+assert(tinyHost.row_info.height == 24 and bar.lefttext.font == 'tiny-font', 'combat-deferred independent restoration failed')
+ns.SetDetailsSetting('meter', true); flush()
+tinyHost.baseframe.cabecalho.ball:SetAlpha(0.7)
+assert(tinyHost.baseframe.cabecalho.ball.alpha == 0.7, 'disabled Tiny window retained a fade guard from Details')
+local currentSettings = EUIAddonSkinsDB.details
+EUIAddonSkinsDB.details = {meter = true, menus = false}
+assert(ns.DetailsSettings().tiny == true, 'existing meter users lost Tiny Threat appearance during migration')
+EUIAddonSkinsDB.details.tiny = false
+assert(ns.DetailsSettings().tiny == false, 'migration overwrote an explicit Tiny Threat choice')
+EUIAddonSkinsDB.details = currentSettings
+print('PASS: Details quick submenu, independent Tiny Threat modes, native plugin redraws/restoration, meter styles, actions/data, dynamic controls, themes and combat guards')

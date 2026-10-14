@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.12 — Details quick controls and Tiny Threat (untagged)
+
+- Add EUI AddonSkins controls to Details' settings pop-out.
+- Separate Details meter and Tiny Threat styling, with independent restoration.
+- Retain native Tiny Threat values, colours and actions through row refreshes.
+
 ## 1.2.0-alpha.11 — ThreatClassic2 menu toggles (untagged)
 
 - Reapply EUI menu fonts after Lock and Test Mode rebuild their checkbox entries.

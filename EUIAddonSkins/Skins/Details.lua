@@ -2,9 +2,26 @@ local ADDON, ns = ...
 local unpack = unpack or table.unpack
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local MEDIA_NAME = "EUI AddonSkins Meter"
-local function MeterWanted()
+local function TinyPlugin()
+    local D = _G.Details
+    return D and D.GetPlugin and D:GetPlugin("DETAILS_PLUGIN_TINY_THREAT")
+end
+local function TinyWindow(instance)
+    if not instance or instance.modo ~= 4 then return false end
+    local id = instance.current_raid_plugin or instance.last_raid_plugin
+    if id == "DETAILS_PLUGIN_TINY_THREAT" or id == "Details_TinyThreat" then return true end
+    local plugin = TinyPlugin()
+    return plugin and plugin.GetPluginInstance and plugin:GetPluginInstance() == instance or false
+end
+local function MeterWanted(instance)
     local eui = _G.EllesmereUIDB
-    return ns.DetailsSettings().meter == true and not (EUIAddonSkinsDB and EUIAddonSkinsDB.disabled)
+    local cfg = ns.DetailsSettings()
+    local wanted
+    if instance then
+        local key = TinyWindow(instance) and "tiny" or "meter"
+        wanted = cfg[key] == true
+    else wanted = cfg.meter == true or cfg.tiny == true end
+    return wanted and not (EUIAddonSkinsDB and EUIAddonSkinsDB.disabled)
         and not (eui and (eui.thirdPartySkinsOff or eui.thirdPartySkinAddons
             and eui.thirdPartySkinAddons["EUI AddonSkins - Details!"] == false))
 end
@@ -63,9 +80,9 @@ local function Recover()
         profileRecoveryHooked = true
         hooksecurefunc(D, "ApplyProfile", function() Recover() end)
     end
-    if not MeterWanted() and D and D.GetAllInstances then
+    if D and D.GetAllInstances then
         for _, instance in pairs(D:GetAllInstances() or {}) do
-            if RestoreSettings(instance) and instance.baseframe and instance.ChangeSkin
+            if not MeterWanted(instance) and RestoreSettings(instance) and instance.baseframe and instance.ChangeSkin
                 and not (InCombatLockdown and InCombatLockdown()) then instance:ChangeSkin() end
         end
     end
@@ -176,7 +193,7 @@ local function Setup(C, refresh)
         if state.layout then state.layout.Row(row) end
     end
     local function Rows(instance)
-        if state.applying or not ns.IsEnabled(C.module) or Busy() then return end
+        if state.applying or not MeterWanted(instance) or TinyWindow(instance) or not ns.IsEnabled(C.module) or Busy() then return end
         for _, row in pairs(instance.barras or {}) do Row(row) end
     end
     state.Row = Row
@@ -185,24 +202,25 @@ local function Setup(C, refresh)
         local kind = art:GetObjectType()
         if kind ~= "Texture" and kind ~= "FontString" then return end
         if not state.textures[art] then
-            state.textures[art] = {alpha = art:GetAlpha(), profile = Profile()}
+            state.textures[art] = {alpha = art:GetAlpha(), profile = Profile(), instance = state.paintInstance}
             local painting = false
             H.Hook(art, "SetAlpha", function()
-                if painting or not MeterWanted() then return end
+                local snapshot = state.textures[art]
+                if painting or state.restoring or not snapshot or not MeterWanted(snapshot.instance) then return end
                 painting = true; art:SetAlpha(0); painting = false
             end)
         end
         art:SetAlpha(0)
     end
-    state.layout = ns.CreateDetailsLayout(H, function() return MeterWanted() and ns.IsEnabled(C.module) end, refresh, Fade)
+    state.layout = ns.CreateDetailsLayout(H, function(instance) return not state.restoring and MeterWanted(instance) and ns.IsEnabled(C.module) end, refresh, Fade)
     state.RestoreMeters = function()
         if Busy() then return end
-        state.applying = true
+        state.applying, state.restoring = true, true
         for _, instance in pairs(D:GetAllInstances() or {}) do
             local restored = RestoreSettings(instance)
             if restored and instance.ChangeSkin then H.Safe(instance.ChangeSkin, instance) end
         end
-        if not state.meterActive then state.applying = false; return end
+        if not state.meterActive then state.applying, state.restoring = false, false; return end
         state.meterActive = false
         state.layout.Restore()
         for _, entry in pairs(state.meters) do
@@ -224,11 +242,14 @@ local function Setup(C, refresh)
             if old.profile == Profile() and old.font[1] then text:SetFont(unpack(old.font)) end
         end
         state.textures, state.texts = {}, {}
-        state.applying = false
+        local plugin = TinyPlugin()
+        if plugin and plugin.RefreshRows then H.Safe(plugin.RefreshRows, plugin) end
+        state.applying, state.restoring = false, false
     end
     state.Meter = function(instance)
         local f = instance and instance.baseframe
         if not H.Allowed(f) then return end
+        state.paintInstance = instance
         state.meterActive = true
         local look = state.look
         local entry = state.meters[f]
@@ -266,7 +287,7 @@ local function Setup(C, refresh)
         -- Native setters maintain Details' row geometry. Do not change window
         -- anchors, size, groups, segment, combat data or click scripts.
         local info = instance.row_info
-        if info and type(info.textR_show_data) == "table" and instance.SetBarRightTextSettings then
+        if not TinyWindow(instance) and info and type(info.textR_show_data) == "table" and instance.SetBarRightTextSettings then
             local data = info.textR_show_data
             if instance.use_multi_fontstrings ~= false or info.textR_enable_custom_text
                 or not data[1] or not data[2] or data[3] or info.textR_bracket ~= "(" or info.textR_separator ~= "NONE" then
@@ -285,9 +306,49 @@ local function Setup(C, refresh)
             state.applying = true
             H.Safe(instance.SetBarSettings, instance, look.height, textureName, nil, nil, nil, nil, nil, nil, nil, nil, look.spacing)
             state.applying = false
+            local plugin = TinyWindow(instance) and TinyPlugin()
+            if plugin and plugin.RefreshRows then H.Safe(plugin.RefreshRows, plugin) end
         end
         Rows(instance)
         state.layout.Window(instance, look)
+        state.paintInstance = nil
+    end
+    state.TinyRow = function(row)
+        local plugin = TinyPlugin()
+        local instance = plugin and plugin.GetPluginInstance and plugin:GetPluginInstance()
+        if state.restoring or not instance or not TinyWindow(instance) or not MeterWanted(instance)
+            or not ns.IsEnabled(C.module) or Busy() then return end
+        local bar = Frame(row)
+        if not H.Allowed(bar) then return end
+        local texture = bar.GetStatusBarTexture and H.Texture(bar:GetStatusBarTexture())
+        if texture then
+            if not state.textures[texture] then state.textures[texture] = {path = texture:GetTexture(), profile = Profile()} end
+            if texture:GetTexture() ~= state.look.texture then texture:SetTexture(state.look.texture) end
+        end
+        for _, key in ipairs({"lefttext", "righttext"}) do
+            local text = bar[key]
+            if H.Allowed(text) then
+                if not state.texts[text] then state.texts[text] = {font = {text:GetFont()}, profile = Profile()} end
+                text:SetFont(state.look.font, key == "lefttext" and state.look.leftSize or state.look.rightSize, state.look.flags)
+            end
+        end
+    end
+    state.BindTiny = function()
+        local plugin = TinyPlugin()
+        H.Hook(plugin, "RefreshRow", function(_, row) if state.look then state.TinyRow(row) end end)
+    end
+    state.ApplyMeters = function()
+        if Busy() then return end
+        local wanted, kinds, changed = {}, {}, false
+        for _, instance in pairs(D:GetAllInstances() or {}) do
+            wanted[instance], kinds[instance] = MeterWanted(instance), TinyWindow(instance)
+            if state.wanted and state.wanted[instance] ~= nil and (state.wanted[instance] ~= wanted[instance] or state.kinds[instance] ~= kinds[instance]) then changed = true end
+        end
+        if changed or not MeterWanted() then state.RestoreMeters() end
+        state.wanted, state.kinds = wanted, kinds
+        for instance, active in pairs(wanted) do if active then state.Meter(instance) end end
+        local plugin = TinyPlugin()
+        for _, row in pairs(plugin and plugin.Rows or {}) do state.TinyRow(row) end
     end
 
     local function MenuTexts(frame, callback)
@@ -390,17 +451,37 @@ local function Setup(C, refresh)
     state.Cooltip = Cooltip
     state.Restore = Restore
     ns.DetailsSettingsChanged = function(key)
-        if key == "meter" and not MeterWanted() then state.RestoreMeters() end
+        if key == "meter" or key == "tiny" then C.RefreshNow() end
         state.Cooltip()
         refresh()
+    end
+    state.QuickMenu = function(_, owner, instance)
+        local tip = _G.GameCooltip
+        local header = instance and instance.baseframe and instance.baseframe.cabecalho
+        local button = header and header.modo_selecao
+        button = Frame(button)
+        if not tip or not tip.AddLine or not tip.AddMenu or owner ~= button or state.quickAdded then return end
+        state.quickAdded = true
+        tip:AddLine("EUI AddonSkins")
+        tip:AddMenu(1, function() end)
+        for _, option in ipairs({{"meter", "Style Details meters"}, {"tiny", "Style Tiny Threat"}, {"menus", "Skin menus and options (reload)"}}) do
+            local key, label = option[1], option[2]
+            tip:AddLine(label, ns.DetailsSettings()[key] and "On" or "Off", 2)
+            tip:AddMenu(2, function()
+                ns.SetDetailsSetting(key, not ns.DetailsSettings()[key])
+                if tip.Hide then tip:Hide() end
+            end)
+        end
+        tip:AddLine("Open skin settings", nil, 2)
+        tip:AddMenu(2, ns.OpenDetailsSettings)
     end
     if D.CreateEventListener then
         state.listener = D:CreateEventListener()
         for _, event in ipairs({"DETAILS_STARTED", "DETAILS_INSTANCE_OPEN", "DETAILS_INSTANCE_SIZECHANGED", "DETAILS_PROFILE_APPLYED"}) do
             state.listener:RegisterEvent(event, function() if ns.IsEnabled(C.module) then refresh() end end)
         end
-        state.listener:RegisterEvent("DETAILS_INSTANCE_NEWROW", function(_, _, row)
-            if ns.IsEnabled(C.module) then H.Safe(Row, row) end
+        state.listener:RegisterEvent("DETAILS_INSTANCE_NEWROW", function(_, instance, row)
+            if ns.IsEnabled(C.module) and MeterWanted(instance) and not TinyWindow(instance) then H.Safe(Row, row) end
         end)
     end
     H.Hook(D, "InstanceRefreshRows", Rows)
@@ -410,6 +491,10 @@ local function Setup(C, refresh)
         end)
     end
     H.Hook(D, "RefreshMainWindow", function(_, instance) state.layout.Title(instance) end)
+    for _, name in ipairs({"SetMode", "SetDisplay"}) do H.Hook(D, name, C.RefreshNow) end
+    H.Hook(D.RaidTables, "EnableRaidMode", C.RefreshNow)
+    H.Hook(D, "InstallPlugin", refresh)
+    H.Hook(D, "SetMenuOwner", state.QuickMenu)
     for _, name in ipairs({"ChangeSkin", "SetBarSettings", "SetBarTextSettings", "ApplyProfile", "CreateInstance"}) do
         H.Hook(D, name, function() if not state.applying then refresh() end end)
     end
@@ -425,9 +510,11 @@ ns.RegisterScopedSkin("Details", "Details!", {
     softBorders = true, preserveTextColors = true, immediateShow = true,
     hooks = function(C, refresh)
         local state = Setup(C, refresh)
+        state.BindTiny()
         local options = _G.Details222 and _G.Details222.OptionsPanel
         C.H.Hook(options, "SelectOptionsSection", C.RefreshNow)
         local tip = _G.GameCooltip
+        C.H.Hook(tip, "Reset", function() state.quickAdded = false end)
         for _, name in ipairs({"ShowCooltip", "BuildCooltip", "BuildTooltip", "BuildTooltipSecondFrame", "SetHost", "ShowRoundedCorner", "HideRoundedCorner"}) do
             C.H.Hook(tip, name, state.Cooltip)
         end
@@ -441,9 +528,7 @@ ns.RegisterScopedSkin("Details", "Details!", {
                 if C.H.Allowed(owner) then state.owners[owner] = true end
             end
         end
-        if MeterWanted() then
-            for _, instance in pairs(_G.Details:GetAllInstances() or {}) do state.Meter(instance) end
-        else state.RestoreMeters() end
+        state.ApplyMeters()
         local result = {}
         local function Add(value)
             local f = Frame(value)

@@ -4,11 +4,12 @@ function ns.DetailsSettings()
     EUIAddonSkinsDB = EUIAddonSkinsDB or {}
     local db = EUIAddonSkinsDB
     db.details = db.details or {menus = true, meter = false}
+    if db.details.tiny == nil then db.details.tiny = db.details.meter == true end
     return db.details
 end
 
 function ns.SetDetailsSetting(key, value)
-    if key ~= "menus" and key ~= "meter" then return end
+    if key ~= "menus" and key ~= "meter" and key ~= "tiny" then return end
     ns.DetailsSettings()[key] = value == true
     if ns.DetailsSettingsChanged then ns.DetailsSettingsChanged(key) end
 end
@@ -37,9 +38,10 @@ function ns.CreateDetailsSettingsPanel()
     end
     panel.menus = Check("menus", "Skin menus and options", "Styles Details dialogs, dropdowns and options. Reload after changing this setting.", -76)
     panel.meter = Check("meter", "Match EUI meter appearance", "Manages meter fonts, bars, headers and spacing. Off by default.", -166)
-    Text("Turning meter matching off restores the visual settings captured when it was enabled.", "GameFontHighlightSmall", -252)
-    Text("Window positions, sizes, groups, statistics and interactions remain controlled by Details.", "GameFontHighlightSmall", -276)
-    Text("Alpha preview: the coordinated meter layout is still being refined.", "GameFontHighlightSmall", -310)
+    panel.tiny = Check("tiny", "Style Tiny Threat", "Independent styling for Tiny Threat rows and their Details window.", -256)
+    Text("Turning meter matching off restores the visual settings captured when it was enabled.", "GameFontHighlightSmall", -342)
+    Text("Window positions, sizes, groups, statistics and interactions remain controlled by Details.", "GameFontHighlightSmall", -366)
+    Text("Quick access: hover the meter settings icon > EUI AddonSkins.", "GameFontHighlightSmall", -400)
     if Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory then
         category = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
         Settings.RegisterAddOnCategory(category)
@@ -48,11 +50,12 @@ function ns.CreateDetailsSettingsPanel()
 end
 
 SLASH_EUIDETAILS1 = "/euidetails"
-SlashCmdList.EUIDETAILS = function()
+function ns.OpenDetailsSettings()
     ns.CreateDetailsSettingsPanel()
     if Settings and Settings.OpenToCategory and category then Settings.OpenToCategory(category:GetID())
     elseif InterfaceOptionsFrame_OpenToCategory then InterfaceOptionsFrame_OpenToCategory(panel) end
 end
+SlashCmdList.EUIDETAILS = ns.OpenDetailsSettings
 
 -- Always register the controls, including when the Details skin itself is off.
 local events = CreateFrame("Frame")

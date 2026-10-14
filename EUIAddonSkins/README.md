@@ -38,7 +38,7 @@ Install the addons you want to skin separately.
 ## Settings
 
 Toggle individual skins in **Blizzard Skins+ > Window Skins > Third-Party Addons**.
-Details appearance is opt-in. Run `/euidetails` for independent menus/options and meter switches.
+Details appearance is opt-in. Hover its settings icon > **EUI AddonSkins** for independent Details meter, Tiny Threat and menus/options switches. The same controls are available through `/euidetails`.
 
 Skins follow EUI's theme and accent settings. Run `/reload` after disabling a skin.
 
