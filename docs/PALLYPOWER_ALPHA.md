@@ -1,6 +1,6 @@
 # PallyPower beta alpha
 
-Version: `1.3.0-alpha.4` on the untagged `pallypower-alpha` branch, based on `development` at `7e8eba3`. Includes the existing Altoholic alpha fixes. No CurseForge/Wago release or GitHub Release is created.
+Version: `1.3.0-alpha.5` on the untagged `pallypower-alpha` branch, based on `development` at `7e8eba3`. Includes the existing Altoholic alpha fixes. No CurseForge/Wago release or GitHub Release is created.
 
 ## Target
 
@@ -26,3 +26,7 @@ Lifecycle/layout/skin/options hooks handle lazy controls and native appearance r
 ## Checks
 
 `python3 scripts/package.py` validates Lua syntax, runs fourteen regression suites and inspects the install ZIP. The PallyPower fixture covers optional loading, lazy Ace options, menu ownership, icon/colour preservation, native calls/returns, protected controls/attributes/layout/flyouts, combat deferral, missing libraries, theme changes and repeated refreshes. Automated checks cannot establish actual in-game taint or appearance; no in-game verification is claimed.
+
+## Options performance
+
+Checkbox SetType/SetDisabled callbacks repaint only their own control. Tab construction refreshes coalesce; the completed SelectTab callback still styles the page immediately. A regression test performs 100 checkbox reset callbacks with zero assignment-window region reads. This is a mock-environment count, not an in-game timing measurement.

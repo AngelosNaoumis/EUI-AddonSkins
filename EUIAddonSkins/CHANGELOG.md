@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0-alpha.5 — PallyPower options performance (untagged)
+
+- Restyle checkbox resets locally instead of rescanning every PallyPower window.
+- Coalesce tab construction refreshes; keep the completed tab switch styled immediately.
+
 ## 1.3.0-alpha.4 — PallyPower contrast and controls (untagged)
 
 - Add subtle alternating assignment column fills.

@@ -259,6 +259,13 @@ assert(checkbox.obj.checkbg.path == 'solid' and checkbox.obj.checkbg.width == 14
 checkbox.obj:SetValue(true); assert(not checkbox.obj.check.hidden and checkbox.obj.checked)
 checkbox.obj:SetType(); assert(checkbox.obj.check.path == 'solid')
 checkbox.obj:SetDisabled(true); assert(checkbox.obj.check.color[1] == 0.5)
+local assignmentReads = 0
+local assignmentRegions = PallyPowerBlessingsFrame.GetRegions
+PallyPowerBlessingsFrame.GetRegions = function(self) assignmentReads = assignmentReads + 1; return assignmentRegions(self) end
+for i = 1, 50 do checkbox.obj:SetDisabled(i % 2 == 0); checkbox.obj:SetType() end
+assert(assignmentReads == 0, 'checkbox setup repeatedly rescanned the complete integration')
+PallyPowerBlessingsFrame.GetRegions = assignmentRegions
+
 assert(slider.thumb.width == 10 and slider.thumb.height == 16)
 slider.hooks.OnValueChanged(slider, 1.5); assert(slider.value == 1.5)
 assert(media.panel and media.DLeft.alpha == 0 and media.dropButton.dropdown)
@@ -292,7 +299,7 @@ assert(PallyPowerConfigFrame.heading.text.font == 'eui' and PallyPowerConfigFram
 local tabWidget = PallyPowerConfigFrame.tabs.obj
 assert(tabWidget.tabs[1].tab and tabWidget.tabs[1].selected and not tabWidget.tabs[1].button and tabWidget.tabs[1].nativeArt.alpha == 0)
 tabWidget:SelectTab(2); assert(tabWidget.tabs[2].tab and tabWidget.tabs[2].selected and not tabWidget.tabs[1].selected)
-tabWidget:SetTabs(); assert(tabWidget.tabs[1].tab, 'new option tabs were not styled synchronously')
+tabWidget:SetTabs(); flush(); assert(tabWidget.tabs[1].tab, 'new option tabs were not styled after their construction burst')
 PallyPowerConfigFrame.heading.line:SetAlpha(1); numberedDivider:SetAlpha(1)
 assert(PallyPowerConfigFrame.heading.line.alpha == 0 and numberedDivider.alpha == 0, 'native redraw restored separator textures')
 dialog:Open('Other'); assert(not dialog.OpenFrames.Other.frame.shell and not dialog.OpenFrames.Other.frame.edit.input, 'PallyPower styling leaked to another Ace dialog')

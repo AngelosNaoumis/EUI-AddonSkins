@@ -83,7 +83,7 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
         if C.titleBar and not C.H.Allowed(C.titleBar) then BuffButton(C, C.titleBar) end
         return roots
     end,
-    visit = function(C, frame, kind)
+    visit = function(C, frame, kind, refresh)
         local H, S = C.H, C.S
         if frame == C.titleBar then
             C.Panel(frame); ns.AttachAccent(S, frame)
@@ -174,17 +174,26 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
                     return true
                 end
                 if widget.type == "CheckBox" and widget.checkbg and widget.check then
-                    local r, g, b = S.GetAccentColor()
-                    widget.checkbg:SetColorTexture(0.08, 0.08, 0.09, 1)
-                    widget.checkbg:SetTexCoord(0, 1, 0, 1); widget.checkbg:SetSize(14, 14)
-                    widget.check:ClearAllPoints(); widget.check:SetPoint("CENTER", widget.checkbg, "CENTER")
-                    widget.check:SetSize(8, 8); widget.check:SetTexCoord(0, 1, 0, 1)
-                    widget.check:SetVertexColor(1, 1, 1, 1)
-                    if widget.check.SetBlendMode then widget.check:SetBlendMode("BLEND") end
-                    widget.check:SetColorTexture(widget.disabled and 0.5 or r, widget.disabled and 0.5 or g, widget.disabled and 0.5 or b, 1)
-                    if widget.highlight then widget.highlight:SetColorTexture(r, g, b, 0.12); widget.highlight:SetTexCoord(0, 1, 0, 1) end
-                    H.Font(widget.text)
-                    H.Hook(widget, "SetType", C.RefreshNow); H.Hook(widget, "SetDisabled", C.RefreshNow)
+                    C.checkPainters = C.checkPainters or setmetatable({}, {__mode = "k"})
+                    local Paint = C.checkPainters[widget]
+                    if not Paint then
+                        Paint = function()
+                            if InCombatLockdown and InCombatLockdown() then refresh(); return end
+                            local r, g, b = S.GetAccentColor()
+                            widget.checkbg:SetColorTexture(0.08, 0.08, 0.09, 1)
+                            widget.checkbg:SetTexCoord(0, 1, 0, 1); widget.checkbg:SetSize(14, 14)
+                            widget.check:ClearAllPoints(); widget.check:SetPoint("CENTER", widget.checkbg, "CENTER")
+                            widget.check:SetSize(8, 8); widget.check:SetTexCoord(0, 1, 0, 1)
+                            widget.check:SetVertexColor(1, 1, 1, 1)
+                            if widget.check.SetBlendMode then widget.check:SetBlendMode("BLEND") end
+                            widget.check:SetColorTexture(widget.disabled and 0.5 or r, widget.disabled and 0.5 or g, widget.disabled and 0.5 or b, 1)
+                            if widget.highlight then widget.highlight:SetColorTexture(r, g, b, 0.12); widget.highlight:SetTexCoord(0, 1, 0, 1) end
+                            H.Font(widget.text)
+                        end
+                        C.checkPainters[widget] = Paint
+                        H.Hook(widget, "SetType", Paint); H.Hook(widget, "SetDisabled", Paint)
+                    end
+                    Paint()
                     return true
                 end
                 if widget.type == "Heading" then
@@ -215,7 +224,7 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
                         end
                     end
                     H.Hook(widget, "SelectTab", C.RefreshNow)
-                    H.Hook(widget, "SetTabs", C.RefreshNow)
+                    H.Hook(widget, "SetTabs", refresh)
                 end
             elseif widget.type == "Frame" and widget.statustext
                 and widget.statustext.GetParent and widget.statustext:GetParent() == frame then
