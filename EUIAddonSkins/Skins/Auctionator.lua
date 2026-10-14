@@ -15,7 +15,7 @@ end, function(S, module)
     local roots, shells, panels = {}, {}, {}
     local scrollChrome, itemBorders, radioMarks, layouts = {}, {}, {}, {}
     local rows, squares, squaring, zones, money, centered, glyphs, labels, darkTabs, chained = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
-    local coppers, cleared, rowWidths, aligned, widgets = {}, {}, {}, {}, {}
+    local coppers, cleared, rowWidths, aligned, widgets, refreshes, stripAt = {}, {}, {}, {}, {}, {}, {}
     local zoneHost
     local refresh, waiting
     local discoveryDirty = true
@@ -195,6 +195,7 @@ end, function(S, module)
             end
         end
     end
+    local function RowIfCells(row) if row.cells then Row(row) end end
     Headers = function(list)
         local container = list.HeaderContainer
         if not H.Allowed(container) or not container.CreateTexture then return end
@@ -211,11 +212,15 @@ end, function(S, module)
         if area.GetLeft and container.GetLeft then
             left, right, rowLeft, rowRight = area:GetLeft(), area:GetRight(), container:GetLeft(), container:GetRight()
         end
-        if left and right and rowLeft and rowRight then
+        local at = stripAt[container]
+        if left and right and rowLeft and rowRight
+            and not (at and at[1] == left - rowLeft and at[2] == right - rowRight) then
+            if not at then at = {}; stripAt[container] = at end
+            at[1], at[2] = left - rowLeft, right - rowRight
             local strip = headers[container]
             strip:ClearAllPoints()
-            strip:SetPoint("TOPLEFT", container, "TOPLEFT", left - rowLeft, 0)
-            strip:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", right - rowRight, 0)
+            strip:SetPoint("TOPLEFT", container, "TOPLEFT", at[1], 0)
+            strip:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", at[2], 0)
         end
         for _, column in ipairs(H.Children(container)) do
             if H.Allowed(column) and column:GetObjectType() == "Button" then
@@ -233,7 +238,7 @@ end, function(S, module)
         local box = list.ScrollArea and list.ScrollArea.ScrollBox
         if H.Allowed(box) and box.ForEachFrame then
             -- Rows pool on data changes; restyle just this box, not a full refresh.
-            H.Hook(box, "Update", function() box:ForEachFrame(function(row) if row.cells then Row(row) end end) end)
+            H.Hook(box, "Update", function() box:ForEachFrame(RowIfCells) end)
         end
     end
     -- Coin icons are small square textures on each box; edge art is tall and thin.
@@ -361,18 +366,21 @@ end, function(S, module)
             previous = button
         end
     end
+    -- Checked once per button: Visit reaches every button on every pass.
+    local function Named(texture)
+        if not H.Texture(texture) then return false end
+        local atlas = texture.GetAtlas and texture:GetAtlas()
+        local path = texture.GetTexture and texture:GetTexture()
+        return type(atlas) == "string" and atlas:find("[Rr]efresh") ~= nil
+            or type(path) == "string" and path:find("[Rr]efresh") ~= nil
+    end
     local function IsRefresh(button)
-        for _, getter in ipairs({"Icon", "GetNormalTexture"}) do
-            local texture = button[getter]
-            if type(texture) == "function" then texture = texture(button) end
-            if H.Texture(texture) then
-                local atlas = texture.GetAtlas and texture:GetAtlas()
-                local path = texture.GetTexture and texture:GetTexture()
-                for _, value in ipairs({atlas or "", type(path) == "string" and path or ""}) do
-                    if value:lower():find("refresh") then return true end
-                end
-            end
+        local known = refreshes[button]
+        if known == nil then
+            known = Named(button.Icon) or (button.GetNormalTexture and Named(button:GetNormalTexture())) or false
+            refreshes[button] = known
         end
+        return known
     end
     -- EUI's pack draws refresh as its white house glyph, without a button block.
     local function Glyph(button)
@@ -493,6 +501,14 @@ end, function(S, module)
             f.ContainerTabs:ClearAllPoints(); f.ContainerTabs:SetPoint("BOTTOMLEFT", f.ListsContainer, "TOPLEFT", 0, 4)
         end
     end
+    -- Visit runs for every frame on every pass: its key lists are built once.
+    local PRICE_TABS = {"CurrentPricesTab", "PriceHistoryTab", "YourHistoryTab"}
+    local LEGACY_TABS = {"HistoryButton", "CurrentPricesButton", "YourHistoryButton"}
+    local ICON_BUTTONS = {"RefreshButton", "ResetSearchStringButton"}
+    local CLEAR_INSETS = {"ShoppingResultsInset", "HistoricalPriceInset", "BagInset", "ListsContainer", "RecentsContainer"}
+    local LEGACY_PANELS = {"ShoppingResultsInset", "BagInset", "HistoricalPriceInset", "ListsContainer", "RecentsContainer", "ScrollArea"}
+    local MODERN_FONTS = {"Title", "NoResultsText", "ResultsText"}
+    local LEGACY_FONTS = {"Title", "SearchLabel", "Deposit", "Total", "NoResultsText", "ResultsText"}
     local function Visit(f, kind)
         local modern = Modern()
         if kind == "Slider" then Scroll(f); return true end
@@ -524,7 +540,7 @@ end, function(S, module)
             H.Hook(f, "SetView", refresh)
         end
         if f.CurrentPricesTab and f.PriceHistoryTab then
-            for _, key in ipairs({"CurrentPricesTab", "PriceHistoryTab", "YourHistoryTab"}) do
+            for _, key in ipairs(PRICE_TABS) do
                 local tab = f[key]
                 if H.Allowed(tab) then InnerTab(tab, f.selectedTab and tab.GetID and f.selectedTab == tab:GetID(), true) end
             end
@@ -532,7 +548,7 @@ end, function(S, module)
             local listing = panel and panel.CurrentPricesListing
             if modern and listing then AlignTabs(f, f.CurrentPricesTab, listing.ScrollArea) end
         end
-        for _, key in ipairs({"HistoryButton", "CurrentPricesButton", "YourHistoryButton"}) do
+        for _, key in ipairs(LEGACY_TABS) do
             local button = f[key]
             if H.Allowed(button) then
                 local view = key == "HistoryButton" and f.HistoryPrices or key == "CurrentPricesButton" and f.CurrentPrices or f.YourHistory
@@ -540,7 +556,7 @@ end, function(S, module)
                 if view then H.Script(view, "OnShow", refresh); H.Script(view, "OnHide", refresh) end
             end
         end
-        for _, key in ipairs({"RefreshButton", "ResetSearchStringButton"}) do
+        for _, key in ipairs(ICON_BUTTONS) do
             local button = f[key]
             if H.Allowed(button) and button:GetObjectType() == "Button" then
                 if modern and key == "RefreshButton" then Glyph(button)
@@ -558,13 +574,13 @@ end, function(S, module)
         if modern then
             -- Insets stay clear; each results table washes its own row area, so the
             -- wash, its seams and the header strip share one rect.
-            for _, key in ipairs({"ShoppingResultsInset", "HistoricalPriceInset", "BagInset", "ListsContainer", "RecentsContainer"}) do Zone(f[key]) end
+            for _, key in ipairs(CLEAR_INSETS) do Zone(f[key]) end
             Zone(f.ScrollArea, f.HeaderContainer ~= nil)
         else
-            for _, key in ipairs({"ShoppingResultsInset", "BagInset", "HistoricalPriceInset", "ListsContainer", "RecentsContainer", "ScrollArea"}) do Panel(f[key]) end
+            for _, key in ipairs(LEGACY_PANELS) do Panel(f[key]) end
         end
         -- Search, deposit and total labels stay Blizzard gold beside the native sell form.
-        for _, key in ipairs(modern and {"Title", "NoResultsText", "ResultsText"} or {"Title", "SearchLabel", "Deposit", "Total", "NoResultsText", "ResultsText"}) do
+        for _, key in ipairs(modern and MODERN_FONTS or LEGACY_FONTS) do
             H.Font(f[key], 0.9, 0.9, 0.92)
         end
         if H.Allowed(f.NineSlice) then S.FadeNineSlice(f.NineSlice) end
