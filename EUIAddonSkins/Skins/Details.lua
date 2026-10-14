@@ -2,6 +2,62 @@ local ADDON, ns = ...
 local unpack = unpack or table.unpack
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local MEDIA_NAME = "EUI AddonSkins Meter"
+local function MeterWanted()
+    local eui = _G.EllesmereUIDB
+    return ns.DetailsSettings().meter == true and not (EUIAddonSkinsDB and EUIAddonSkinsDB.disabled)
+        and not (eui and (eui.thirdPartySkinsOff or eui.thirdPartySkinAddons
+            and eui.thirdPartySkinAddons["EUI AddonSkins - Details!"] == false))
+end
+local function Profile()
+    local D = _G.Details
+    local name = D and D.GetCurrentProfileName and D:GetCurrentProfileName() or "Default"
+    return (GetRealmName and GetRealmName() or "") .. ":" .. (UnitName and UnitName("player") or "") .. ":" .. name
+end
+local function Backup(instance, create)
+    local db = ns.DetailsSettings()
+    db.backups = db.backups or {}
+    local profile = Profile()
+    db.backups[profile] = db.backups[profile] or {}
+    local id = instance.meu_id or (instance.GetId and instance:GetId())
+    if not id then return end
+    local saved = db.backups[profile]
+    if create and not saved[id] and instance.row_info and instance.row_info.space then
+        local info = instance.row_info
+        saved[id] = {height = info.height, spacing = info.space.between, texture = info.texture, texture_file = info.texture_file}
+    end
+    return saved[id], saved, id
+end
+local function RestoreSettings(instance)
+    local old, saved, id = Backup(instance)
+    local info = instance.row_info
+    if old and info and info.space then
+        info.height, info.texture, info.texture_file = old.height, old.texture, old.texture_file
+        info.space.between = old.spacing
+        instance.row_height = (old.height or 0) + (old.spacing or 0)
+        saved[id] = nil
+        return true
+    end
+end
+
+-- Recovery is independent of EUI dispatch: a disabled skin must still be able
+-- to restore its saved cosmetic settings after a reload or profile switch.
+local recovery = CreateFrame("Frame")
+recovery:RegisterEvent("PLAYER_LOGIN"); recovery:RegisterEvent("ADDON_LOADED")
+local profileRecoveryHooked
+local function Recover()
+    local D = _G.Details
+    if D and type(D.ApplyProfile) == "function" and not profileRecoveryHooked then
+        profileRecoveryHooked = true
+        hooksecurefunc(D, "ApplyProfile", function() Recover() end)
+    end
+    if not MeterWanted() and D and D.GetAllInstances then
+        for _, instance in pairs(D:GetAllInstances() or {}) do
+            if RestoreSettings(instance) and instance.baseframe and instance.ChangeSkin
+                and not (InCombatLockdown and InCombatLockdown()) then instance:ChangeSkin() end
+        end
+    end
+end
+recovery:SetScript("OnEvent", Recover)
 
 local function Frame(value)
     if type(value) == "table" or type(value) == "userdata" then
@@ -36,7 +92,7 @@ end
 local function Setup(C, refresh)
     if C.details then return C.details end
     local S, H, D = C.S, C.H, _G.Details
-    local state = {meters = {}, roots = {}, snapshots = {}, applying = false}
+    local state = {meters = {}, owners = {}, roots = {}, snapshots = {}, texts = {}, textures = {}, applying = false}
     C.details = state
     local function Busy()
         if InCombatLockdown and InCombatLockdown() then
@@ -48,19 +104,20 @@ local function Setup(C, refresh)
         frame = Frame(frame)
         for _ = 1, 24 do
             if not H.Allowed(frame) then return false end
-            if state.roots[frame] or state.meters[frame] then return true end
+            if state.roots[frame] or state.owners[frame] then return true end
             frame = frame.GetParent and frame:GetParent()
         end
         return false
     end
     local function Row(row)
-        if not H.Allowed(row) or Busy() then return end
+        if not MeterWanted() or not H.Allowed(row) or Busy() then return end
         local look = state.look
         if not look then return end
         -- Only appearance: never read actor GUIDs, names, values or combat data.
         if H.Allowed(row.statusbar) and row.statusbar.SetStatusBarTexture then
             local texture = H.Texture(row.textura)
             if texture then
+                if not state.textures[texture] then state.textures[texture] = {path = texture:GetTexture(), profile = Profile()} end
                 if texture:GetTexture() ~= look.texture then texture:SetTexture(look.texture) end
             else row.statusbar:SetStatusBarTexture(look.texture) end
         end
@@ -68,6 +125,7 @@ local function Setup(C, refresh)
             "lineText11", "lineText12", "lineText13", "lineText14"}) do
             local text = row[key]
             if H.Allowed(text) and text.SetFont and look.font then
+                if not state.texts[text] then state.texts[text] = {font = {text:GetFont()}, profile = Profile()} end
                 local size = (key == "lineText1" or key == "lineText11") and look.leftSize or look.rightSize
                 local oldFont, oldSize, oldFlags = text:GetFont()
                 if oldFont ~= look.font or oldSize ~= size or (oldFlags or "") ~= look.flags then
@@ -82,34 +140,85 @@ local function Setup(C, refresh)
         for _, row in pairs(instance.barras or {}) do Row(row) end
     end
     state.Row = Row
+    local function Fade(art)
+        if not H.Texture(art) then return end
+        if not state.textures[art] then
+            state.textures[art] = {alpha = art:GetAlpha(), profile = Profile()}
+            local painting = false
+            H.Hook(art, "SetAlpha", function()
+                if painting or not MeterWanted() then return end
+                painting = true; art:SetAlpha(0); painting = false
+            end)
+        end
+        art:SetAlpha(0)
+    end
+    state.RestoreMeters = function()
+        if Busy() then return end
+        state.applying = true
+        for _, instance in pairs(D:GetAllInstances() or {}) do
+            local restored = RestoreSettings(instance)
+            if restored and instance.ChangeSkin then H.Safe(instance.ChangeSkin, instance) end
+        end
+        if not state.meterActive then state.applying = false; return end
+        state.meterActive = false
+        for _, entry in pairs(state.meters) do
+            entry.bg:SetAlpha(0)
+            if entry.header then entry.header:SetAlpha(0) end
+            if entry.title and entry.height then entry.title:SetHeight(entry.height) end
+            for frame, old in pairs(entry.backdrops) do
+                frame:SetBackdrop(old.backdrop)
+                if frame.SetBackdropColor and old.color[1] then frame:SetBackdropColor(unpack(old.color)) end
+                if frame.SetBackdropBorderColor and old.border[1] then frame:SetBackdropBorderColor(unpack(old.border)) end
+            end
+            entry.title, entry.height, entry.backdrops = nil, nil, {}
+        end
+        for art, old in pairs(state.textures) do
+            if old.alpha ~= nil then art:SetAlpha(old.alpha) end
+            if old.path and old.profile == Profile() then art:SetTexture(old.path) end
+        end
+        for text, old in pairs(state.texts) do
+            if old.profile == Profile() and old.font[1] then text:SetFont(unpack(old.font)) end
+        end
+        state.textures, state.texts = {}, {}
+        state.applying = false
+    end
     state.Meter = function(instance)
         local f = instance and instance.baseframe
         if not H.Allowed(f) then return end
+        state.meterActive = true
         local look = state.look
         local entry = state.meters[f]
         if not entry then
-            entry = {}; state.meters[f] = entry
+            entry = {backdrops = {}}; state.meters[f] = entry
             local bg = CreateFrame("Frame", nil, f)
             bg:SetAllPoints(f); bg:SetFrameLevel(math.max(0, f:GetFrameLevel() - 1)); bg:EnableMouse(false)
             entry.bg = bg:CreateTexture(nil, "BACKGROUND"); entry.bg:SetAllPoints(bg)
             H.Script(f, "OnShow", refresh)
         end
+        Backup(instance, true)
+        entry.bg:SetAlpha(1)
         entry.bg:SetColorTexture(unpack(look.bg))
         -- Hide only named native decoration, never the frame, rows or buttons.
-        for _, key in ipairs({"barra_esquerda", "barra_direita", "barra_fundo", "wallpaper"}) do H.Fade(f[key]) end
+        for _, key in ipairs({"barra_esquerda", "barra_direita", "barra_fundo", "wallpaper"}) do Fade(f[key]) end
         local header = f.cabecalho or {}
-        for _, key in ipairs({"ball", "ball_r", "emenda", "top_bg"}) do H.Fade(header[key]) end
+        for _, key in ipairs({"ball", "ball_r", "emenda", "top_bg"}) do Fade(header[key]) end
         local title = f.titleBar
         if H.Allowed(title) then
+            if not entry.title then entry.title, entry.height = title, title:GetHeight() end
             title:SetHeight(look.headerHeight)
-            H.Fade(title.texture)
+            Fade(title.texture)
             if not entry.header then entry.header = title:CreateTexture(nil, "BACKGROUND"); entry.header:SetAllPoints(title) end
+            entry.header:SetAlpha(1)
             local c = look.header; entry.header:SetColorTexture(c.r or 0, c.g or 0, c.b or 0, look.headerAlpha)
         end
-        if f.SetBackdrop then f:SetBackdrop(nil) end
-        if H.Allowed(instance.bgdisplay) and instance.bgdisplay.SetBackdrop then instance.bgdisplay:SetBackdrop(nil) end
-        if H.Allowed(header.fechar) then S.CloseButton(header.fechar) end
-        H.Font(instance.attribute_text)
+        for _, frame in pairs({f, instance.bgdisplay}) do
+            if H.Allowed(frame) and frame.SetBackdrop then
+                if not entry.backdrops[frame] then
+                    entry.backdrops[frame] = {backdrop = frame:GetBackdrop(), color = {frame:GetBackdropColor()}, border = {frame:GetBackdropBorderColor()}}
+                end
+                frame:SetBackdrop(nil)
+            end
+        end
         -- Native setters maintain Details' row geometry. Do not change window
         -- anchors, size, groups, segment, custom text, data or click scripts.
         local info = instance.row_info
@@ -152,7 +261,7 @@ local function Setup(C, refresh)
         local tip = _G.GameCooltip
         if not tip or Busy() then return end
         local owner = tip.GetOwner and tip:GetOwner()
-        local owned = Owned(owner)
+        local owned = ns.DetailsSettings().menus ~= false and Owned(owner)
         for _, f in pairs({tip.frame1, tip.frame2}) do
             if H.Allowed(f) and f.SetBackdrop and f.GetBackdropColor and f.GetBackdropBorderColor then
                 if not owned then Restore(f)
@@ -184,6 +293,11 @@ local function Setup(C, refresh)
     end
     state.Cooltip = Cooltip
     state.Restore = Restore
+    ns.DetailsSettingsChanged = function(key)
+        if key == "meter" and not MeterWanted() then state.RestoreMeters() end
+        state.Cooltip()
+        refresh()
+    end
     if D.CreateEventListener then
         state.listener = D:CreateEventListener()
         for _, event in ipairs({"DETAILS_STARTED", "DETAILS_INSTANCE_OPEN", "DETAILS_INSTANCE_SIZECHANGED", "DETAILS_PROFILE_APPLYED"}) do
@@ -217,7 +331,15 @@ ns.RegisterScopedSkin("Details", "Details!", {
     roots = function(C)
         local state = C.details
         state.combatPending = false; state.look = Look(C.S)
-        for _, instance in pairs(_G.Details:GetAllInstances() or {}) do state.Meter(instance) end
+        for _, instance in pairs(_G.Details:GetAllInstances() or {}) do
+            for _, key in ipairs({"baseframe", "rowframe", "windowSwitchButton", "bgframe"}) do
+                local owner = instance[key]
+                if C.H.Allowed(owner) then state.owners[owner] = true end
+            end
+        end
+        if MeterWanted() then
+            for _, instance in pairs(_G.Details:GetAllInstances() or {}) do state.Meter(instance) end
+        else state.RestoreMeters() end
         local result = {}
         local function Add(value)
             local f = Frame(value)
@@ -226,9 +348,13 @@ ns.RegisterScopedSkin("Details", "Details!", {
                 result[#result + 1] = {frame = f, options = {noTopBar = true}}
             end
         end
-        for _, name in ipairs({"DetailsOptionsWindow", "DetailsPluginContainerWindow", "DetailsBreakdownWindow",
-            "DetailsReportWindow", "DetailsCopyPasteFrame2"}) do Add(_G[name]) end
-        Add(_G.Details.BreakdownWindowFrame); Add(_G.Details.janela_report)
+        local panel = ns.CreateDetailsSettingsPanel()
+        if C.H.Allowed(panel) then result[#result + 1] = {frame = panel, mode = "controls"} end
+        if ns.DetailsSettings().menus ~= false then
+            for _, name in ipairs({"DetailsOptionsWindow", "DetailsPluginContainerWindow", "DetailsBreakdownWindow",
+                "DetailsReportWindow", "DetailsCopyPasteFrame2"}) do Add(_G[name]) end
+            Add(_G.Details.BreakdownWindowFrame); Add(_G.Details.janela_report)
+        end
         state.Cooltip()
         return result
     end,

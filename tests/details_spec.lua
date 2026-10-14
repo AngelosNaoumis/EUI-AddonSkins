@@ -3,7 +3,7 @@ local enabled, combat, accent, timers, events = true, false, 0.4, {}, {}
 local ns = {IsEnabled = function() return enabled end, AttachAccent = function(_, f) f.accent = true end}
 C_Timer = {After = function(_, fn) timers[#timers + 1] = fn end}
 InCombatLockdown = function() return combat end
-geterrorhandler = function() return function(e) error(e) end end
+geterrorhandler = function() return function(e) error(debug.traceback(e, 2)) end end
 hooksecurefunc = function(object, name, callback)
     local original = object[name]
     object[name] = function(...)
@@ -59,13 +59,13 @@ local function frame(kind, name, parent)
     function f:IsProtected() return self.protected end
     function f:GetChildren() return table.unpack(self.children) end
     function f:GetRegions() return table.unpack(self.regions) end
-    function f:HookScript(event, fn) self.hooks[event] = fn end
+    function f:HookScript(event, fn) local old = self.hooks[event]; self.hooks[event] = function(...) if old then old(...) end; fn(...) end end
     function f:RegisterEvent(e) self.events = self.events or {}; self.events[e] = true end
     function f:SetScript(e, fn) self.hooks[e] = fn end
     function f:GetBackdrop() return self.backdrop end
     function f:SetBackdrop(b) assert(not combat); self.backdrop = b; self.color, self.border = {0, 0, 0, 1}, {0, 0, 0, 1} end
-    function f:GetBackdropColor() return table.unpack(self.color) end
-    function f:GetBackdropBorderColor() return table.unpack(self.border) end
+    function f:GetBackdropColor() return table.unpack(self.color or {1, 1, 1, 1}) end
+    function f:GetBackdropBorderColor() return table.unpack(self.border or {1, 1, 1, 1}) end
     function f:SetBackdropColor(...) self.color = {...} end
     function f:SetBackdropBorderColor(...) self.border = {...} end
     function f:CreateTexture() local t = texture(nil, self); self.regions[#self.regions + 1] = t; return t end
@@ -117,6 +117,13 @@ local function font(parent)
     function t:SetFont(path, size, flags) self.font, self.size, self.flags = path, size or self.size, flags or ''; self.writes = (self.writes or 0) + 1 end
     return t
 end
+UIParent = frame()
+local settingsRegistered, openedCategory = 0
+Settings = {
+    RegisterCanvasLayoutCategory = function(panel) settingsRegistered = settingsRegistered + 1; return {GetID = function() return 123 end} end,
+    RegisterAddOnCategory = function() end,
+    OpenToCategory = function(id) openedCategory = id end,
+}
 S.GetFont = function() return 'eui', '' end
 S.GetPanelColor = function() return 0.03, 0.03, 0.03, 0.95 end
 S.OnLooksChanged = function(fn) S.looks = fn end
@@ -124,14 +131,19 @@ local modules = {}
 function ns.RegisterModule(id, _, available, install) modules[id] = {available = available, install = install} end
 assert(loadfile('EUIAddonSkins/Scoped.lua'))('EUIAddonSkins', ns)
 Details = nil
+EUIAddonSkinsDB = nil; EllesmereUIDB = nil
+assert(loadfile('EUIAddonSkins/DetailsSettings.lua'))('EUIAddonSkins', ns)
+assert(ns.DetailsSettings().meter == false and ns.DetailsSettings().menus == true, 'meter matching must be opt-in')
 assert(loadfile('EUIAddonSkins/Skins/Details.lua'))('EUIAddonSkins', ns)
 assert(not modules.Details.available(), 'Details must remain optional')
 local function flush()
     local rounds = 0
     while #timers > 0 do local batch = timers; timers = {}; for _, fn in ipairs(batch) do fn() end; rounds = rounds + 1; assert(rounds < 12, 'refresh loop') end
 end
+local nextInstanceId = 0
 local function instance()
-    local obj = {baseframe = frame(), row_info = {height = 24, space = {between = 0}, texture = 'native'}, barras = {}, position = {x = 100, y = 200}, segment = 3}
+    nextInstanceId = nextInstanceId + 1
+    local obj = {meu_id = nextInstanceId, baseframe = frame(), row_info = {height = 24, space = {between = 0}, texture = 'native'}, barras = {}, position = {x = 100, y = 200}, segment = 3}
     obj.baseframe.titleBar = frame('Frame', nil, obj.baseframe); obj.baseframe.titleBar.texture = obj.baseframe.titleBar:CreateTexture()
     obj.baseframe.cabecalho = {ball = obj.baseframe:CreateTexture(), fechar = frame('Button', nil, obj.baseframe)}
     obj.baseframe.cabecalho.fechar.action = function() return 'close-native' end
@@ -149,6 +161,7 @@ Details = {
     end,
     OpenOptionsWindow = function() DetailsOptionsWindow = frame('Frame', 'DetailsOptionsWindow'); return 'options-native' end,
     ChangeSkin = function() return 'skin-native' end,
+    ApplyProfile = function() return 'profile-native' end,
 }
 Details.instances = {instance()}
 local meter = Details.instances[1]
@@ -178,10 +191,17 @@ GameCooltip = {frame1 = tip1, frame2 = tip2, GetOwner = function(self) return se
     ShowCooltip = function() return 'menu-native' end, BuildCooltip = function() end,
     BuildTooltip = function() end, BuildTooltipSecondFrame = function() end}
 modules.Details.install(S, modules.Details); flush()
+assert(setterCalls == 0 and meter.baseframe.cabecalho.ball.alpha == 1, 'default menu-only mode changed the meter')
+GameCooltip:SetHost(meter.baseframe.cabecalho.fechar); GameCooltip:ShowCooltip()
+assert(tip1.border[1] == 0.055, 'menu-only mode missed a meter popup')
+GameCooltip:SetHost(frame())
+local settingsPanel = ns.CreateDetailsSettingsPanel()
+settingsPanel.meter:SetChecked(true); settingsPanel.meter.hooks.OnClick(settingsPanel.meter); flush()
+SlashCmdList.EUIDETAILS(); assert(settingsRegistered == 1 and openedCategory == 123, 'settings panel must register once and be reachable')
 assert(setterCalls == 1 and meter.row_info.height == 18 and meter.row_info.space.between == 2)
 assert(meter.position.x == 100 and meter.position.y == 200 and meter.segment == 3)
 assert(meter.baseframe.cabecalho.ball.alpha == 0 and meter.baseframe.titleBar.height == 22)
-assert(meter.baseframe.cabecalho.fechar.close and meter.baseframe.cabecalho.fechar.action() == 'close-native')
+assert(meter.baseframe.cabecalho.fechar.action() == 'close-native')
 local r = meter.barras[1]
 assert(r.textura.path == 'eui-bar' and r.lineText1.font == 'eui-meter-font' and r.lineText1.size == 11 and r.lineText4.size == 10)
 assert(r.statusbar.value == 937 and r.statusbar.classColour[2] == 0.7 and r.lineText1.textColor[4] == 0.8 and r.icone_classe.crop[1] == 0.25 and r.action() == 'breakdown-native')
@@ -225,8 +245,49 @@ assert(_EDM_DB.profile.dm.bgAlpha == 0.7, 'EUI profile was modified')
 _EDM_DB, _EDM_BarTextures = nil, nil
 S.looks(); flush(); assert(meter.row_info.height == 18 and r.textura.path == 'Interface\\Buttons\\WHITE8X8', 'missing EUI meter must use safe defaults')
 assert(not meter.baseframe.cabecalho.fechar.hooks.OnClick, 'native close action was hooked')
+-- Independent controls: disabling meter matching restores its owned settings.
+ns.SetDetailsSetting('meter', false); flush()
+assert(meter.row_info.height == 24 and meter.row_info.space.between == 0 and meter.row_info.texture == 'native', 'meter settings not restored')
+assert(meter.baseframe.cabecalho.ball.alpha == 1 and r.lineText1.font == 'native', 'meter artwork/fonts not restored')
+assert(meter.position.x == 100 and meter.segment == 3)
+local menuOnlyRow = row(); meter.barras[5] = menuOnlyRow
+callbacks.DETAILS_INSTANCE_NEWROW('DETAILS_INSTANCE_NEWROW', meter, menuOnlyRow)
+assert(menuOnlyRow.textura.path == 'native' and DetailsOptionsWindow.shellOptions.noBorder, 'menu-only mode changed the meter')
+ns.SetDetailsSetting('menus', false); flush()
+GameCooltip:SetHost(meter.baseframe); GameCooltip:ShowCooltip(); assert(tip1.backdrop.bgFile == 'native-tooltip')
+local untouchedOptions = frame('Frame', 'DetailsReportWindow')
+modules.Details.refresh(); flush(); assert(not untouchedOptions.shell, 'disabled menu skin changed a new window')
+ns.SetDetailsSetting('meter', true); flush()
+assert(meter.row_info.height == 18 and menuOnlyRow.lineText1.font == 'eui-meter-font' and not untouchedOptions.shell, 'meter-only mode must not enable menus')
+ns.SetDetailsSetting('meter', false); flush()
+assert(meter.row_info.height == 24 and menuOnlyRow.lineText1.font == 'native', 'second toggle lost original appearance')
+ns.SetDetailsSetting('meter', true); flush()
 enabled = false; local disabledRow = row(); meter.barras[4] = disabledRow
 callbacks.DETAILS_INSTANCE_NEWROW('DETAILS_INSTANCE_NEWROW', meter, disabledRow); modules.Details.refresh(); flush()
 assert(disabledRow.textura.path == 'native' and disabledRow.lineText1.font == 'native')
 assert(not meter.baseframe.hooks.OnUpdate, 'skinning must not add polling')
+-- Recovery still runs if EUI never dispatches a disabled skin after reloading.
+local savedProfile = next(ns.DetailsSettings().backups)
+ns.DetailsSettings().meter = false
+ns.DetailsSettings().backups[savedProfile][meter.meu_id] = {height = 28, spacing = 3, texture = 'pre-reload'}
+meter.row_info.height = 18
+for _, f in ipairs(events) do
+    if f.events and f.events.PLAYER_LOGIN and f.events.ADDON_LOADED and not f.events.PLAYER_REGEN_ENABLED then
+        f.hooks.OnEvent(f, 'PLAYER_LOGIN')
+    end
+end
+assert(meter.row_info.height == 28 and meter.row_info.space.between == 3 and meter.row_info.texture == 'pre-reload', 'disabled-skin reload recovery failed')
+ns.DetailsSettings().backups[savedProfile][meter.meu_id] = {height = 29, spacing = 2, texture = 'pre-profile'}
+assert(Details:ApplyProfile() == 'profile-native')
+assert(meter.row_info.height == 29 and meter.row_info.texture == 'pre-profile', 'disabled-skin profile recovery failed')
+-- Separate Details profiles must not inherit another profile's baseline.
+enabled = true
+local profileName = 'Profile A'
+Details.GetCurrentProfileName = function() return profileName end
+ns.SetDetailsSetting('meter', true); flush()
+profileName = 'Profile B'
+meter.row_info.height, meter.row_info.space.between, meter.row_info.texture = 35, 4, 'profile-b'
+callbacks.DETAILS_PROFILE_APPLYED('DETAILS_PROFILE_APPLYED'); flush()
+ns.SetDetailsSetting('meter', false); flush()
+assert(meter.row_info.height == 35 and meter.row_info.space.between == 4 and meter.row_info.texture == 'profile-b', 'restoration crossed profile boundaries')
 print('PASS: Details meter styles, native actions/data/positions, lazy controls, shared menu restoration, pooled rows, warm reuse, theme/combat/toggle guards')

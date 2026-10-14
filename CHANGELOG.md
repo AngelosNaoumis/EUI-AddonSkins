@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.2 — Details controls (untagged)
+
+- Added independent menus/options and meter-appearance switches under Settings > AddOns > EUI AddonSkins: Details (`/euidetails`).
+- Made meter matching opt-in and added restoration of its captured visual settings.
+- Kept meter positions, sizes, groups, data and interactions under Details control.
+
 ## 1.2.0-alpha — Details preview (untagged)
 
 - Added an experimental Details! skin for meter windows, bars, options, breakdown/report windows and menus.
