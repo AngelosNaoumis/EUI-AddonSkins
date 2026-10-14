@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0-alpha.1 — PallyPower beta (untagged)
+
+- Added skins for the supplied PallyPower beta's assignment window, Ace options and assignment menus.
+- Added EUI accents, fonts, square icons and softer controls/backgrounds.
+- Preserve buff status colours, secure casting actions and the Forever hover/flyout layout.
+
 ## 1.2.1-alpha.2 — Altoholic navigation redraws (untagged)
 
 - Keep left-side categories skinned after clicks, scrolling and native list redraws.

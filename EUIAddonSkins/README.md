@@ -24,6 +24,7 @@ EllesmereUI skins for World of Warcraft addons.
 - Gargul (windows, dialogs and menus)
 - Details! (meter windows, options, breakdown/report windows and menus)
 - ThreatClassic2 (meter, context menu and options)
+- PallyPower (development alpha for the supplied Forever beta: assignments, options, menus and buff-button presentation)
 
 Each skin is optional and only activates when its addon is loaded.
 
