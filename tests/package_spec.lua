@@ -24,6 +24,7 @@ AtlasLoot = nil
 GTFO = nil
 ThreatClassic2BarFrame = nil
 Gargul = nil
+Details = nil
 SlashCmdList = {}
 DEFAULT_CHAT_FRAME = {AddMessage = function() end}
 CreateFrame = function()
@@ -39,9 +40,9 @@ for line in io.lines('EUIAddonSkins/EUIAddonSkins.toc') do
         assert(loadfile('EUIAddonSkins/' .. path))('EUIAddonSkins', ns)
     end
 end
-assert(#ns.modules == 18, 'Package must register all eighteen skins')
+assert(#ns.modules == 19, 'Package must register all nineteen skins')
 assert(not entries['EUI AddonSkins - CrossGambling'] and not entries['EUI AddonSkins - ThreatClassic2'], 'Removed skins must not register toggles')
-for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy', "What's Training?", 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune', 'TwitchEmotes', 'Questie', 'Deadly Boss Mods', 'AtlasLootClassic Continued', 'GTFO', 'Gargul'}) do
+for _, label in ipairs({'Forever Companion', 'Forever Dungeon Journal', 'RestedXP Guides', 'Auctionator', 'Spy', "What's Training?", 'ItemRack', 'KiwiFarm', 'Myslot', 'BugSack', 'Altoholic', 'Attune', 'TwitchEmotes', 'Questie', 'Deadly Boss Mods', 'AtlasLootClassic Continued', 'GTFO', 'Gargul', 'Details!'}) do
     assert(entries['EUI AddonSkins - ' .. label], 'Missing EUI toggle: ' .. label)
 end
-print('PASS: actual TOC loads all eighteen skin modules and registers their EUI toggles')
+print('PASS: actual TOC loads all nineteen skin modules and registers their EUI toggles')

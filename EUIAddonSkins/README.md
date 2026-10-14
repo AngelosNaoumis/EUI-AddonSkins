@@ -22,6 +22,7 @@ EllesmereUI skins for World of Warcraft addons.
 - AtlasLootClassic Continued
 - GTFO (settings controls)
 - Gargul (windows, dialogs and menus)
+- Details! (experimental: meter windows, options, breakdown/report windows and menus)
 
 Each skin is optional and only activates when its addon is loaded.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0-alpha — Details preview (untagged)
+
+- Added an experimental Details! skin for meter windows, bars, options, breakdown/report windows and menus.
+- Matches available EUI damage-meter font, bar texture, height, spacing and background settings.
+- Preserves combat data, class colours, icons, window positions and native actions.
+- Development build only; no CurseForge release tag.
+
 ## 1.1.1 — Styling improvements
 
 - Softer window, panel and control styling, with darker outlines and clearer background contrast.

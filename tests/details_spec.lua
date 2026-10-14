@@ -1,0 +1,232 @@
+-- Native-control fixtures: actions, geometry, status colours, redraws and reuse.
+local enabled, combat, accent, timers, events = true, false, 0.4, {}, {}
+local ns = {IsEnabled = function() return enabled end, AttachAccent = function(_, f) f.accent = true end}
+C_Timer = {After = function(_, fn) timers[#timers + 1] = fn end}
+InCombatLockdown = function() return combat end
+geterrorhandler = function() return function(e) error(e) end end
+hooksecurefunc = function(object, name, callback)
+    local original = object[name]
+    object[name] = function(...)
+        local values = table.pack(original(...)); callback(...); return table.unpack(values, 1, values.n)
+    end
+end
+local function texture(kind, parent)
+    local t = {kind = kind or 'Texture', alpha = 1, path = 'native', parent = parent, points = {}}
+    function t:GetObjectType() return self.kind end
+    function t:GetTexture() return self.path end
+    function t:SetTexture(v) self.path = v end
+    function t:GetAlpha() return self.alpha end
+    function t:SetAlpha(v) self.alpha = v end
+    function t:GetDrawLayer() return self.layer or 'ARTWORK' end
+    function t:SetColorTexture(...) self.color = {...}; self.path = 'solid' end
+    function t:SetVertexColor(...) self.color = {...} end
+    function t:SetPoint(...) self.points[#self.points + 1] = {...} end
+    function t:SetAllPoints() end
+    function t:ClearAllPoints() self.points = {} end
+    function t:SetShown(v) self.shown = v end
+    function t:GetVertexColor() return table.unpack(self.color or {1, 1, 1, 1}) end
+    function t:SetSize(w, h) self.width, self.height = w, h end
+    function t:SetHeight(h) self.height = h end
+    function t:SetWidth(w) self.width = w end
+    function t:SetTexCoord(...) self.crop = {...} end
+    function t:GetNumMaskTextures() return self.masked and 1 or 0 end
+    function t:SetText(s) assert(self.font, "FontString:SetText(): Font not set"); self.text = s end
+    function t:GetFont() return self.font, self.font and 12, '' end
+    function t:SetFont(v) self.font = v; self.fontWrites = (self.fontWrites or 0) + 1 end
+    function t:SetFontObject(v) self.font = v end
+    function t:SetTextColor(...) self.textColor = {...} end
+    function t:GetTextColor() return table.unpack(self.textColor or {1, 1, 1, 1}) end
+    function t:GetParent() return self.parent end
+    return t
+end
+local function frame(kind, name, parent)
+    local f = {kind = kind or 'Frame', name = name, parent = parent, regions = {}, children = {}, hooks = {}}
+    function f:GetObjectType() return self.kind end
+    function f:SetPoint(...) self.points = self.points or {}; self.points[#self.points + 1] = {...} end
+    function f:ClearAllPoints() self.points = {} end
+    function f:SetSize(w, h) self.width, self.height = w, h end
+    function f:SetWidth(w) self.width = w end
+    function f:GetID() return self.id end
+    function f:IsShown() return not self.hidden end
+    function f:IsEnabled() return not self.disabled end
+    function f:Enable() self.disabled = false end
+    function f:Disable() self.disabled = true end
+    function f:SetChecked(v) self.checked = v end
+    function f:GetChecked() return self.checked end
+    function f:GetName() return self.name end
+    function f:GetParent() return self.parent end
+    function f:IsForbidden() return self.forbidden end
+    function f:IsProtected() return self.protected end
+    function f:GetChildren() return table.unpack(self.children) end
+    function f:GetRegions() return table.unpack(self.regions) end
+    function f:HookScript(event, fn) self.hooks[event] = fn end
+    function f:RegisterEvent(e) self.events = self.events or {}; self.events[e] = true end
+    function f:SetScript(e, fn) self.hooks[e] = fn end
+    function f:GetBackdrop() return self.backdrop end
+    function f:SetBackdrop(b) assert(not combat); self.backdrop = b; self.color, self.border = {0, 0, 0, 1}, {0, 0, 0, 1} end
+    function f:GetBackdropColor() return table.unpack(self.color) end
+    function f:GetBackdropBorderColor() return table.unpack(self.border) end
+    function f:SetBackdropColor(...) self.color = {...} end
+    function f:SetBackdropBorderColor(...) self.border = {...} end
+    function f:CreateTexture() local t = texture(nil, self); self.regions[#self.regions + 1] = t; return t end
+    function f:CreateFontString(_, _, template) local t = texture('FontString', self); t.font = template; self.regions[#self.regions + 1] = t; return t end
+    function f:GetNormalTexture() return self.normal end
+    function f:GetWidth() return 24 end
+    function f:GetHeight() return 24 end
+    function f:GetFontString() return self.label end
+    if parent then parent.children[#parent.children + 1] = f end
+    if name then _G[name] = f end
+    return f
+end
+CreateFrame = function(kind, name, parent) local f = frame(kind, name, parent); events[#events + 1] = f; return f end
+local S = {GetAccentColor = function() return accent, 0.6, 0.7 end}
+function S.Font(t, r, g, b) t:SetFont('eui'); if r then t:SetTextColor(r, g, b) end end
+function S.Button(f, keys)
+    local keep = {}; for _, key in ipairs(keys or {}) do keep[f[key] or false] = true end
+    for _, t in ipairs(f.regions) do if t.kind == 'Texture' and not keep[t] then t:SetAlpha(0) end end
+    f.button = true
+end
+function S.SquareIcon(t, parent) if t:GetNumMaskTextures() > 0 then return end; t:SetTexCoord(0.08, 0.92, 0.08, 0.92); t.borderParent = parent end
+function S.PageButton(f, label) f.glyph = label end
+function S.ScrollBar(f) f.scroll = true end
+function S.Panel(f, options) f.panel = true; f.panelOptions = options end
+function S.Shell(f, options) f.shell = true; f.shellOptions = options end
+function S.Tab(f) f.tab = true end
+function S.SetTabSelection(f, selected) f.selected = selected end
+function S.CloseButton(f) f.close = true end
+function S.Checkbox(f) f.checkbox = true end
+function S.EditBox(f, options) f.input = true; f.inputOptions = options end
+function S.Dropdown(f) f.dropdown = true end
+function S.FadeNineSlice() end
+SetPortraitTexture = function(t) t:SetTexture('player-face') end
+assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
+local originalFrame = frame
+frame = function(...)
+    local f = originalFrame(...)
+    function f:GetFrameLevel() return self.level or 5 end
+    function f:SetFrameLevel(level) self.level = level end
+    function f:SetAllPoints() end
+    function f:EnableMouse(value) self.mouse = value end
+    function f:SetHeight(h) self.height = h end
+    return f
+end
+local function font(parent)
+    local t = parent:CreateFontString(nil, 'OVERLAY', 'native')
+    t.font, t.size, t.flags = 'native', 12, ''
+    function t:GetFont() return self.font, self.size, self.flags end
+    function t:SetFont(path, size, flags) self.font, self.size, self.flags = path, size or self.size, flags or ''; self.writes = (self.writes or 0) + 1 end
+    return t
+end
+S.GetFont = function() return 'eui', '' end
+S.GetPanelColor = function() return 0.03, 0.03, 0.03, 0.95 end
+S.OnLooksChanged = function(fn) S.looks = fn end
+local modules = {}
+function ns.RegisterModule(id, _, available, install) modules[id] = {available = available, install = install} end
+assert(loadfile('EUIAddonSkins/Scoped.lua'))('EUIAddonSkins', ns)
+Details = nil
+assert(loadfile('EUIAddonSkins/Skins/Details.lua'))('EUIAddonSkins', ns)
+assert(not modules.Details.available(), 'Details must remain optional')
+local function flush()
+    local rounds = 0
+    while #timers > 0 do local batch = timers; timers = {}; for _, fn in ipairs(batch) do fn() end; rounds = rounds + 1; assert(rounds < 12, 'refresh loop') end
+end
+local function instance()
+    local obj = {baseframe = frame(), row_info = {height = 24, space = {between = 0}, texture = 'native'}, barras = {}, position = {x = 100, y = 200}, segment = 3}
+    obj.baseframe.titleBar = frame('Frame', nil, obj.baseframe); obj.baseframe.titleBar.texture = obj.baseframe.titleBar:CreateTexture()
+    obj.baseframe.cabecalho = {ball = obj.baseframe:CreateTexture(), fechar = frame('Button', nil, obj.baseframe)}
+    obj.baseframe.cabecalho.fechar.action = function() return 'close-native' end
+    obj.bgdisplay = frame(); obj.attribute_text = font(obj.baseframe)
+    return setmetatable(obj, {__index = Details})
+end
+local callbacks, setterCalls = {}, 0
+Details = {
+    CreateEventListener = function() return {RegisterEvent = function(_, event, fn) assert(not callbacks[event]); callbacks[event] = fn end} end,
+    GetAllInstances = function() return Details.instances end,
+    InstanceRefreshRows = function() return 'rows-native' end,
+    SetBarSettings = function(self, height, textureName, _, _, _, _, _, _, _, _, spacing)
+        setterCalls = setterCalls + 1; self.row_info.height = height; self.row_info.space.between = spacing; self.row_info.texture = textureName
+        self:InstanceRefreshRows()
+    end,
+    OpenOptionsWindow = function() DetailsOptionsWindow = frame('Frame', 'DetailsOptionsWindow'); return 'options-native' end,
+    ChangeSkin = function() return 'skin-native' end,
+}
+Details.instances = {instance()}
+local meter = Details.instances[1]
+local function row()
+    local r = frame('Button'); r.statusbar = frame('StatusBar', nil, r); r.textura = r.statusbar:CreateTexture()
+    r.statusbar.SetStatusBarTexture = function(self, path) self.fill = path end
+    r.statusbar.value, r.statusbar.classColour = 937, {0.3, 0.7, 1}
+    r.lineText1, r.lineText4 = font(r), font(r)
+    r.lineText1:SetTextColor(0.3, 0.7, 1, 0.8)
+    r.icone_classe = r:CreateTexture(); r.icone_classe.crop = {0.25, 0.5, 0.5, 0.75}
+    r.action = function() return 'breakdown-native' end
+    return r
+end
+meter.barras[1] = row()
+local media = {Register = function(self, kind, name, path) self[kind] = {name, path} end}
+LibStub = function(name) if name == 'LibSharedMedia-3.0' then return media end end
+_EDM_DB = {profile = {dm = {barHeight = 18, barSpacing = 2, barTexture = 'test', leftFontSize = 11, rightFontSize = 10, bgAlpha = 0.7}}}
+_EDM_BarTextures = {test = 'eui-bar'}
+EllesmereUI = {GetFontPath = function() return 'eui-meter-font' end, GetFontOutlineFlag = function() return 'OUTLINE' end}
+local tip1, tip2 = frame(), frame()
+for _, f in ipairs({tip1, tip2}) do
+    f:SetBackdrop({bgFile = 'native-tooltip'}); f:SetBackdropColor(0.2, 0.2, 0.2, 1); f:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    local line = frame(); f.Lines = {line}; local bar = frame('StatusBar', nil, line); line.leftText = font(bar); line.rightText = font(bar)
+end
+GameCooltip = {frame1 = tip1, frame2 = tip2, GetOwner = function(self) return self.owner end,
+    SetHost = function(self, owner) self.owner = owner end,
+    ShowCooltip = function() return 'menu-native' end, BuildCooltip = function() end,
+    BuildTooltip = function() end, BuildTooltipSecondFrame = function() end}
+modules.Details.install(S, modules.Details); flush()
+assert(setterCalls == 1 and meter.row_info.height == 18 and meter.row_info.space.between == 2)
+assert(meter.position.x == 100 and meter.position.y == 200 and meter.segment == 3)
+assert(meter.baseframe.cabecalho.ball.alpha == 0 and meter.baseframe.titleBar.height == 22)
+assert(meter.baseframe.cabecalho.fechar.close and meter.baseframe.cabecalho.fechar.action() == 'close-native')
+local r = meter.barras[1]
+assert(r.textura.path == 'eui-bar' and r.lineText1.font == 'eui-meter-font' and r.lineText1.size == 11 and r.lineText4.size == 10)
+assert(r.statusbar.value == 937 and r.statusbar.classColour[2] == 0.7 and r.lineText1.textColor[4] == 0.8 and r.icone_classe.crop[1] == 0.25 and r.action() == 'breakdown-native')
+local writes = r.lineText1.writes
+for _ = 1, 20 do assert(meter:InstanceRefreshRows() == 'rows-native'); modules.Details.refresh(); flush() end
+assert(setterCalls == 1 and r.lineText1.writes == writes, 'warm refresh repeated geometry/font writes')
+assert(Details:OpenOptionsWindow() == 'options-native' and DetailsOptionsWindow.shellOptions.noBorder)
+local input = frame('EditBox', nil, DetailsOptionsWindow)
+local dropdown = frame('Button', nil, DetailsOptionsWindow); dropdown.MyObject = {type = 'dropdown', SetTemplate = function() end}
+dropdown.dropdownframe = frame('ScrollFrame', nil, dropdown); dropdown.statusbar = dropdown:CreateTexture()
+local check = frame('Button', nil, DetailsOptionsWindow); check.MyObject = {type = 'switch', checked_texture = check:CreateTexture(), SetTemplate = function() end}
+check.action = function() return 'checkbox-native' end
+local infoBar = frame('StatusBar', nil, DetailsOptionsWindow); infoBar.value = 65; infoBar.SetStatusBarTexture = function(self, p) self.fill = p end
+modules.Details.refresh(); flush()
+assert(input.inputOptions.noBorder and dropdown.dropdown and check.button and check.action() == 'checkbox-native')
+assert(infoBar.fill == 'eui-bar' and infoBar.value == 65)
+-- Shared menu/submenu ownership must not leak to another addon.
+GameCooltip:SetHost(meter.baseframe.cabecalho.fechar); assert(GameCooltip:ShowCooltip() == 'menu-native')
+assert(tip1.backdrop.bgFile ~= 'native-tooltip' and tip2.border[1] == 0.055 and tip1.Lines[1].leftText.font == 'eui')
+local stranger = frame(); GameCooltip:SetHost(stranger)
+assert(tip1.backdrop.bgFile == 'native-tooltip' and tip2.border[1] == 0.4 and tip1.Lines[1].leftText.font == 'native')
+GameCooltip:SetHost(meter.baseframe); tip1.hooks.OnHide()
+assert(tip1.backdrop.bgFile == 'native-tooltip', 'hidden menu was not restored')
+GameCooltip:SetHost(stranger)
+local second = instance(); Details.instances[2] = second
+callbacks.DETAILS_INSTANCE_OPEN('DETAILS_INSTANCE_OPEN', second); flush()
+assert(second.baseframe.cabecalho.ball.alpha == 0 and setterCalls == 2, 'late meter was not styled')
+local late = row(); meter.barras[2] = late
+callbacks.DETAILS_INSTANCE_NEWROW('DETAILS_INSTANCE_NEWROW', meter, late)
+assert(late.lineText1.font == 'eui-meter-font' and late.textura.path == 'eui-bar')
+combat = true
+local deferred = row(); meter.barras[3] = deferred
+callbacks.DETAILS_INSTANCE_NEWROW('DETAILS_INSTANCE_NEWROW', meter, deferred); flush()
+assert(deferred.lineText1.font == 'native')
+combat = false
+for _, f in ipairs(events) do if f.events and f.events.PLAYER_REGEN_ENABLED then f.hooks.OnEvent(f, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(deferred.lineText1.font == 'eui-meter-font')
+_EDM_DB.profile.dm.barHeight = 20; _EDM_DB.profile.dm.barSpacing = 0
+S.looks(); flush(); assert(meter.row_info.height == 20 and meter.row_info.space.between == 0 and setterCalls == 4)
+assert(_EDM_DB.profile.dm.bgAlpha == 0.7, 'EUI profile was modified')
+_EDM_DB, _EDM_BarTextures = nil, nil
+S.looks(); flush(); assert(meter.row_info.height == 18 and r.textura.path == 'Interface\\Buttons\\WHITE8X8', 'missing EUI meter must use safe defaults')
+assert(not meter.baseframe.cabecalho.fechar.hooks.OnClick, 'native close action was hooked')
+enabled = false; local disabledRow = row(); meter.barras[4] = disabledRow
+callbacks.DETAILS_INSTANCE_NEWROW('DETAILS_INSTANCE_NEWROW', meter, disabledRow); modules.Details.refresh(); flush()
+assert(disabledRow.textura.path == 'native' and disabledRow.lineText1.font == 'native')
+assert(not meter.baseframe.hooks.OnUpdate, 'skinning must not add polling')
+print('PASS: Details meter styles, native actions/data/positions, lazy controls, shared menu restoration, pooled rows, warm reuse, theme/combat/toggle guards')
