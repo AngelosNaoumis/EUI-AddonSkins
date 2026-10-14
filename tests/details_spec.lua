@@ -83,6 +83,7 @@ local function frame(kind, name, parent)
     function f:HookScript(event, fn) local old = self.hooks[event]; self.hooks[event] = function(...) if old then old(...) end; fn(...) end end
     function f:RegisterEvent(e) self.events = self.events or {}; self.events[e] = true end
     function f:SetScript(e, fn) self.hooks[e] = fn end
+    function f:GetScript(e) return self.hooks[e] end
     function f:GetBackdrop() return self.backdrop end
     function f:SetBackdrop(b) assert(not combat); self.backdrop = b; self.color, self.border = {0, 0, 0, 1}, {0, 0, 0, 1} end
     function f:GetBackdropColor() return table.unpack(self.color or {1, 1, 1, 1}) end
@@ -229,8 +230,9 @@ function Details.RaidTables:switch(fixed, id, host)
     local fromMenu = not self
     self = self or Details.RaidTables
     assert(self:IsAvailable(id, host))
-    host.selectedPlugin, host.menuRefreshed = id, fromMenu
-    return 'switch-native', fixed
+    host.selectedPlugin = id
+    if fromMenu then GameCooltip:ExecFunc(host.baseframe.cabecalho.atributo.widget) end
+    return 'switch-native', fixed, nil, 'tail-native'
 end
 local unrelatedAction = function() return 'unrelated-native' end
 function Details:MontaRaidOption(host)
@@ -269,7 +271,9 @@ for _, f in ipairs({tip1, tip2}) do
     line.leftIcon:SetVertexColor(1, 0, 0, 1)
     line.action = function() return 'delete-native' end
 end
-GameCooltip = {entries = {}, Reset = function(self) self.entries = {} end,
+GameCooltip = {ExecFunc = function(_, host)
+    assert(host.CoolTip, 'legacy ExecFunc requires missing CoolTip metadata')
+end, entries = {}, Reset = function(self) self.entries = {} end,
     AddLine = function(self, text, right, level) self.entries[#self.entries + 1] = {text = text, right = right, level = level or 1} end,
     AddMenu = function(self, level, action) self.entries[#self.entries].action = action end,
     Hide = function(self) self.hidden = true end, frame1 = tip1, frame2 = tip2, GetOwner = function(self) return self.owner end,
@@ -632,16 +636,36 @@ meter.ChangeSkin = function(self)
 end
 ns.SetDetailsSetting('meter', false); flush()
 assert(nativeResetChecked, 'restoration did not rebuild the live native skin')
+-- Source-shaped modern menu refresh: button has OnEnter, no injected CoolTip.
+local attribute = meter.baseframe.cabecalho.atributo.widget
+assert(not attribute.CoolTip)
+attribute:SetScript('OnEnter', function(self, motion, forced, fromClick)
+    assert(self == attribute and forced and fromClick, 'native menu refresh arguments changed')
+    meter.menuRefreshed = (meter.menuRefreshed or 0) + 1
+    Details:MontaRaidOption(meter)
+end)
 -- Adapt only the exact native raid callbacks; retain arguments and other actions.
 for _ = 1, 3 do
     assert(Details:MontaRaidOption(meter) == 'raid-menu-native')
     assert(GameCooltip.FunctionsTableMain[1] == unrelatedAction)
     for index, id in ipairs({'compare', 'vanguard'}) do
         local callback = GameCooltip.FunctionsTableMain[index + 1]
-        local result, fixed = callback(meter.baseframe.cabecalho.atributo.widget, 'fixed-native', id, meter)
-        assert(result == 'switch-native' and fixed == 'fixed-native' and meter.selectedPlugin == id and meter.menuRefreshed, 'raid callback lost its native receiver/arguments/menu refresh')
+        GameCooltip:SetHost(attribute)
+        local before = meter.menuRefreshed or 0
+        local result, fixed, empty, tail = callback(attribute, 'fixed-native', id, meter)
+        assert(result == 'switch-native' and fixed == 'fixed-native' and empty == nil and tail == 'tail-native' and meter.selectedPlugin == id and meter.menuRefreshed == before + 1, 'raid callback lost its native receiver/arguments/returns/menu refresh')
     end
 end
+-- Do not reopen a menu if the plugin changes its owner during activation.
+local bound = GameCooltip.FunctionsTableMain[2]
+GameCooltip:SetHost(stranger)
+local before = meter.menuRefreshed
+bound(attribute, 'fixed-native', 'compare', meter)
+assert(meter.menuRefreshed == before and GameCooltip:GetOwner() == stranger, 'plugin callback hijacked a different popup')
+-- A missing modern handler safely closes the old selection menu.
+attribute:SetScript('OnEnter', nil); GameCooltip:SetHost(attribute); GameCooltip.hidden = false
+bound(attribute, 'fixed-native', 'vanguard', meter)
+assert(GameCooltip.hidden and meter.selectedPlugin == 'vanguard', 'missing menu handler did not close safely')
 local currentSettings = EUIAddonSkinsDB.details
 EUIAddonSkinsDB.details = {meter = true, menus = false}
 assert(ns.DetailsSettings().tiny == true, 'existing meter users lost Tiny Threat appearance during migration')

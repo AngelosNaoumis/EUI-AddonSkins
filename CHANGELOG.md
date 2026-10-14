@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.15 — Details plugin menu refresh (untagged)
+
+- Avoid the obsolete CoolTip injection path after switching raid plugins.
+- Refresh the active native attribute menu through its existing handler; close safely if no handler exists.
+- Preserve callback arguments, return values and popup ownership.
+
 ## 1.2.0-alpha.14 — Details toolbar and plugin menus (untagged)
 
 - Anchor header controls independently and clear custom anchors before restoring native layouts.

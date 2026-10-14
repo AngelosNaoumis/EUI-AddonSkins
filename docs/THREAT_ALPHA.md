@@ -1,6 +1,6 @@
 # ThreatClassic2 alpha
 
-Included in `1.2.0-alpha.14` on the untagged `details-alpha` branch. No release tag or CurseForge publication.
+Included in `1.2.0-alpha.15` on the untagged `details-alpha` branch. No release tag or CurseForge publication.
 
 Enable or disable the ThreatClassic2 skin through the collection’s EUI third-party addon toggles. Reload after disabling it. ThreatClassic2 is installed separately.
 

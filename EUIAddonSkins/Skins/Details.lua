@@ -509,7 +509,22 @@ local function Setup(C, refresh)
         if not tip or type(original) ~= "function" then return end
         if state.raidSwitchOriginal ~= original then
             state.raidSwitchOriginal = original
-            state.raidSwitch = function(_, ...) return original(nil, ...) end
+            state.raidSwitch = function(_, fixed, pluginName, instance, ...)
+                local function Finish(...)
+                    local header = instance and instance.baseframe and instance.baseframe.cabecalho
+                    local button = Frame(header and header.atributo)
+                    -- Modern Details buttons use OnEnter rather than legacy
+                    -- injected CoolTip metadata. Refresh only the same open menu.
+                    if H.Allowed(button) and tip.GetOwner and tip:GetOwner() == button then
+                        local enter = button.GetScript and button:GetScript("OnEnter")
+                        if enter then enter(button, nil, true, true)
+                        elseif tip.Hide then tip:Hide() end
+                    end
+                    return ...
+                end
+                -- Supplying the manager avoids switch's obsolete ExecFunc path.
+                return Finish(original(raid, fixed, pluginName, instance, ...))
+            end
         end
         for index, callback in pairs(tip.FunctionsTableMain or {}) do
             if callback == original then tip.FunctionsTableMain[index] = state.raidSwitch end
