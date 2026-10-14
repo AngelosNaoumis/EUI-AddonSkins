@@ -109,7 +109,7 @@ end
 local function Setup(C, refresh)
     if C.details then return C.details end
     local S, H, D = C.S, C.H, _G.Details
-    local state = {meters = {}, owners = {}, roots = {}, snapshots = {}, texts = {}, textures = {}, applying = false}
+    local state = {meters = {}, owners = {}, roots = {}, sections = {}, snapshots = {}, texts = {}, textures = {}, applying = false}
     C.details = state
     local function Busy()
         if InCombatLockdown and InCombatLockdown() then
@@ -125,6 +125,26 @@ local function Setup(C, refresh)
             frame = frame.GetParent and frame:GetParent()
         end
         return false
+    end
+    state.Section = function(button)
+        local section = state.sections[button]
+        if not section then return false end
+        if ns.DetailsSettings().menus == false or not ns.IsEnabled(C.module) then return true end
+        if Busy() then return true end
+        -- SelectOptionsSection resets every native button template, including
+        -- the hover/leave colours. Keep navigation out of generic button scans.
+        if button.SetBackdrop then button:SetBackdrop(nil) end
+        if button.HaveRoundedCorners and button.DisableRoundedCorners then button:DisableRoundedCorners() end
+        local widget = button.MyObject
+        if widget then H.Fade(H.Texture(widget.icon)) end
+        H.Fade(H.Texture(button.icon))
+        if H.Tab(button, section:IsShown()) then
+            -- EUI supplies the visible label; DF templates can recolour the
+            -- hidden native label again, so keep it from doubling the text.
+            H.Fade(button.GetFontString and button:GetFontString())
+        else S.Button(button, {"Text", "text"}) end
+        for _, text in ipairs(H.Regions(button)) do H.Font(text) end
+        return true
     end
     local function Row(row)
         if not MeterWanted() or not H.Allowed(row) or Busy() then return end
@@ -403,6 +423,8 @@ ns.RegisterScopedSkin("Details", "Details!", {
     softBorders = true, preserveTextColors = true, immediateShow = true,
     hooks = function(C, refresh)
         local state = Setup(C, refresh)
+        local options = _G.Details222 and _G.Details222.OptionsPanel
+        C.H.Hook(options, "SelectOptionsSection", C.RefreshNow)
         local tip = _G.GameCooltip
         for _, name in ipairs({"ShowCooltip", "BuildCooltip", "BuildTooltip", "BuildTooltipSecondFrame", "SetHost", "ShowRoundedCorner", "HideRoundedCorner"}) do
             C.H.Hook(tip, name, state.Cooltip)
@@ -431,6 +453,17 @@ ns.RegisterScopedSkin("Details", "Details!", {
         local panel = ns.CreateDetailsSettingsPanel()
         if C.H.Allowed(panel) then result[#result + 1] = {frame = panel, mode = "controls"} end
         if ns.DetailsSettings().menus ~= false then
+            local options = Frame(_G.DetailsOptionsWindow)
+            for _, section in pairs(options and options.sectionFramesContainer or {}) do
+                local button = C.H.Allowed(section) and Frame(section.sectionButton)
+                if C.H.Allowed(section) and C.H.Allowed(button) then
+                    state.sections[button] = section
+                    local function Paint() state.Section(button) end
+                    C.H.Hook(section.sectionButton, "SetTemplate", Paint)
+                    C.H.Hook(section.sectionButton, "SetIcon", Paint)
+                    Paint()
+                end
+            end
             for _, name in ipairs({"DetailsOptionsWindow", "DetailsPluginContainerWindow", "DetailsBreakdownWindow",
                 "DetailsReportWindow", "DetailsCopyPasteFrame2"}) do Add(_G[name]) end
             Add(_G.Details.BreakdownWindowFrame); Add(_G.Details.janela_report)
@@ -440,6 +473,7 @@ ns.RegisterScopedSkin("Details", "Details!", {
     end,
     visit = function(C, f, kind, refresh)
         local H, S = C.H, C.S
+        if C.details.Section(f) then return true end
         -- Preserve displayed values and semantic colours in breakdown bars.
         if kind == "StatusBar" then
             local texture = C.details.look.texture

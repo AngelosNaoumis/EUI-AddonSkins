@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.7 — Details options navigation (untagged)
+
+- Keep options categories consistently styled as EUI tabs through native template resets.
+- Update category selection and lazy controls synchronously after page changes.
+- Prevent native labels and category markers from overlapping EUI navigation.
+
 ## 1.2.0-alpha.6 — Details pop-out menus (untagged)
 
 - Apply flat EUI backgrounds, soft borders, accent hover fills and subtle separators to Details pop-out menus and submenus.

@@ -291,6 +291,44 @@ local writes = r.lineText1.writes
 for _ = 1, 20 do assert(meter:InstanceRefreshRows() == 'rows-native'); modules.Details.refresh(); flush() end
 assert(setterCalls == 1 and r.lineText1.writes == writes, 'warm refresh repeated geometry/font writes')
 assert(Details:OpenOptionsWindow() == 'options-native' and DetailsOptionsWindow.shellOptions.noBorder)
+-- Source-shaped category reset: a page OnShow scan runs before Details applies
+-- the final selected template. Styling must be settled when the click returns.
+DetailsOptionsWindow.sectionFramesContainer = {}
+for id = 1, 3 do
+    local page = frame('Frame', nil, DetailsOptionsWindow); page:Hide()
+    local button = frame('Button', nil, DetailsOptionsWindow); button.label = font(button)
+    local widget = {widget = button, type = 'button', icon = button:CreateTexture()}
+    button.MyObject, page.sectionButton = widget, widget
+    function widget:SetTemplate()
+        button:SetBackdrop({bgFile = 'native-category'}); button.selected = nil
+        button.label:SetAlpha(1)
+    end
+    function widget:SetIcon() self.icon:SetAlpha(1) end
+    button.hooks.OnClick = function() return Details222.OptionsPanel.SelectOptionsSection(id) end
+    DetailsOptionsWindow.sectionFramesContainer[id] = page
+end
+Details222 = {OptionsPanel = {SelectOptionsSection = function(id)
+    local pages = DetailsOptionsWindow.sectionFramesContainer
+    for _, page in ipairs(pages) do page:Hide(); page.sectionButton:SetTemplate(); page.sectionButton:SetIcon() end
+    local page = pages[id]; page:Show()
+    if page.hooks.OnShow then page.hooks.OnShow(page) end
+    page.sectionButton:SetTemplate(); page.sectionButton:SetIcon()
+    return 'section-native'
+end}}
+modules.Details.refresh(); flush()
+for _, id in ipairs({1, 2, 3, 1, 3}) do
+    local page = DetailsOptionsWindow.sectionFramesContainer[id]
+    assert(Details222.OptionsPanel.SelectOptionsSection(id) == 'section-native', 'category method return changed')
+    page.sectionButton.widget.hooks.OnClick()
+    for i, section in ipairs(DetailsOptionsWindow.sectionFramesContainer) do
+        local button = section.sectionButton.widget
+        assert(button.backdrop == nil and button.tab and button.selected == (i == id), 'category styles/selection flashed after native reset')
+        assert(section.sectionButton.icon.alpha == 0, 'native category marker returned')
+        assert(button.label.alpha == 0, 'native template label overlapped the EUI tab label')
+    end
+    flush()
+    assert(page.sectionButton.widget.selected, 'queued scan lost the selected category')
+end
 local input = frame('EditBox', nil, DetailsOptionsWindow)
 local dropdown = frame('Button', nil, DetailsOptionsWindow); dropdown.MyObject = {type = 'dropdown', SetTemplate = function() end}
 dropdown.dropdownframe = frame('ScrollFrame', nil, dropdown); dropdown.statusbar = dropdown:CreateTexture()

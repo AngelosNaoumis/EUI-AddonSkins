@@ -1,6 +1,6 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.6`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.7`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
@@ -36,3 +36,5 @@ The Details suite covers optional loading, new windows/rows, native return value
 Header icons are drawn on the matching header independently of native button opacity. Native visibility, hover tooltips and click actions remain in use.
 
 Details-owned Cooltip pop-outs and submenus use flat EUI panels, accent hover fills and subtle separators. Native rounded/background layers are suppressed only for Details; warning icons, arrows, status values and actions stay native. Original artwork, fonts and corner mode are restored on hide, owner transfer or disabling menu styling.
+
+Options category buttons use EUI tabs with native page visibility as their selected state. Scoped hooks on category template/icon updates and the native page-selection method keep navigation consistent during page switches. The regression suite simulates template resets around page OnShow and queued refreshes.
