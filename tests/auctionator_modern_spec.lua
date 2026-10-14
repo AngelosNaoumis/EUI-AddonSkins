@@ -94,6 +94,7 @@ local function frame(kind, parent, name)
     function f:SetAlpha(a) self.alpha = a end
     function f:GetAlpha() return self.alpha end
     function f:IsShown() return self.shown end
+    function f:IsVisible() return self.shown and (not self.parent or self.parent:IsVisible()) end
     function f:SetHitRectInsets(...) self.hit = {...} end
     function f:HookScript(key, fn) local old = self.scripts[key]; self.scripts[key] = function(...) if old then old(...) end; fn(...) end end
     function f:SetScript(key, fn) self.scripts[key] = fn end
@@ -150,9 +151,17 @@ zone.regions = {texture('ARTWORK', 900, 1), texture('ARTWORK', 900, 1)}
 frame('Frame', zone); frame('Frame', zone)
 -- Auctionator's panels, tabs and controls.
 Auctionator = {Tabs = {State = {knownTabs = {{name = 'Shopping', tabFrameName = 'AuctionatorShoppingFrame'},
-    {name = 'Selling', tabFrameName = 'AuctionatorSellingFrame'}}}}}
+    {name = 'Selling', tabFrameName = 'AuctionatorSellingFrame'},
+    {name = 'Cancelling', tabFrameName = 'AuctionatorCancellingFrame'}}}}}
 AuctionatorSellingFrame = frame('Frame', host); local selling = AuctionatorSellingFrame
 AuctionatorShoppingFrame = frame('Frame', host); local shopping = AuctionatorShoppingFrame
+-- Cancelling's refresh: icon set by file ID (no name to match), Auctionator's own button art.
+AuctionatorCancellingFrame = frame('Frame', host); AuctionatorCancellingFrame.shown = false
+local cancelRefresh = frame('Button', AuctionatorCancellingFrame)
+cancelRefresh.Icon = cancelRefresh:CreateTexture(nil, 'ARTWORK'); cancelRefresh.Icon:SetTexture(1121272)
+cancelRefresh.normal = cancelRefresh:CreateTexture(nil, 'BACKGROUND')
+-- An icon-only button elsewhere is not a refresh button.
+local listIcon = frame('Button', shopping); listIcon.Icon = listIcon:CreateTexture(nil, 'ARTWORK')
 AuctionatorAHTabsContainer = {Tabs = {}}
 for _, view in ipairs({shopping, selling}) do
     local tab = frame('Button'); tab.frameRef = view; view.shown = false
@@ -257,6 +266,10 @@ assert(moneyInput.GoldBox.w == 100, 'boxes without a flush neighbour were narrow
 assert(sale.Quantity.justifyH == 'CENTER' and sale.Quantity.insets[1] == 0)
 assert(sale.regions[1].color[2] == 0.82 and sale.regions[2].color[2] == 1)
 -- Refresh: white house glyph, original art faded.
+local cancelGlyph = cancelRefresh.regions[#cancelRefresh.regions]
+assert(cancelGlyph.atlas == 'UI-RefreshButton' and cancelGlyph.desaturated, 'panel refresh by file ID not glyphed')
+assert(cancelRefresh.Icon.alpha == 0 and cancelRefresh.normal.alpha == 0, 'panel refresh kept its button art')
+assert(listIcon.Icon.alpha ~= 0 and listIcon.regions[#listIcon.regions] == listIcon.Icon, 'non-refresh icon button glyphed')
 assert(refreshButton.Icon.alpha == 0 and refreshButton.regions[2].atlas == 'UI-RefreshButton' and refreshButton.regions[2].desaturated)
 -- Bag icons: unmasked, inset, re-squared when the pooled button refills.
 assert(#bag.Icon.masks == 0 and bag.Icon.points[1][2] == 2 and bag.euiQualityTop.alpha == 1 and plain.euiQualityTop.alpha == 0)
@@ -283,6 +296,13 @@ for _ = 1, 10 do modules.Auctionator.refresh(); flush() end
 assert(created == before, 'warm refresh created UI objects')
 assert(gold.h == 19 and moneyInput.CopperBox.w == 96 and shoppingTab.h == 22 and shopping.ExportButton.w == 106)
 assert(prices.points[1][4] == 10 and shopping.SearchOptions.points[1][5] == -6, 'warm refresh shifted again')
+-- Hidden panels are not walked again until shown; showing one skins what changed meanwhile.
+local lateButton = frame('Button', shopping); lateButton.label = fontString('Late')
+modules.Auctionator.refresh(); flush()
+assert(not lateButton.button, 'hidden panel walked on a warm refresh')
+shopping.shown = true; shopping.scripts.OnShow(shopping); flush()
+assert(lateButton.button, 'shown panel not skinned')
+shopping.shown = false; modules.Auctionator.refresh(); flush()
 -- EUI's auction house on Blizzard art (off / Blizzard / Classic look): Auctionator stays stock too.
 EllesmereUI = {GetBlizzWindowStyle = function(key) assert(key == 'auctionhouse'); return 'off' end}
 local lateTab = frame('Button'); lateTab.frameRef = frame('Frame', host); lateTab.frameRef.shown = false; table.insert(AuctionatorAHTabsContainer.Tabs, lateTab)
@@ -291,10 +311,18 @@ modules.Auctionator.refresh(); flush()
 assert(not lateTab.tab and not lateInset.inset, 'skinned inside a stock auction house')
 EllesmereUI.GetBlizzWindowStyle = function() return 'blizzard' end; modules.Auctionator.refresh(); flush()
 assert(not lateTab.tab, 'skinned under the Blizzard window style')
+selling.shown = true
 EllesmereUI.GetBlizzWindowStyle = function() return 'modern' end; modules.Auctionator.refresh(); flush()
 assert(lateTab.tab and lateInset.inset, 'EUI auction house style did not skin')
+selling.shown = false; modules.Auctionator.refresh(); flush()
 EllesmereUI = nil
+-- Without the refresh atlas on the client, a refresh button keeps its native art.
+C_Texture = {GetAtlasInfo = function() return nil end}
+local bare = frame('Button', AuctionatorCancellingFrame); bare.Icon = bare:CreateTexture(nil, 'ARTWORK'); bare.Icon:SetTexture(1121272)
+AuctionatorCancellingFrame.shown = true; modules.Auctionator.refresh(); flush()
+assert(bare.Icon.alpha == 1 and #bare.regions == 1, 'refresh button blanked without its atlas')
+AuctionatorCancellingFrame.shown = false; C_Texture = nil; modules.Auctionator.refresh(); flush()
 -- Disabled: no further work.
 enabled = false; selling.shown = true; host:SetDisplayMode({}); flush()
 assert(zone.alpha == 1 and sellingTab.selected == false, 'disabled skin repainted')
-print('PASS: Auctionator modern tab row/seams, zone washes, clipped header strip, pooled rows/icons, money/quantity/labels, copper gap, refresh glyph, even list buttons, flat aligned price tabs, search gap, bordered controls, warm idempotence, EUI auction house style gate and disable')
+print('PASS: Auctionator modern tab row/seams, zone washes, clipped header strip, pooled rows/icons, money/quantity/labels, copper gap, refresh glyph (named and by panel), even list buttons, flat aligned price tabs, search gap, bordered controls, warm idempotence, visible-only rescans, EUI auction house style gate and disable')

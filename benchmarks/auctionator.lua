@@ -71,6 +71,7 @@ function Frame:GetBottom() return self.b end
 function Frame:SetAlpha() end
 function Frame:GetAlpha() return 1 end
 function Frame:IsShown() return self.shown end
+function Frame:IsVisible() return self.shown and (not self.parent or self.parent:IsVisible()) end
 function Frame:SetHitRectInsets() end
 function Frame:HookScript(key, fn) self.scripts[key] = fn end
 function Frame:SetScript(key, fn) self.scripts[key] = fn end
@@ -99,7 +100,8 @@ function S.GetAccentColor() return 0.1, 0.8, 0.6 end
 assert(loadfile(BENCH_ROOT .. '/Widgets.lua'))('EUIAddonSkins', ns)
 assert(loadfile(BENCH_ROOT .. '/Skins/Auctionator.lua'))('EUIAddonSkins', ns)
 
--- Host, two Auctionator panels: 10 groups of 30 controls, 40 bag items, a 6-column listing of 60 rows.
+-- Host, two Auctionator panels (Selling open, Shopping hidden): 10 groups of 30 controls,
+-- 40 bag items, a 6-column listing of 60 rows.
 AuctionHouseFrame = frame(); AuctionHouseFrame.SetDisplayMode = function() end
 AuctionHouseFrame.Tabs = {frame('Button', AuctionHouseFrame)}
 Auctionator = {Tabs = {State = {knownTabs = {{name = 'Shopping', tabFrameName = 'AuctionatorShoppingFrame'},
@@ -110,6 +112,7 @@ for _, view in ipairs({AuctionatorShoppingFrame, AuctionatorSellingFrame}) do
     local tab = frame('Button'); tab.frameRef = view; view.shown = false
     table.insert(AuctionatorAHTabsContainer.Tabs, tab)
 end
+AuctionatorSellingFrame.shown = true
 for group = 1, 10 do
     local g = frame('Frame', group % 2 == 0 and AuctionatorSellingFrame or AuctionatorShoppingFrame)
     for index = 1, 30 do

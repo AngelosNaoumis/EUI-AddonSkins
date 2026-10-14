@@ -16,6 +16,7 @@ end, function(S, module)
     local scrollChrome, itemBorders, radioMarks, layouts = {}, {}, {}, {}
     local rows, squares, squaring, zones, money, centered, glyphs, labels, darkTabs, chained = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
     local coppers, cleared, rowWidths, aligned, widgets, refreshes, stripAt = {}, {}, {}, {}, {}, {}, {}
+    local scanned, refreshHosts = {}, {}
     local zoneHost
     local refresh, waiting
     local discoveryDirty = true
@@ -45,15 +46,20 @@ end, function(S, module)
         roots[f] = shell or roots[f] or "controls"
         refresh()
     end
+    -- Foreground art (spinners, icons) survives the panel fade.
+    local function Artwork(f)
+        local artwork = {}
+        for _, region in ipairs(H.Regions(f)) do
+            if region.GetTexture and region.GetDrawLayer then
+                local layer = region:GetDrawLayer()
+                if layer == "ARTWORK" or layer == "OVERLAY" then artwork[region] = region:GetAlpha() end
+            end
+        end
+        return artwork
+    end
     local function Panel(f)
         if H.Allowed(f) and not panels[f] then
-            local artwork = {}
-            for _, region in ipairs(H.Regions(f)) do
-                if region.GetTexture and region.GetDrawLayer then
-                    local layer = region:GetDrawLayer()
-                    if layer == "ARTWORK" or layer == "OVERLAY" then artwork[region] = region:GetAlpha() end
-                end
-            end
+            local artwork = Artwork(f)
             S.Panel(f)
             panels[f] = artwork
             if f.SetBackdrop then f:SetBackdrop(nil) end
@@ -67,13 +73,7 @@ end, function(S, module)
     local function Zone(f, wash)
         if not H.Allowed(f) or zones[f] then return end
         zones[f] = true
-        local artwork = {}
-        for _, region in ipairs(H.Regions(f)) do
-            if region.GetDrawLayer and region.GetTexture then
-                local layer = region:GetDrawLayer()
-                if layer == "ARTWORK" or layer == "OVERLAY" then artwork[region] = region:GetAlpha() end
-            end
-        end
+        local artwork = Artwork(f)
         S.Inset(f)
         for region, alpha in pairs(artwork) do region:SetAlpha(alpha) end
         if f.SetBackdrop then f:SetBackdrop(nil) end
@@ -366,6 +366,12 @@ end, function(S, module)
             previous = button
         end
     end
+    -- Refresh buttons sit directly on Auctionator's panels as icon-only buttons; their
+    -- icon can be set by file ID, which carries no name to match, so the panel says it.
+    local function PanelRefresh(button)
+        if not (H.Allowed(button) and button:GetObjectType() == "Button" and H.Texture(button.Icon)) then return false end
+        return not button.IconBorder and not button.EmptySlot and not (button.GetFontString and button:GetFontString())
+    end
     -- Checked once per button: Visit reaches every button on every pass.
     local function Named(texture)
         if not H.Texture(texture) then return false end
@@ -377,7 +383,9 @@ end, function(S, module)
     local function IsRefresh(button)
         local known = refreshes[button]
         if known == nil then
-            known = Named(button.Icon) or (button.GetNormalTexture and Named(button:GetNormalTexture())) or false
+            local parent = button.GetParent and button:GetParent()
+            known = Named(button.Icon) or (button.GetNormalTexture and Named(button:GetNormalTexture()))
+                or (parent and refreshHosts[parent] and PanelRefresh(button)) or false
             refreshes[button] = known
         end
         return known
@@ -385,6 +393,8 @@ end, function(S, module)
     -- EUI's pack draws refresh as its white house glyph, without a button block.
     local function Glyph(button)
         if glyphs[button] or not button.CreateTexture then return end
+        -- As the pack does: without the atlas the native button stays rather than going blank.
+        if C_Texture and C_Texture.GetAtlasInfo and not C_Texture.GetAtlasInfo("UI-RefreshButton") then return end
         for _, region in ipairs(H.Regions(button)) do if H.Texture(region) then H.Fade(region) end end
         local glyph = button:CreateTexture(nil, "OVERLAY")
         glyph:SetAtlas("UI-RefreshButton", false); glyph:SetSize(16, 16); glyph:SetPoint("CENTER")
@@ -604,6 +614,17 @@ end, function(S, module)
         -- WowTrimScrollBar is an EventFrame rather than a Slider.
         if H.Allowed(f.ScrollBar) then Scroll(f.ScrollBar) end
     end
+    local REFRESH_HOSTS = {"AuctionatorCancellingFrame", "AuctionatorBuyItemFrame", "AuctionatorBuyCommodityFrame"}
+    local function RefreshHost(host)
+        if not H.Allowed(host) or refreshHosts[host] then return end
+        refreshHosts[host] = true
+        -- Forget answers given before this panel was known.
+        for _, child in ipairs(H.Children(host)) do refreshes[child] = nil end
+    end
+    local TAB_METHODS = {"Selected", "DeselectTab"}
+    local DIALOGS = {"AuctionatorShoppingTabItemFrame", "AuctionatorExportListFrame", "AuctionatorImportListFrame", "AuctionatorItemHistoryFrame"}
+    local CRAFTING = {"AuctionatorCraftingInfo", "AuctionatorCraftingInfoObjectiveTrackerFrame", "AuctionatorCraftingInfoProfessionsFrame",
+        "AuctionatorCraftingInfoProfessionsOrderFrame", "AuctionatorEnchantInfoFrame", "AuctionatorTradeSkillSearch"}
     local function Apply()
         if InCombatLockdown() then waiting = true; return end
         waiting = false
@@ -618,7 +639,7 @@ end, function(S, module)
                     and (not tab.wrapperFrame or not tab.wrapperFrame.IsShown or tab.wrapperFrame:IsShown()) or false
                 active = active or visible
                 H.Tab(tab, visible)
-                for _, method in ipairs({"Selected", "DeselectTab"}) do H.Hook(tab, method, refresh) end
+                for _, method in ipairs(TAB_METHODS) do H.Hook(tab, method, refresh) end
                 H.Script(tab, "OnClick", refresh)
                 if tab.wrapperFrame then roots[tab.wrapperFrame] = "content" end
                 if f then H.Script(f, "OnHide", refresh); H.Script(f, "OnShow", refresh) end
@@ -635,6 +656,10 @@ end, function(S, module)
             end
         end
         ModernTabs()
+        -- Panels whose icon-only buttons are refresh buttons (as Luckyone's Auctionator skin finds them).
+        local selling = _G.AuctionatorSellingFrame
+        for _, name in ipairs(REFRESH_HOSTS) do RefreshHost(_G[name]) end
+        RefreshHost(selling and selling.SaleItemFrame)
         -- Only addon-owned globals, never a scan of the Blizzard auction house.
         if discoveryDirty then
             discoveryDirty = false
@@ -644,14 +669,11 @@ end, function(S, module)
                 end
             end
         end
-        for _, name in ipairs({"AuctionatorShoppingTabItemFrame", "AuctionatorExportListFrame",
-            "AuctionatorImportListFrame", "AuctionatorItemHistoryFrame"}) do
+        for _, name in ipairs(DIALOGS) do
             if _G[name] then roots[_G[name]] = "dialog" end
         end
         -- Crafting and enchanting price frames attach to the profession windows.
-        for _, name in ipairs({"AuctionatorCraftingInfo", "AuctionatorCraftingInfoObjectiveTrackerFrame",
-            "AuctionatorCraftingInfoProfessionsFrame", "AuctionatorCraftingInfoProfessionsOrderFrame",
-            "AuctionatorEnchantInfoFrame", "AuctionatorTradeSkillSearch"}) do
+        for _, name in ipairs(CRAFTING) do
             if _G[name] then roots[_G[name]] = roots[_G[name]] or "controls" end
         end
         -- Modern tab panels sit inside the already skinned auction house window;
@@ -663,10 +685,14 @@ end, function(S, module)
                     shells[f] = true
                     H.Shell(f, refresh, {noTopBar = mode == "content", bottomBar = mode == "dialog" and 32 or nil})
                 end
-                H.Scan(f, refresh, Visit)
+                -- A hidden root is scanned once, which hooks its OnShow; after that
+                -- only visible roots are walked, as hidden ones cannot change the look.
+                if not scanned[f] or not f.IsVisible or f:IsVisible() then
+                    scanned[f] = true
+                    H.Scan(f, refresh, Visit)
+                end
             end
         end
-        local selling = _G.AuctionatorSellingFrame
         local sale = selling and selling.SaleItemFrame
         if modern and H.Allowed(sale) and not labels[sale] then labels[sale] = true; Gold(sale, 0) end
         for _, box in ipairs(coppers) do Clear(box, H.Allowed(sale) and sale or box:GetParent()) end
