@@ -218,7 +218,11 @@ local function Setup(C, refresh)
         state.applying, state.restoring = true, true
         for _, instance in pairs(D:GetAllInstances() or {}) do
             local restored = RestoreSettings(instance)
-            if restored and instance.ChangeSkin then H.Safe(instance.ChangeSkin, instance) end
+            -- Details retains instances whose windows have not been built or were closed.
+            -- Restore their saved settings without asking its renderer to touch a missing frame.
+            if restored and H.Allowed(instance.baseframe) and instance.ChangeSkin then
+                H.Safe(instance.ChangeSkin, instance)
+            end
         end
         if not state.meterActive then state.applying, state.restoring = false, false; return end
         state.meterActive = false

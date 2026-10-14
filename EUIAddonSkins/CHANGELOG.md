@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0-alpha.13 — Details restoration guard (untagged)
+
+- Restore saved appearance settings without resetting a Details window that does not exist.
+- Cover unbuilt and closed instances when toggling meter styling.
+
 ## 1.2.0-alpha.12 — Details quick controls and Tiny Threat (untagged)
 
 - Add EUI AddonSkins controls to Details' settings pop-out.

@@ -537,6 +537,32 @@ assert(tinyHost.row_info.height == 24 and bar.lefttext.font == 'tiny-font', 'com
 ns.SetDetailsSetting('meter', true); flush()
 tinyHost.baseframe.cabecalho.ball:SetAlpha(0.7)
 assert(tinyHost.baseframe.cabecalho.ball.alpha == 0.7, 'disabled Tiny window retained a fade guard from Details')
+-- A retained instance can have saved appearance settings but no live window.
+local retained = instance()
+retained.baseframe = nil
+retained.ChangeSkin = function(self)
+    assert(self.baseframe, 'ChangeSkin called without a live window')
+    self.skinResets = (self.skinResets or 0) + 1
+end
+Details.instances[4] = retained
+local backups = ns.DetailsSettings().backups
+local profile = '::' .. profileName
+assert(backups[profile], 'fixture profile is missing')
+backups[profile][retained.meu_id] = {height = 27, spacing = 3, texture = 'retained-native'}
+retained.row_info.height = 18
+ns.SetDetailsSetting('meter', false); flush()
+assert(retained.row_info.height == 27 and retained.row_info.space.between == 3 and retained.row_info.texture == 'retained-native', 'unbuilt instance settings were not restored')
+assert(not retained.skinResets and not backups[profile][retained.meu_id], 'unbuilt instance reset or backup was retained')
+-- A previously styled window may also disappear before the toggle is clicked.
+ns.SetDetailsSetting('meter', true); flush()
+local existingFrame = meter.baseframe
+meter.baseframe = nil
+meter.ChangeSkin = retained.ChangeSkin
+ns.SetDetailsSetting('meter', false); flush()
+assert(not meter.skinResets and meter.row_info.height == 35, 'closed instance restoration called its renderer or lost settings')
+meter.baseframe = existingFrame
+ns.SetDetailsSetting('meter', true); flush()
+assert(meter.row_info.height == 18, 'restored window could not be styled again')
 local currentSettings = EUIAddonSkinsDB.details
 EUIAddonSkinsDB.details = {meter = true, menus = false}
 assert(ns.DetailsSettings().tiny == true, 'existing meter users lost Tiny Threat appearance during migration')
