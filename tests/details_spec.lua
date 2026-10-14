@@ -30,6 +30,7 @@ local function texture(kind, parent)
     function t:SetWidth(w) self.width = w end
     function t:GetStringWidth() return #(self.text or "") * 5 end
     function t:SetTexCoord(...) self.crop = {...} end
+    function t:GetTexCoord() return table.unpack(self.crop or {0, 1, 0, 1}) end
     function t:GetNumMaskTextures() return self.masked and 1 or 0 end
     function t:SetText(s) assert(self.font, "FontString:SetText(): Font not set"); self.text = s end
     function t:GetFont() return self.font, self.font and 12, '' end
@@ -223,11 +224,22 @@ local tip1, tip2 = frame(), frame()
 for _, f in ipairs({tip1, tip2}) do
     f:SetBackdrop({bgFile = 'native-tooltip'}); f:SetBackdropColor(0.2, 0.2, 0.2, 1); f:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
     local line = frame(); f.Lines = {line}; local bar = frame('StatusBar', nil, line); line.leftText = font(bar); line.rightText = font(bar)
+    f.HaveRoundedCorners = true
+    function f:EnableRoundedCorners() self.disabled = false end
+    function f:DisableRoundedCorners() self.disabled = true end
+    f.frameBackgroundTexture, f.gradientTexture = f:CreateTexture(), f:CreateTexture()
+    line.background, line.divbar, line.leftIcon = bar:CreateTexture(), line:CreateTexture(), bar:CreateTexture()
+    line.divbar:SetAlpha(0.1); line.divbar:SetTexCoord(0.2, 0.8, 0, 0.1)
+    line.leftIcon:SetVertexColor(1, 0, 0, 1)
+    line.action = function() return 'delete-native' end
 end
 GameCooltip = {frame1 = tip1, frame2 = tip2, GetOwner = function(self) return self.owner end,
     SetHost = function(self, owner) self.owner = owner end,
     ShowCooltip = function() return 'menu-native' end, BuildCooltip = function() end,
-    BuildTooltip = function() end, BuildTooltipSecondFrame = function() end}
+    BuildTooltip = function() end, BuildTooltipSecondFrame = function() end,
+    ShowRoundedCorner = function(self)
+        for _, f in ipairs({self.frame1, self.frame2}) do f:EnableRoundedCorners(); f:SetBackdrop(nil) end
+    end}
 modules.Details.install(S, modules.Details); flush()
 assert(setterCalls == 0 and meter.baseframe.cabecalho.ball.alpha == 1, 'default menu-only mode changed the meter')
 GameCooltip:SetHost(meter.baseframe.cabecalho.fechar); GameCooltip:ShowCooltip()
@@ -291,8 +303,25 @@ assert(infoBar.fill == 'eui-bar' and infoBar.value == 65)
 -- Shared menu/submenu ownership must not leak to another addon.
 GameCooltip:SetHost(meter.baseframe.cabecalho.fechar); assert(GameCooltip:ShowCooltip() == 'menu-native')
 assert(tip1.backdrop.bgFile ~= 'native-tooltip' and tip2.border[1] == 0.055 and tip1.Lines[1].leftText.font == 'eui')
+GameCooltip:ShowRoundedCorner()
+assert(tip1.disabled and tip2.disabled and tip1.backdrop.bgFile == 'Interface\\Buttons\\WHITE8X8', 'rounded menu art overwrote EUI shell')
+assert(tip1.frameBackgroundTexture.alpha == 0 and tip2.gradientTexture.alpha == 0, 'native menu background overlays were left visible')
+assert(tip1.Lines[1].background.path == 'Interface\\Buttons\\WHITE8X8' and tip1.Lines[1].background.color[4] == 0.14)
+assert(tip1.Lines[1].leftIcon.color[1] == 1 and tip1.Lines[1].leftIcon.color[2] == 0 and tip1.Lines[1].action() == 'delete-native', 'semantic icon/action was changed')
+local pooled = frame(); tip2.Lines[2] = pooled; pooled.leftText = font(pooled); pooled.background = pooled:CreateTexture()
+GameCooltip:BuildTooltipSecondFrame()
+assert(pooled.leftText.font == 'eui' and pooled.background.color[4] == 0.14, 'new submenu row was not styled synchronously')
+accent = 0.8; modules.Details.refresh(); flush()
+assert(tip1.Lines[1].background.color[1] == 0.8, 'open popup ignored the accent refresh')
+ns.SetDetailsSetting('menus', false); flush()
+assert(not tip1.disabled and tip1.frameBackgroundTexture.alpha == 1 and pooled.background.path == 'native', 'menu toggle did not restore the shared popup')
+ns.SetDetailsSetting('menus', true); flush()
+assert(tip1.disabled and tip1.frameBackgroundTexture.alpha == 0, 'menu toggle did not restyle the open popup')
+accent = 0.4
 local stranger = frame(); GameCooltip:SetHost(stranger)
 assert(tip1.backdrop.bgFile == 'native-tooltip' and tip2.border[1] == 0.4 and tip1.Lines[1].leftText.font == 'native')
+assert(not tip1.disabled and not tip2.disabled and tip1.frameBackgroundTexture.alpha == 1 and tip2.gradientTexture.alpha == 1, 'shared menu native layers were not restored')
+assert(tip1.Lines[1].background.path == 'native' and tip1.Lines[1].divbar.crop[1] == 0.2 and tip1.Lines[1].divbar.alpha == 0.1 and pooled.leftText.font == 'native', 'pooled menu art or fonts leaked to another addon')
 GameCooltip:SetHost(meter.baseframe); tip1.hooks.OnHide()
 assert(tip1.backdrop.bgFile == 'native-tooltip', 'hidden menu was not restored')
 GameCooltip:SetHost(stranger)

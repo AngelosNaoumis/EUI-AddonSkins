@@ -1,6 +1,6 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.5`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.6`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
@@ -34,3 +34,5 @@ Run `python3 scripts/package.py`. It validates Lua syntax, executes all regressi
 The Details suite covers optional loading, new windows/rows, native return values/actions, untouched data/positions, theme changes, combat deferral, disabled skins, shared menu restoration and warm refresh reuse, independent modes, restoration after repeated toggles and disabled-skin reload recovery, hidden native title bars, toolbar redraws and late startup width/height changes, timer changes and secret-value guards. No polling or combat parser hooks are introduced.
 
 Header icons are drawn on the matching header independently of native button opacity. Native visibility, hover tooltips and click actions remain in use.
+
+Details-owned Cooltip pop-outs and submenus use flat EUI panels, accent hover fills and subtle separators. Native rounded/background layers are suppressed only for Details; warning icons, arrows, status values and actions stay native. Original artwork, fonts and corner mode are restored on hide, owner transfer or disabling menu styling.

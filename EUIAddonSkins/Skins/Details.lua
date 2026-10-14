@@ -289,24 +289,55 @@ local function Setup(C, refresh)
         frame:SetBackdrop(old.backdrop)
         frame:SetBackdropColor(unpack(old.color)); frame:SetBackdropBorderColor(unpack(old.border))
         for text, data in pairs(old.fonts) do text:SetFont(unpack(data)) end
+        for art, data in pairs(old.art) do
+            art:SetAlpha(data.alpha)
+            if data.changed then
+                art:SetTexture(data.texture)
+                if data.coords then art:SetTexCoord(unpack(data.coords)) end
+                art:SetVertexColor(unpack(data.color))
+            end
+        end
+        if old.rounded ~= nil then
+            if old.rounded then frame:EnableRoundedCorners() else frame:DisableRoundedCorners() end
+        end
+    end
+    local function MenuArt(old, art, color)
+        if not H.Texture(art) then return end
+        if not old.art[art] then
+            old.art[art] = {alpha = art:GetAlpha()}
+            if color then
+                local data = old.art[art]
+                data.changed = true
+                data.texture, data.color = art:GetTexture(), {art:GetVertexColor()}
+                if art.GetTexCoord then data.coords = {art:GetTexCoord()} end
+            end
+        end
+        if color then
+            art:SetTexture(WHITE); art:SetTexCoord(0, 1, 0, 1); art:SetVertexColor(unpack(color)); art:SetAlpha(1)
+        else art:SetAlpha(0) end
     end
     local function Cooltip()
         local tip = _G.GameCooltip
         if not tip or Busy() then return end
         local owner = tip.GetOwner and tip:GetOwner()
-        local owned = ns.DetailsSettings().menus ~= false and Owned(owner)
+        local owned = ns.IsEnabled(C.module) and ns.DetailsSettings().menus ~= false and Owned(owner)
         for _, f in pairs({tip.frame1, tip.frame2}) do
             if H.Allowed(f) and f.SetBackdrop and f.GetBackdropColor and f.GetBackdropBorderColor then
                 if not owned then Restore(f)
                 else
                     if not state.snapshots[f] then
-                        local old = {backdrop = f:GetBackdrop(), color = {f:GetBackdropColor()}, border = {f:GetBackdropBorderColor()}, fonts = {}}
+                        local old = {backdrop = f:GetBackdrop(), color = {f:GetBackdropColor()}, border = {f:GetBackdropBorderColor()}, fonts = {}, art = {}}
+                        if f.HaveRoundedCorners and f.DisableRoundedCorners and f.EnableRoundedCorners then old.rounded = not f.disabled end
                         state.snapshots[f] = old
                         MenuTexts(f, function(text)
                             local font, size, flags = text:GetFont()
                             if font then old.fonts[text] = {font, size, flags or ""} end
                         end)
                     end
+                    local old = state.snapshots[f]
+                    if old.rounded ~= nil then f:DisableRoundedCorners() end
+                    MenuArt(old, f.frameBackgroundTexture)
+                    MenuArt(old, f.gradientTexture)
                     f:SetBackdrop({bgFile = WHITE, edgeFile = WHITE, edgeSize = 1})
                     local r, g, b, a = S.GetPanelColor(); f:SetBackdropColor(r, g, b, a)
                     f:SetBackdropBorderColor(0.055, 0.055, 0.055, 1)
@@ -319,7 +350,17 @@ local function Setup(C, refresh)
                         end
                         H.Font(text)
                     end)
+                    local ar, ag, ab = S.GetAccentColor()
+                    for _, line in pairs(f.Lines or {}) do
+                        if H.Allowed(line) then
+                            -- Only decorative hover/separator textures: leave
+                            -- icons, arrows, status values and actions native.
+                            MenuArt(old, line.background, {ar, ag, ab, 0.14})
+                            MenuArt(old, line.divbar, {0.14, 0.14, 0.14, 1})
+                        end
+                    end
                     H.Script(f, "OnHide", function() Restore(f) end)
+                    H.Script(f, "OnShow", Cooltip)
                 end
             end
         end
@@ -363,7 +404,7 @@ ns.RegisterScopedSkin("Details", "Details!", {
     hooks = function(C, refresh)
         local state = Setup(C, refresh)
         local tip = _G.GameCooltip
-        for _, name in ipairs({"ShowCooltip", "BuildCooltip", "BuildTooltip", "BuildTooltipSecondFrame", "SetHost"}) do
+        for _, name in ipairs({"ShowCooltip", "BuildCooltip", "BuildTooltip", "BuildTooltipSecondFrame", "SetHost", "ShowRoundedCorner", "HideRoundedCorner"}) do
             C.H.Hook(tip, name, state.Cooltip)
         end
     end,

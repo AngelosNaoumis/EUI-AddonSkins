@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.6 — Details pop-out menus (untagged)
+
+- Apply flat EUI backgrounds, soft borders, accent hover fills and subtle separators to Details pop-out menus and submenus.
+- Prevent native rounded backgrounds from covering the menu skin.
+- Preserve warning icons and actions; restore native artwork when shared menus change owners.
+
 ## 1.2.0-alpha.5 — Details startup icon sizing (untagged)
 
 - Keep header artwork at its EUI size independently of native button dimensions.
