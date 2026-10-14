@@ -160,6 +160,12 @@ local function Buff(name)
     f.range:SetVertexColor(1, 0, 0, 1)
     return f
 end
+PallyPowerAnchor = frame('CheckButton', 'PallyPowerAnchor')
+PallyPowerAnchor.protected = true
+PallyPowerAnchor.normal, PallyPowerAnchor.checkedArt = PallyPowerAnchor:CreateTexture(), PallyPowerAnchor:CreateTexture()
+function PallyPowerAnchor:GetCheckedTexture() return self.checkedArt end
+PallyPowerAnchor.hooks.OnClick = function(_, button) PallyPowerAnchor.action = button end
+PallyPowerAnchor.HookScript = function() error('skin hooked protected anchor') end
 PallyPowerBlessingsFrame = frame('Frame', 'PallyPowerBlessingsFrame')
 local dividerGroup = frame('Frame', 'PallyPowerBlessingsFrameClassGroup1', PallyPowerBlessingsFrame)
 local divider = dividerGroup:CreateTexture(); divider.name = 'PallyPowerBlessingsFrameClassGroup1Line'
@@ -278,6 +284,8 @@ local fills = {}; for _, t in ipairs(dividerGroup.regions) do if t ~= divider th
 assert(#fills == 1 and fills[1].color[4] == 0.65)
 local secondFill; for _, t in ipairs(secondColumn.regions) do if t ~= secondLine then secondFill = t end end
 assert(secondFill.color[1] > fills[1].color[1], 'alternating columns lack contrast')
+assert(PallyPowerAnchor.normal.path == 'solid' and PallyPowerAnchor.checkedArt.path == 'solid')
+PallyPowerAnchor.hooks.OnClick(PallyPowerAnchor, 'RightButton'); assert(PallyPowerAnchor.action == 'RightButton')
 assert(options.check == nil and not options.shell, 'embedded options received a nested shell')
 assert(grid.Icon.alpha == 1 and grid.Icon.path == 'spell-art' and grid.Icon.crop[1] == 0.08)
 grid.hooks.OnClick(); assert(grid.assignment == 'native-assignment')

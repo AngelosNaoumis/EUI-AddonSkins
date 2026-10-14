@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0-alpha.6 — PallyPower anchor (untagged)
+
+- Flatten the drag/lock anchor artwork and use the EUI accent for its checked state.
+- Preserve native lock, drag and assignment-window actions.
+
 ## 1.3.0-alpha.5 — PallyPower options performance (untagged)
 
 - Restyle checkbox resets locally instead of rescanning every PallyPower window.
