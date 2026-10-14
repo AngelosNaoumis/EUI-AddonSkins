@@ -23,11 +23,14 @@ local function region(kind)
     function r:GetObjectType() return self.kind end
     function r:IsShown() return self.shown ~= false end
     function r:SetSize() end
+    function r:SetHeight() end
+    function r:SetAllPoints() end
+    function r:SetDrawLayer(value) self.layer = value end
     function r:SetPoint() end
     function r:SetColorTexture(...) self.color = {...} end
     function r:GetAlpha() return self.alpha end
     function r:SetAlpha(a) self.alpha = a end
-    function r:GetDrawLayer() return 'BACKGROUND' end
+    function r:GetDrawLayer() return self.layer or 'BACKGROUND' end
     function r:GetVertexColor() return table.unpack(self.color) end
     function r:SetVertexColor(...) self.color = {...} end
     function r:GetFont() return table.unpack(self.font) end
@@ -70,6 +73,7 @@ LibStub = function(name) if name == 'LibUIDropDownMenu-4.0' then return lib else
 ToggleDropDownMenu = function() return 'native-original', nil, 9 end
 UIDropDownMenu_AddButton = function() end
 local S = {GetFont = function() return 'eui-font', '' end, GetAccentColor = function() return accent, 0.5, 0.6 end,
+    GetPanelColor = function() return 0.03, 0.03, 0.03, 0.95 end,
     OnLooksChanged = function(fn) looks[#looks + 1] = fn end}
 function S.Shell(f, options) f.shell = true; assert(options.noTopBar) end
 local module = {enabled = true}
@@ -161,13 +165,65 @@ custom:Toggle(emoteOwner); assert(custom.Backdrop.alpha == 0)
 local modern = frame('Frame'); modern.NineSlice = frame('Frame', nil, modern)
 modern.shown, modern.owner = true, emoteOwner
 function modern:GetOwnerRegion() return self.owner end
+local attached, allocatedFonts = 0, 0
+local textures = {}
+function modern:AttachTexture()
+    attached = attached + 1
+    -- Reuse the same native pool across menu acquisitions.
+    local tex = textures[attached] or region(); textures[attached] = tex
+    self.regions[attached] = tex
+    return tex
+end
+function modern:CreateTexture() error('compositor CreateTexture forbidden') end
+CreateFont = function()
+    allocatedFonts = allocatedFonts + 1
+    return {SetFont = function(self, ...) self.font = {...} end}
+end
+local modernRow = frame('Button', nil, modern)
+local nativeFont = {font = {'native-font', 13, 'OUTLINE'}}
+local modernText = region('FontString'); modernText.SetFont = nil; modernText.fontObject = nativeFont
+setmetatable(modernText, {__index = function(_, key) if key == 'SetFont' then error('compositor SetFont forbidden, including lookup') end end})
+function modernText:GetFont() return table.unpack(self.fontObject.font) end
+function modernText:GetFontObject() return self.fontObject end
+modernText.textColor = {0.5, 0.5, 0.5, 0.8}
+function modernText:GetTextColor() return table.unpack(self.textColor) end
+function modernText:SetTextColor(...) self.textColor = {...} end
+function modernText:SetFontObject(value) self.fontObject = value; self.textColor = {1, 1, 1, 1} end
+modernRow.regions = {modernText}
+modernRow.GetFontString = function() return modernText end
+modernRow.callback = function() return 'modern-native-action' end
 ns.BindPopupList(S, emoteModule, emoteOwner, modern)
 assert(modern.NineSlice.alpha == 0, 'modern menu native border was left visible')
+assert(modernText:GetFont() == 'eui-font' and modernRow.callback() == 'modern-native-action', 'modern menu font/action lost')
+assert(modernText.textColor[1] == 0.5 and modernText.textColor[4] == 0.8, 'modern disabled/text colours were changed')
+assert(#modern.children == 2 and attached == 2, 'modern menu created an unmanaged overlay frame')
+ns.RefreshPopupMenusNow(); assert(attached == 2, 'warm modern menu refresh allocated duplicate regions')
 modern.owner = unrelated; ns.RefreshPopupMenusNow()
 assert(modern.NineSlice.alpha == 1, 'modern pooled menu retained another owner skin')
 modern.owner = emoteOwner; ns.RefreshPopupMenusNow()
 assert(modern.NineSlice.alpha == 0, 'modern menu failed to restyle for its owner')
 modern:Hide(); assert(modern.NineSlice.alpha == 1)
+assert(modernText:GetFontObject() == nativeFont, 'modern font-object restoration failed')
+for _ = 1, 50 do
+    -- Blizzard discards compositor-assigned fields and returns its textures to
+    -- the pool. A new acquisition can have a different level and new rows.
+    modern.euiAddonSkinsMenuFill, modern.euiAddonSkinsMenuAccent = nil, nil
+    modern.owner, modern.shown, attached = emoteOwner, true, 0
+    modernText.fontObject = nativeFont
+    ns.BindPopupList(S, emoteModule, emoteOwner, modern)
+    assert(modern.euiAddonSkinsMenuFill.alpha == 1 and modernText:GetFont() == 'eui-font', 'reopened menu lost its background or text')
+    assert(attached == 2 and #modern.children == 2 and modernRow.callback() == 'modern-native-action')
+    modern:Hide()
+end
+assert(allocatedFonts == 1 and #textures == 2, 'modern menu font/texture pool grew on every open')
+modern.owner, modern.shown = emoteOwner, true
+ns.RefreshPopupMenusNow()
+-- A renderer reset may precede our hide callback. Stale snapshot restoration
+-- must not modify regions that now belong to an unrelated pooled menu.
+modern.euiAddonSkinsMenuFill, modern.euiAddonSkinsMenuAccent = nil, nil
+modern.owner = unrelated; modern.NineSlice.alpha = 1; modernText.fontObject = nativeFont
+ns.RefreshPopupMenusNow()
+assert(modernText:GetFontObject() == nativeFont and modern.NineSlice.alpha == 1, 'stale acquisition restored into a reused menu')
 flush()
 assert(#errors == 0, table.concat(errors, '\n'))
 print('PASS: scoped legacy/library popup/submenu styling, native reuse/restoration, preserved emotes/actions/colors, live accents, independent toggles and combat deferral')

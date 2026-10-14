@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.10 — ThreatClassic2 menu reuse (untagged)
+
+- Use supported font objects for Blizzard compositor menus; avoid forbidden SetFont calls.
+- Use renderer-managed menu backgrounds instead of persistent child frames.
+- Preserve menu contents and actions through repeated reopening and pooled reuse.
+
 ## 1.2.0-alpha.9 — ThreatClassic2 (untagged)
 
 - Reintroduced ThreatClassic2 with the shared Details-style meter palette, fonts and bar texture.

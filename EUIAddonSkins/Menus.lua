@@ -5,6 +5,7 @@ local hooks, lookHooks, queued = {}, {}, false
 local unpack = unpack or table.unpack
 local extraLists = setmetatable({}, {__mode = "k"})
 local applying = false
+local menuFonts, fontSerial = {}, 0
 
 local function Allowed(f)
     return f and f.GetObjectType and not (f.IsForbidden and f:IsForbidden())
@@ -13,9 +14,25 @@ end
 local function Enabled(binding)
     return binding and ns.IsEnabled(binding.module)
 end
+local function SetMenuFontObject(text, font)
+    if text.GetTextColor and text.SetTextColor then
+        local red, green, blue, alpha = text:GetTextColor()
+        text:SetFontObject(font)
+        text:SetTextColor(red, green, blue, alpha)
+    else text:SetFontObject(font) end
+end
 local function Restore(f)
     local r = records[f]
     if not r or not r.active then return end
+    -- A released modern menu may already have recycled its regions. Never
+    -- restore an old acquisition's references into the next menu's controls.
+    if r.modern and f.euiAddonSkinsMenuFill ~= r.fill then
+        r.active = false; r.alpha, r.fonts, r.colors, r.objectFonts = {}, {}, {}, {}
+        return
+    end
+    for text, data in pairs(r.objectFonts or {}) do
+        if data.original and text:GetFontObject() == data.applied then SetMenuFontObject(text, data.original) end
+    end
     for object, value in pairs(r.alpha) do
         if object:GetAlpha() == 0 then object:SetAlpha(value) end
     end
@@ -34,6 +51,8 @@ local function Restore(f)
         if same then texture:SetVertexColor(unpack(value)) end
     end
     if r.layer then r.layer:SetAlpha(0) end
+    if r.fill then r.fill:SetAlpha(0) end
+    if r.accent then r.accent:SetAlpha(0) end
     for _, marker in pairs(r.markers or {}) do marker:SetAlpha(0) end
     r.active = false
 end
@@ -79,9 +98,73 @@ local function Marker(r, button, native, checked, S)
     marker:SetAlpha(native:IsShown() and 1 or 0)
     Fade(r, native)
 end
+local function ModernFont(r, text, S)
+    -- Compositor FontStrings forbid even indexing SetFont. Apply a standalone
+    -- FontObject through the supported API instead, retaining the native size.
+    if not text or not text.GetFont or not text.GetFontObject or not text.SetFontObject or not CreateFont then return end
+    local _, size = text:GetFont()
+    local path, flags = S.GetFont(); size, flags = size or 12, flags or ""
+    if issecretvalue and issecretvalue(size) then return end
+    local key = path .. "\031" .. tostring(size) .. "\031" .. flags
+    local font = menuFonts[key]
+    if not font then
+        fontSerial = fontSerial + 1
+        font = CreateFont("EUIAddonSkinsPopupFont" .. fontSerial)
+        font:SetFont(path, size, flags); menuFonts[key] = font
+    end
+    local old = r.objectFonts[text]
+    if not old then old = {original = text:GetFontObject()}; r.objectFonts[text] = old end
+    old.applied = font
+    if text:GetFontObject() ~= font then SetMenuFontObject(text, font) end
+end
+local function ModernStyle(f, binding, owner)
+    if not f.AttachTexture then Restore(f); return end
+    local fill = f.euiAddonSkinsMenuFill
+    local r = records[f]
+    if r and r.active and (r.binding ~= binding or r.owner ~= owner) then Restore(f) end
+    if not fill then
+        -- These regions belong to Blizzard's compositor and are recycled with
+        -- the menu. An unmanaged child frame can cover reused menu entries.
+        fill = f:AttachTexture(); fill:SetDrawLayer("BACKGROUND", -8); fill:SetAllPoints()
+        f.euiAddonSkinsMenuFill = fill
+        local accent = f:AttachTexture(); accent:SetDrawLayer("OVERLAY", 7)
+        accent:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -1); accent:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, -1); accent:SetHeight(2)
+        f.euiAddonSkinsMenuAccent = accent
+        f:HookScript("OnHide", function() Restore(f) end)
+    end
+    if not r or not r.active or r.fill ~= fill then
+        r = {modern = true, active = true, binding = binding, owner = owner, fill = fill,
+            accent = f.euiAddonSkinsMenuAccent, alpha = {}, fonts = {}, colors = {},
+            objectFonts = {}, appliedFonts = {}, appliedColors = {}}
+        records[f] = r
+    end
+    local S = binding.S
+    fill:SetColorTexture(S.GetPanelColor()); fill:SetAlpha(1)
+    local red, green, blue
+    if ns.AccentBarColor then red, green, blue = ns.AccentBarColor(S) else red, green, blue = S.GetAccentColor() end
+    r.accent:SetColorTexture(red, green, blue, 1)
+    r.accent:SetAlpha((not ns.AccentBarShown or ns.AccentBarShown()) and 1 or 0)
+    Fade(r, f.Backdrop); Fade(r, f.MenuBackdrop); Fade(r, f.NineSlice)
+    for _, region in ipairs({f:GetRegions()}) do
+        if region ~= fill and region ~= r.accent and region.GetDrawLayer then
+            local layer = region:GetDrawLayer()
+            if layer == "BACKGROUND" or layer == "BORDER" then Fade(r, region) end
+        end
+    end
+    for _, button in ipairs({f:GetChildren()}) do
+        if Allowed(button) and button:GetObjectType() == "Button" then
+            ModernFont(r, button.GetFontString and button:GetFontString(), S)
+            for _, region in ipairs({button:GetRegions()}) do
+                if region.GetObjectType and region:GetObjectType() == "FontString" then ModernFont(r, region, S) end
+            end
+            -- Keep compositor-owned checks, arrows and click handlers native.
+        end
+    end
+end
 local function Style(f, binding, owner)
     if not Allowed(f) or not Enabled(binding) then Restore(f); return end
     if InCombatLockdown and InCombatLockdown() then return end
+    if f.GetOwnerRegion then return ModernStyle(f, binding, owner or f:GetOwnerRegion()) end
     local r = records[f]
     if not r then
         r = {layers = {}, rowHooks = {}}; records[f] = r

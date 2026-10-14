@@ -1,6 +1,6 @@
 # ThreatClassic2 alpha
 
-Included in `1.2.0-alpha.9` on the untagged `details-alpha` branch. No release tag or CurseForge publication.
+Included in `1.2.0-alpha.10` on the untagged `details-alpha` branch. No release tag or CurseForge publication.
 
 Enable or disable the ThreatClassic2 skin through the collection’s EUI third-party addon toggles. Reload after disabling it. ThreatClassic2 is installed separately.
 
@@ -13,3 +13,5 @@ No threat-update hooks, skinning OnUpdate handlers, periodic timers or UIParent 
 Run `python3 scripts/package.py` for Lua syntax validation, all regression suites and ZIP verification. The ThreatClassic2 suite uses source-shaped mocked frames to verify native redraws, data/actions/geometry, options, late rows, combat/toggles and repeated refreshes. The menu suite covers modern and legacy owner transfer. Actual in-game appearance has not been verified.
 
 Source reference: https://github.com/dfherr/ThreatClassic2 . No upstream code, assets or dependencies are bundled.
+
+Modern menus use compositor-managed AttachTexture regions and SetFontObject with cached standalone FontObjects. They never index or call SetFont on a compositor FontString or create raw regions on compositor controls. Legacy menus keep their existing adapter. Regression tests forbid SetFont lookup and raw texture creation, simulate 50 compositor resets/reopenings, and check bounded texture/font reuse, native actions and restoration.
