@@ -20,6 +20,9 @@ local function Regions(C, frame)
         end
     end
 end
+local function MediaWidget(widget)
+    return widget and (widget.type == "LSM30_Background" or widget.type == "LSM30_Border")
+end
 local function BuffButton(C, button)
     if not button or type(button.GetObjectType) ~= "function" or button:IsForbidden()
         or InCombatLockdown and InCombatLockdown() then return end
@@ -99,10 +102,91 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
         if name == "PallyPowerBlessingsFrameTitle" then
             Regions(C, frame); return true -- Keep drag, credits tooltip and native grid update.
         end
+        local column = name:match("^PallyPowerBlessingsFrameClassGroup(%d+)$")
+            or name:match("^PallyPowerBlessingsFrameAuraGroup(%d+)$")
+        if column then
+            C.columns = C.columns or setmetatable({}, {__mode = "k"})
+            local fill = C.columns[frame]
+            if not fill then
+                local line = _G[name .. "Line"]
+                if line then
+                    fill = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
+                    fill:SetPoint("TOPLEFT", frame, "TOPLEFT", 3, 0)
+                    fill:SetPoint("BOTTOMRIGHT", line, "BOTTOMLEFT", 82, 0)
+                    C.columns[frame] = fill
+                    local header = _G[name .. "ClassButton"] or _G[name .. "AuraHeader"]
+                    if H.Allowed(header) then
+                        header.euiPallyHeader = header:CreateTexture(nil, "BACKGROUND", nil, 2)
+                        header.euiPallyHeader:SetAllPoints(header)
+                    end
+                end
+            end
+            if fill then
+                local r, g, b = S.GetPanelColor()
+                local lift = tonumber(column) % 2 == 0 and 0.045 or 0.015
+                fill:SetColorTexture(math.min(r + lift, 1), math.min(g + lift, 1), math.min(b + lift, 1), 0.65)
+                local header = _G[name .. "ClassButton"] or _G[name .. "AuraHeader"]
+                if header and header.euiPallyHeader then
+                    header.euiPallyHeader:SetColorTexture(math.min(r + 0.09, 1), math.min(g + 0.09, 1), math.min(b + 0.09, 1), 0.4)
+                end
+            end
+        end
+        if C.mediaPreviews and C.mediaPreviews[frame] then return true end
         if C.optionTabs and C.optionTabs[frame] then return true end
         local widget = frame.obj
         if widget then
             if widget.frame == frame then
+                if MediaWidget(widget) then
+                    C.mediaPreviews = C.mediaPreviews or setmetatable({}, {__mode = "k"})
+                    if H.Allowed(frame.displayButton) then
+                        C.mediaPreviews[frame.displayButton] = true
+                        local backdrop = frame.displayButton.GetBackdrop and frame.displayButton:GetBackdrop()
+                        if backdrop and backdrop.edgeFile then
+                            local copy = {}; for key, value in pairs(backdrop) do copy[key] = value end
+                            copy.edgeFile = nil; frame.displayButton:SetBackdrop(copy)
+                        end
+                    end
+                    for _, key in ipairs({"DLeft", "DRight", "DMiddle"}) do H.Fade(frame[key]) end
+                    C.Panel(frame); H.Font(frame.text); H.Font(frame.label)
+                    if H.Allowed(frame.dropButton) then S.Dropdown(frame.dropButton) end
+                    local function Popup()
+                        if InCombatLockdown and InCombatLockdown() then C.RefreshNow(); return end
+                        local popup = widget.dropdown
+                        if not H.Allowed(popup) then return end
+                        C.Panel(popup)
+                        H.Scan(popup, C.RefreshNow, function(row, rowKind)
+                            if rowKind == "Slider" then
+                                H.LegacySlider(row)
+                                local thumb = row.GetThumbTexture and row:GetThumbTexture()
+                                if thumb then thumb:SetSize(8, 18) end
+                                return true
+                            end
+                            if rowKind == "Button" and row.obj == widget and row.text then
+                                H.Action(row, {"text", "check"}); H.Font(row.text)
+                                if row.check then local r, g, b = S.GetAccentColor(); row.check:SetVertexColor(r, g, b, 1) end
+                                return true
+                            end
+                        end)
+                    end
+                    H.Hook(widget, "ToggleDrop", Popup)
+                    H.Script(frame.dropButton, "OnClick", Popup)
+                    Popup()
+                    return true
+                end
+                if widget.type == "CheckBox" and widget.checkbg and widget.check then
+                    local r, g, b = S.GetAccentColor()
+                    widget.checkbg:SetColorTexture(0.08, 0.08, 0.09, 1)
+                    widget.checkbg:SetTexCoord(0, 1, 0, 1); widget.checkbg:SetSize(14, 14)
+                    widget.check:ClearAllPoints(); widget.check:SetPoint("CENTER", widget.checkbg, "CENTER")
+                    widget.check:SetSize(8, 8); widget.check:SetTexCoord(0, 1, 0, 1)
+                    widget.check:SetVertexColor(1, 1, 1, 1)
+                    if widget.check.SetBlendMode then widget.check:SetBlendMode("BLEND") end
+                    widget.check:SetColorTexture(widget.disabled and 0.5 or r, widget.disabled and 0.5 or g, widget.disabled and 0.5 or b, 1)
+                    if widget.highlight then widget.highlight:SetColorTexture(r, g, b, 0.12); widget.highlight:SetTexCoord(0, 1, 0, 1) end
+                    H.Font(widget.text)
+                    H.Hook(widget, "SetType", C.RefreshNow); H.Hook(widget, "SetDisabled", C.RefreshNow)
+                    return true
+                end
                 if widget.type == "Heading" then
                     for _, region in ipairs(H.Regions(frame)) do
                         if H.Texture(region) then H.Fade(region) else H.Font(region) end
@@ -138,11 +222,17 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
                 C.Panel(frame); H.Font(widget.statustext); return true
             end
         end
-        if kind == "Slider" then H.LegacySlider(frame); return true end
+        if kind == "Slider" then
+            H.LegacySlider(frame)
+            local thumb = frame.GetThumbTexture and frame:GetThumbTexture()
+            if thumb then thumb:SetSize(frame.GetOrientation and frame:GetOrientation() == "HORIZONTAL" and 10 or 8,
+                frame.GetOrientation and frame:GetOrientation() == "HORIZONTAL" and 16 or 18) end
+            return true
+        end
         if kind == "Button" and name:find("CloseButton$") then S.CloseButton(frame); return true end
         if kind == "Button" and name:find("Resize$") then H.Resize(frame, true); return true end
         if kind == "Button" then
-            local keep = {"Text", "text"}
+            local keep = {"Text", "text", "euiPallyHeader"}
             local count = 0
             for _, region in ipairs(H.Regions(frame)) do
                 local regionName = region.GetName and region:GetName() or ""

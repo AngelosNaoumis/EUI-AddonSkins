@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0-alpha.4 — PallyPower contrast and controls (untagged)
+
+- Add subtle alternating assignment column fills.
+- Enlarge slider grips and theme Ace checkboxes and SharedMedia selectors/popups.
+- Preserve native media previews, selection callbacks and checkbox values.
+
 ## 1.3.0-alpha.3 — PallyPower options (untagged)
 
 - Remove numbered assignment separators.

@@ -13,6 +13,8 @@ end
 local function texture(kind, parent)
     local t = {kind = kind or 'Texture', alpha = 1, path = 'native', parent = parent, points = {}}
     function t:GetObjectType() return self.kind end
+    function t:Show() self.hidden = false end
+    function t:Hide() self.hidden = true end
     function t:GetName() return self.name end
     function t:GetWidth() return self.width or 0 end
     function t:GetHeight() return self.height or 0 end
@@ -162,6 +164,11 @@ PallyPowerBlessingsFrame = frame('Frame', 'PallyPowerBlessingsFrame')
 local dividerGroup = frame('Frame', 'PallyPowerBlessingsFrameClassGroup1', PallyPowerBlessingsFrame)
 local divider = dividerGroup:CreateTexture(); divider.name = 'PallyPowerBlessingsFrameClassGroup1Line'
 local numberedDivider = PallyPowerBlessingsFrame:CreateTexture(); numberedDivider.name = 'PallyPowerBlessingsFrameLine11'
+_G[divider.name] = divider
+local secondColumn = frame('Frame', 'PallyPowerBlessingsFrameClassGroup2', PallyPowerBlessingsFrame)
+local secondLine = secondColumn:CreateTexture(); secondLine.name = 'PallyPowerBlessingsFrameClassGroup2Line'; _G[secondLine.name] = secondLine
+local columnHeader = frame('Button', 'PallyPowerBlessingsFrameClassGroup1ClassButton', dividerGroup)
+columnHeader.Icon = icon(columnHeader, 'PallyPowerBlessingsFrameClassGroup1ClassButtonIcon')
 local grid = frame('Button', 'PallyPowerBlessingsFramePlayer1Class1', PallyPowerBlessingsFrame)
 grid.Icon = icon(grid, 'PallyPowerBlessingsFramePlayer1Class1Icon'); grid.Text = label(grid, 'Paladin')
 grid.hooks.OnClick = function() grid.assignment = 'native-assignment' end
@@ -213,11 +220,57 @@ function PallyPower:OpenConfigWindow()
     dialog:Open('PallyPower'); PallyPowerConfigFrame = dialog.OpenFrames.PallyPower.frame
     return 'options-native'
 end
+local controls = frame('Frame', nil, options)
+local checkbox = frame('Button', nil, controls)
+checkbox.obj = {frame = checkbox, type = 'CheckBox', checkbg = checkbox:CreateTexture(), check = checkbox:CreateTexture(), highlight = checkbox:CreateTexture(), text = label(checkbox, 'Toggle')}
+function checkbox.obj:SetType() self.checkbg:SetTexture(130755); self.check:SetTexture(130751) end
+function checkbox.obj:SetDisabled(v) self.disabled = v end
+function checkbox.obj:SetValue(v) self.checked = v; if v then self.check:Show() else self.check:Hide() end end
+checkbox.obj:SetValue(false)
+local slider = frame('Slider', nil, controls); slider.thumb = slider:CreateTexture()
+function slider:GetThumbTexture() return self.thumb end
+function slider:GetOrientation() return 'HORIZONTAL' end
+slider.hooks.OnValueChanged = function(_, v) slider.value = v end
+local media = frame('Frame', nil, controls)
+media.obj = {frame = media, type = 'LSM30_Background'}
+for _, key in ipairs({'DLeft', 'DRight', 'DMiddle'}) do media[key] = media:CreateTexture() end
+media.text, media.label = label(media, 'Background'), label(media, 'Texture')
+media.dropButton = frame('Button', nil, media); media.dropButton.obj = media.obj
+media.displayButton = frame('Button', nil, media); media.displayButton:SetBackdrop({bgFile = 'chosen-preview', edgeFile = 'native-border'})
+function media.obj:ToggleDrop()
+    self.dropdown = self.dropdown or frame('Frame', nil)
+    local popup = self.dropdown
+    popup.bgTex = popup.bgTex or popup:CreateTexture(); popup.bgTex:SetTexture('hover-preview')
+    if not popup.row then
+        popup.row = frame('Button', nil, popup); popup.row.obj = self
+        popup.row.text, popup.row.check = label(popup.row, 'Chosen background'), popup.row:CreateTexture()
+        popup.row.hooks.OnClick = function() self.value = 'chosen'; self.dropdown = nil end
+    end
+    popup:Show()
+    return 'native-toggle'
+end
+media.dropButton.hooks.OnClick = function() return media.obj:ToggleDrop() end
 modules.PallyPower.install(S, modules.PallyPower); flush()
 assert(PallyPowerBlessingsFrame.shellOptions.noTopBar and PallyPowerBlessingsFrame.shellOptions.noAccent and not PallyPowerBlessingsFrame.accent)
 assert(divider.alpha == 0 and numberedDivider.alpha == 0, 'native white assignment divider remained visible')
 assert(not grid.Icon.borderParent, 'assignment icon received a black border')
 for _, edge in ipairs(grid.pixelBorder.regions) do assert(edge.color[4] == 0, 'assignment button outline remained visible') end
+assert(checkbox.obj.checkbg.path == 'solid' and checkbox.obj.checkbg.width == 14 and checkbox.obj.check.hidden)
+checkbox.obj:SetValue(true); assert(not checkbox.obj.check.hidden and checkbox.obj.checked)
+checkbox.obj:SetType(); assert(checkbox.obj.check.path == 'solid')
+checkbox.obj:SetDisabled(true); assert(checkbox.obj.check.color[1] == 0.5)
+assert(slider.thumb.width == 10 and slider.thumb.height == 16)
+slider.hooks.OnValueChanged(slider, 1.5); assert(slider.value == 1.5)
+assert(media.panel and media.DLeft.alpha == 0 and media.dropButton.dropdown)
+assert(media.displayButton.backdrop.bgFile == 'chosen-preview' and not media.displayButton.backdrop.edgeFile)
+assert(media.obj:ToggleDrop() == 'native-toggle')
+assert(media.obj.dropdown.panel and media.obj.dropdown.bgTex.path == 'hover-preview' and media.obj.dropdown.bgTex.alpha == 1)
+local mediaPopup = media.obj.dropdown; mediaPopup.row.hooks.OnClick(); assert(media.obj.value == 'chosen')
+assert(columnHeader.euiPallyHeader and columnHeader.euiPallyHeader.alpha == 1)
+local fills = {}; for _, t in ipairs(dividerGroup.regions) do if t ~= divider then fills[#fills + 1] = t end end
+assert(#fills == 1 and fills[1].color[4] == 0.65)
+local secondFill; for _, t in ipairs(secondColumn.regions) do if t ~= secondLine then secondFill = t end end
+assert(secondFill.color[1] > fills[1].color[1], 'alternating columns lack contrast')
 assert(options.check == nil and not options.shell, 'embedded options received a nested shell')
 assert(grid.Icon.alpha == 1 and grid.Icon.path == 'spell-art' and grid.Icon.crop[1] == 0.08)
 grid.hooks.OnClick(); assert(grid.assignment == 'native-assignment')
