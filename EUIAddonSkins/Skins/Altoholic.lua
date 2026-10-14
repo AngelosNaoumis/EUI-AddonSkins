@@ -4,11 +4,36 @@ ns.RegisterScopedSkin("Altoholic", "Altoholic", {
     available = function() return _G.Altoholic ~= nil end,
     roots = function() return ns.SkinRoots({"AltoholicFrame", "AltoMessageBox"}, {bottomBar = 24}) end,
     hooks = function(C, refresh)
+        if not C.StyleCategory then
+            local H = C.H
+            local function Paint(button)
+                if not H.Allowed(button) then return end
+                if InCombatLockdown and InCombatLockdown() then refresh(); return end
+                H.Selection(button, button.data and button.data.isSelected == true)
+                for _, key in ipairs({"NormalTexture", "SelectedTexture", "HighlightTexture"}) do H.Fade(button[key]) end
+            end
+            C.StyleCategory = function(button)
+                if not H.Allowed(button) or type(button.SetCategory) ~= "function" or type(button.SetSelected) ~= "function" then return end
+                for _, method in ipairs({"SetCategory", "SetSubCategory", "SetSubSubCategory", "SetSelected"}) do H.Hook(button, method, Paint) end
+                Paint(button)
+            end
+            C.StyleCategories = function(list)
+                for _, button in pairs(list.Buttons or {}) do C.StyleCategory(button) end
+            end
+        end
         for _, method in ipairs({"SwitchToTab", "SetTabs", "ToggleUI", "SetPortraitToUnit"}) do C.H.Hook(_G.AltoholicFrame, method, refresh) end
     end,
     visit = function(C, f, kind, refresh)
         local H, S, main = C.H, C.S, _G.AltoholicFrame
         if f == main then H.Portrait(f, true); ns.AttachAccent(S, f) end
+        if type(f.UpdateCategories) == "function" and type(f.Buttons) == "table" then
+            H.Hook(f, "UpdateCategories", C.StyleCategories)
+            C.StyleCategories(f)
+        end
+        if type(f.SetCategory) == "function" and type(f.SetSelected) == "function" then
+            C.StyleCategory(f)
+            return true
+        end
         if kind == "ScrollFrame" then
             -- AddonFactory keeps the Blizzard scrollbar border on its parent,
             -- outside the slider's own regions.

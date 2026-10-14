@@ -21,7 +21,7 @@ Update `EUIAddonSkins/EUIAddonSkins.toc` (`## Version`), `EUIAddonSkins/Core.lua
 | Alpha tag, e.g. `v1.2.0-alpha.1` | Alpha | Skipped |
 | Untagged development branch | No package | No package |
 
-The Wago job skips prerelease tags and validates exact `vMAJOR.MINOR.PATCH` syntax, matching TOC/Core versions, the release changelog and project ID before uploading. Private testing in the public `details-alpha` branch stays untagged. A public alpha/beta release requires an explicit tag and currently publishes only to CurseForge.
+The Wago job skips prerelease tags and validates exact `vMAJOR.MINOR.PATCH` syntax, matching TOC/Core versions, the release changelog and project ID before uploading. Testing in the public `development` branch stays untagged. Keep `main` for stable releases; commit each validated change to development and merge it into main when preparing a release. A public alpha/beta release requires an explicit tag and currently publishes only to CurseForge.
 
 ## Release procedure
 

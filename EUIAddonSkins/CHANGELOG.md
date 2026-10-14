@@ -1,6 +1,11 @@
 # Changelog
 
-## 1.2.1-alpha.1 — Altoholic scrollbars and unused cells (local)
+## 1.2.1-alpha.2 — Altoholic navigation redraws (untagged)
+
+- Keep left-side categories skinned after clicks, scrolling and native list redraws.
+- Restore EUI fonts, selection and hover styling without changing navigation actions or indentation.
+
+## 1.2.1-alpha.1 — Altoholic scrollbars and unused cells (untagged)
 
 - Remove native scrollbar border art and reduce vertical scrollbar thumbs.
 - Hide the two unused cells extending beyond summary realm headers.

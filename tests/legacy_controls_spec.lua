@@ -279,6 +279,64 @@ flush(); assert(altoThumb.width == 8)
 enabled = false; realmRow.Item11:Show(); realmRow.Item12:Show(); realmRow:DrawRealmLine()
 assert(realmRow.Item11:IsShown() and realmRow.Item12:IsShown(), 'disabled Altoholic skin processed realm rows')
 enabled = true
+-- Native category rebuilds reset atlas textures and font objects every click.
+do
+    local categories = frame('Frame', nil, AltoholicFrame); categories.Buttons = {}
+    local function Category()
+        local b = frame('Button', nil, categories)
+        b.Text = b:CreateFontString(nil, nil, 'native-font')
+        for _, key in ipairs({'NormalTexture', 'SelectedTexture', 'HighlightTexture'}) do
+            b[key] = b:CreateTexture()
+            b[key].SetAtlas = function(self, atlas) self.path = atlas end
+        end
+        b.SetData = function(self, data) self.data = data end
+        b.SetSelected = function(self, data) self.SelectedTexture:SetShown(data.isSelected == true); return 'selected-native' end
+        b.SetCategory = function(self, text)
+            self.Text:SetText(text); self.Text:SetPoint('LEFT', self, 'LEFT', 8, 0)
+            self.Text:SetFont('native-font'); self.NormalTexture:SetAtlas('auctionhouse-nav-button'); self.NormalTexture:SetAlpha(1)
+            return 'category-native'
+        end
+        b.SetSubCategory = function(self, text)
+            self.Text:SetText(text); self.Text:SetPoint('LEFT', self, 'LEFT', 18, 0)
+            self.Text:SetFont('native-font'); self.NormalTexture:SetAtlas('auctionhouse-nav-button-secondary'); self.NormalTexture:SetAlpha(1)
+            return 'subcategory-native'
+        end
+        b.SetSubSubCategory = function(self, text)
+            self.Text:SetText(text); self.Text:SetPoint('LEFT', self, 'LEFT', 26, 0)
+            self.Text:SetFont('native-font'); self.NormalTexture:SetAlpha(0)
+            return 'nested-native'
+        end
+        return b
+    end
+    categories.Buttons = {Category(), Category()}
+    categories.UpdateCategories = function(self)
+        for i, b in ipairs(self.Buttons) do
+            b:SetCategory('Category ' .. i); b:SetData({isSelected = i == self.selected}); b:SetSelected(b.data)
+        end
+        return 'rebuild-native'
+    end
+    categories.selected = 1
+    modules.Altoholic.refresh(); flush()
+    assert(categories:UpdateCategories() == 'rebuild-native')
+    for i, b in ipairs(categories.Buttons) do
+        assert(b.NormalTexture.alpha == 0 and b.SelectedTexture.alpha == 0 and b.HighlightTexture.alpha == 0 and b.Text.font == 'eui', 'native category redraw escaped EUI styling')
+        assert(b.euiSelection.color[4] == (i == 1 and 0.2 or 0), 'category selection was lost')
+    end
+    local category = categories.Buttons[2]
+    assert(category:SetSubCategory('Experience') == 'subcategory-native' and category.NormalTexture.alpha == 0 and category.Text.font == 'eui')
+    assert(category.Text.points[#category.Text.points][4] == 18, 'subcategory indentation changed')
+    assert(category:SetSubSubCategory('Nested') == 'nested-native' and category.Text.points[#category.Text.points][4] == 26)
+    categories.selected = 2; categories:UpdateCategories()
+    assert(categories.Buttons[1].euiSelection.color[4] == 0 and category.euiSelection.color[4] == 0.2, 'selection did not move synchronously')
+    local hooks, regions = category.SetCategory, #category.regions
+    for _ = 1, 10 do categories:UpdateCategories(); modules.Altoholic.refresh(); flush() end
+    assert(category.SetCategory == hooks and #category.regions == regions, 'category hooks or selection textures duplicated')
+    categories.Buttons[3] = Category(); categories:UpdateCategories()
+    assert(categories.Buttons[3].Text.font == 'eui' and categories.Buttons[3].NormalTexture.alpha == 0, 'late category button was not skinned synchronously')
+    accent = 0.9; modules.Altoholic.refresh(); flush(); assert(category.euiSelection.color[1] == 0.9)
+    enabled = false; category:SetCategory('Disabled'); assert(category.NormalTexture.alpha == 1 and category.Text.font == 'native-font', 'disabled skin processed a category redraw')
+    enabled = true
+end
 end
 
 assert(loadfile('EUIAddonSkins/Skins/ForeverDungeonJournal.lua'))('EUIAddonSkins', ns)
