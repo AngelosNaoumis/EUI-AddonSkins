@@ -1,0 +1,60 @@
+name: Publish stable release to Wago
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wago-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ !github.event.deleted && !contains(github.ref_name, '-') && !contains(github.ref_name, '+') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate stable release metadata and credentials
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+          tag = os.environ['RELEASE_TAG']
+          assert re.fullmatch(r'v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', tag), 'Expected a stable vMAJOR.MINOR.PATCH tag'
+          version = tag[1:]
+          toc = Path('EUIAddonSkins/EUIAddonSkins.toc').read_text()
+          assert re.search(r'^## Version: ' + re.escape(version) + r'$', toc, re.M), 'Tag/TOC version mismatch'
+          assert f'ns.VERSION = "{version}"' in Path('EUIAddonSkins/Core.lua').read_text(), 'Tag/Core version mismatch'
+          assert re.search(r'^## ' + re.escape(version) + r'(?:\s|$)', Path('CHANGELOG.md').read_text(), re.M), 'Release changelog missing'
+          assert '## X-Wago-ID: aN0a2M6j' in toc, 'Unexpected Wago project ID'
+          assert os.environ.get('WAGO_API_TOKEN'), 'Add the WAGO_API_TOKEN repository secret before publishing'
+          PY
+
+      - name: Install Lua test runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y liblua5.4-0
+
+      - name: Validate Lua, regression tests and installation package
+        run: python3 scripts/package.py
+
+      - name: Package and upload to Wago only
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
+        with:
+          args: -p 0 -w 0 -a aN0a2M6j -m .pkgmeta
+          pandoc: 'false'
+        env:
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}

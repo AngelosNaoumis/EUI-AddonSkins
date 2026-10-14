@@ -12,6 +12,7 @@ move-folders:
 
 # Paths here are relative to the repository, before folder moves.
 ignore:
+  - .github
   - benchmarks
   - tests
   - scripts
