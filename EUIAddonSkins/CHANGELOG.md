@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0-alpha.3 — Details meter layout (untagged)
+
+- Added an independent dark header with EUI title styling and a segment combat timer.
+- Aligned native toolbar controls and reused installed EUI meter icons where available.
+- Combined total and DPS/HPS through Details native formatting; aligned the value column.
+- Removed native header art and footer labels/grip artwork while retaining their actions.
+- Restores original formatting and control positions when meter matching is disabled.
+
 ## 1.2.0-alpha.2 — Details controls (untagged)
 
 - Added independent menus/options and meter-appearance switches under Settings > AddOns > EUI AddonSkins: Details (`/euidetails`).

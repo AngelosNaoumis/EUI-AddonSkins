@@ -28,6 +28,7 @@ local function texture(kind, parent)
     function t:SetSize(w, h) self.width, self.height = w, h end
     function t:SetHeight(h) self.height = h end
     function t:SetWidth(w) self.width = w end
+    function t:GetStringWidth() return #(self.text or "") * 5 end
     function t:SetTexCoord(...) self.crop = {...} end
     function t:GetNumMaskTextures() return self.masked and 1 or 0 end
     function t:SetText(s) assert(self.font, "FontString:SetText(): Font not set"); self.text = s end
@@ -71,7 +72,7 @@ local function frame(kind, name, parent)
     function f:CreateTexture() local t = texture(nil, self); self.regions[#self.regions + 1] = t; return t end
     function f:CreateFontString(_, _, template) local t = texture('FontString', self); t.font = template; self.regions[#self.regions + 1] = t; return t end
     function f:GetNormalTexture() return self.normal end
-    function f:GetWidth() return 24 end
+    function f:GetWidth() return self.width or 24 end
     function f:GetHeight() return 24 end
     function f:GetFontString() return self.label end
     if parent then parent.children[#parent.children + 1] = f end
@@ -103,6 +104,10 @@ assert(loadfile('EUIAddonSkins/Widgets.lua'))('EUIAddonSkins', ns)
 local originalFrame = frame
 frame = function(...)
     local f = originalFrame(...)
+    function f:Show() self.hidden = false end
+    function f:Hide() self.hidden = true end
+    function f:GetNumPoints() return #(self.points or {}) end
+    function f:GetPoint(i) return table.unpack(self.points[i]) end
     function f:GetFrameLevel() return self.level or 5 end
     function f:SetFrameLevel(level) self.level = level end
     function f:SetAllPoints() end
@@ -132,6 +137,7 @@ function ns.RegisterModule(id, _, available, install) modules[id] = {available =
 assert(loadfile('EUIAddonSkins/Scoped.lua'))('EUIAddonSkins', ns)
 Details = nil
 EUIAddonSkinsDB = nil; EllesmereUIDB = nil
+assert(loadfile('EUIAddonSkins/DetailsLayout.lua'))('EUIAddonSkins', ns)
 assert(loadfile('EUIAddonSkins/DetailsSettings.lua'))('EUIAddonSkins', ns)
 assert(ns.DetailsSettings().meter == false and ns.DetailsSettings().menus == true, 'meter matching must be opt-in')
 assert(loadfile('EUIAddonSkins/Skins/Details.lua'))('EUIAddonSkins', ns)
@@ -140,18 +146,39 @@ local function flush()
     local rounds = 0
     while #timers > 0 do local batch = timers; timers = {}; for _, fn in ipairs(batch) do fn() end; rounds = rounds + 1; assert(rounds < 12, 'refresh loop') end
 end
+C_AddOns = {IsAddOnLoaded = function(name) return name == 'EllesmereUIDamageMeters' end}
 local nextInstanceId = 0
 local function instance()
     nextInstanceId = nextInstanceId + 1
-    local obj = {meu_id = nextInstanceId, baseframe = frame(), row_info = {height = 24, space = {between = 0}, texture = 'native'}, barras = {}, position = {x = 100, y = 200}, segment = 3}
+    local obj = {meu_id = nextInstanceId, baseframe = frame(), row_info = {height = 24, space = {between = 0}, texture = 'native', textR_show_data = {true, true, true}, textR_bracket = '[', textR_separator = ',', textR_enable_custom_text = true}, barras = {}, position = {x = 100, y = 200}, segment = 3}
     obj.baseframe.titleBar = frame('Frame', nil, obj.baseframe); obj.baseframe.titleBar.texture = obj.baseframe.titleBar:CreateTexture()
     obj.baseframe.cabecalho = {ball = obj.baseframe:CreateTexture(), fechar = frame('Button', nil, obj.baseframe)}
+    obj.baseframe:SetSize(340, 160)
+    obj.use_multi_fontstrings = true
+    obj.baseframe.titleBar:Hide()
+    obj.nativeTitle = font(obj.baseframe); obj.nativeTitle:SetText('00:06 Damage Done')
+    obj.baseframe.lock_button = frame('Button', nil, obj.baseframe); obj.baseframe.lock_button.label = font(obj.baseframe.lock_button)
+    obj.baseframe.resize_direita = frame('Button', nil, obj.baseframe); obj.baseframe.resize_direita.texture = obj.baseframe.resize_direita:CreateTexture()
+    for _, key in ipairs({'modo_selecao', 'segmento', 'atributo', 'report', 'reset', 'fechar'}) do
+        local b = key == 'fechar' and obj.baseframe.cabecalho.fechar or frame('Button', nil, obj.baseframe)
+        obj.baseframe.cabecalho[key] = key == 'fechar' and b or {widget = b}
+        b.normal = b:CreateTexture(); b:SetPoint('BOTTOMRIGHT', obj.baseframe, 'TOPRIGHT', 5, -6)
+        b.hooks.OnClick = function() return key .. '-native' end
+    end
     obj.baseframe.cabecalho.fechar.action = function() return 'close-native' end
     obj.bgdisplay = frame(); obj.attribute_text = font(obj.baseframe)
     return setmetatable(obj, {__index = Details})
 end
 local callbacks, setterCalls = {}, 0
 Details = {
+    GetTitleBarFontString = function(self) return {widget = self.nativeTitle} end,
+    GetInstanceAttributeText = function() return 'Damage Done' end,
+    GetShowingCombat = function(self) return {GetCombatTime = function() return self.elapsed or 6 end} end,
+    SetTitleBarText = function() return 'title-native' end,
+    RefreshMainWindow = function() return 'refresh-native' end,
+    SetBarRightTextSettings = function(self, total, ps, percent, bracket, sep)
+        self.row_info.textR_show_data = {total, ps, percent}; self.row_info.textR_bracket = bracket; self.row_info.textR_separator = sep
+    end,
     CreateEventListener = function() return {RegisterEvent = function(_, event, fn) assert(not callbacks[event]); callbacks[event] = fn end} end,
     GetAllInstances = function() return Details.instances end,
     InstanceRefreshRows = function() return 'rows-native' end,
@@ -202,6 +229,21 @@ assert(setterCalls == 1 and meter.row_info.height == 18 and meter.row_info.space
 assert(meter.position.x == 100 and meter.position.y == 200 and meter.segment == 3)
 assert(meter.baseframe.cabecalho.ball.alpha == 0 and meter.baseframe.titleBar.height == 22)
 assert(meter.baseframe.cabecalho.fechar.action() == 'close-native')
+assert(meter.nativeTitle.alpha == 0 and meter.baseframe.lock_button.label.alpha == 0 and meter.baseframe.resize_direita.texture.alpha == 0)
+assert(meter.use_multi_fontstrings == false and meter.row_info.textR_show_data[3] == false and meter.row_info.textR_bracket == '(')
+local ownHeader
+for _, f in ipairs(meter.baseframe.children) do if f.regions[2] and f.regions[2].text == 'Damage Done' then ownHeader = f end end
+assert(ownHeader and not ownHeader.hidden and ownHeader.regions[3].text == ' (0:06)', 'independent header/timer missing')
+assert(meter.baseframe.titleBar.hidden, 'native title-bar visibility should remain unchanged')
+assert(meter.baseframe.cabecalho.fechar.normal.alpha == 0 and meter.baseframe.cabecalho.fechar.points[1][1] == 'RIGHT')
+assert(meter.baseframe.cabecalho.reset.widget.hooks.OnClick() == 'reset-native', 'toolbar action changed')
+meter.elapsed = 65; assert(Details:RefreshMainWindow(meter) == 'refresh-native'); assert(ownHeader.regions[3].text == ' (1:05)')
+local secret = {}; issecretvalue = function(v) return v == secret end
+meter.elapsed = secret; Details:RefreshMainWindow(meter); assert(ownHeader.regions[3].text == '', 'secret timer must not be formatted')
+meter.elapsed = 6; issecretvalue = nil
+Details:RefreshMainWindow(meter)
+meter.baseframe.cabecalho.fechar:SetPoint('BOTTOMRIGHT', meter.baseframe, 'TOPRIGHT', 99, 99)
+assert(meter.baseframe.cabecalho.fechar.points[1][1] == 'RIGHT', 'native toolbar redraw escaped the header')
 local r = meter.barras[1]
 assert(r.textura.path == 'eui-bar' and r.lineText1.font == 'eui-meter-font' and r.lineText1.size == 11 and r.lineText4.size == 10)
 assert(r.statusbar.value == 937 and r.statusbar.classColour[2] == 0.7 and r.lineText1.textColor[4] == 0.8 and r.icone_classe.crop[1] == 0.25 and r.action() == 'breakdown-native')
@@ -244,11 +286,13 @@ S.looks(); flush(); assert(meter.row_info.height == 20 and meter.row_info.space.
 assert(_EDM_DB.profile.dm.bgAlpha == 0.7, 'EUI profile was modified')
 _EDM_DB, _EDM_BarTextures = nil, nil
 S.looks(); flush(); assert(meter.row_info.height == 18 and r.textura.path == 'Interface\\Buttons\\WHITE8X8', 'missing EUI meter must use safe defaults')
-assert(not meter.baseframe.cabecalho.fechar.hooks.OnClick, 'native close action was hooked')
+assert(meter.baseframe.cabecalho.fechar.hooks.OnClick() == 'fechar-native', 'native close action was changed')
 -- Independent controls: disabling meter matching restores its owned settings.
 ns.SetDetailsSetting('meter', false); flush()
 assert(meter.row_info.height == 24 and meter.row_info.space.between == 0 and meter.row_info.texture == 'native', 'meter settings not restored')
 assert(meter.baseframe.cabecalho.ball.alpha == 1 and r.lineText1.font == 'native', 'meter artwork/fonts not restored')
+assert(ownHeader.hidden and meter.nativeTitle.alpha == 1 and meter.baseframe.cabecalho.fechar.normal.alpha == 1)
+assert(meter.baseframe.cabecalho.fechar.points[1][1] == 'BOTTOMRIGHT' and meter.use_multi_fontstrings and meter.row_info.textR_show_data[3] and meter.row_info.textR_bracket == '[' and meter.row_info.textR_enable_custom_text, 'format/control placement not restored')
 assert(meter.position.x == 100 and meter.segment == 3)
 local menuOnlyRow = row(); meter.barras[5] = menuOnlyRow
 callbacks.DETAILS_INSTANCE_NEWROW('DETAILS_INSTANCE_NEWROW', meter, menuOnlyRow)

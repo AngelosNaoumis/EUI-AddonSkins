@@ -1,12 +1,13 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.2`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.3`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
 ## Included
 
-- Meter backgrounds, header decoration, close control, row fonts, bar textures, height and spacing.
+- Meter backgrounds, an independent dark header, EUI title/timer styling, native toolbar controls, row fonts, bar textures, height and spacing.
+- Native total (DPS/HPS) formatting with the value column at the right edge; header and footer art suppressed without removing native actions.
 - Options, breakdown and report windows; ordinary buttons, switches, dropdowns, inputs, scrollbars and sliders.
 - Details-owned Cooltip menus and submenus. Shared popup backdrops/fonts are restored when ownership changes.
 - Optional EUI meter appearance matching, without a dependency on its renderer.
@@ -20,7 +21,7 @@ Backups are scoped to character, realm, Details profile and window ID. A recover
 
 ## Boundaries
 
-This is a first styling preview, not a replacement for Details' renderer. Additional plugin windows and exact pixel parity with EUI's meter are not guaranteed. Details retains its own information layout, class/spec icons, custom text, combat data, window positions and actions. While meter matching is enabled, the skin manages row height, spacing and texture plus runtime fonts/header decoration. Those settings follow EUI until matching is switched off. Other Details appearance settings remain native. The meter design is still a preview; these switches establish the modular behaviour before further layout refinement.
+This is a first styling preview, not a replacement for Details' renderer. Additional plugin windows and exact pixel parity with EUI's meter are not guaranteed. Native button visibility and actions are preserved, so the toolbar can have different controls. The combat timer uses the selected Details segment; unavailable/secret times are left blank. Installed EUI meter icons are referenced only when that module is loaded; otherwise native icons are retained. Details retains its class/spec icons, combat data, window positions and actions. Matching temporarily supersedes right-hand custom formats; they are backed up and restored when it is disabled. While meter matching is enabled, the skin manages row height, spacing, texture and native combined-number formatting, plus runtime fonts/header decoration and toolbar positions. Those settings follow EUI until matching is switched off. Other Details appearance settings remain native. The meter design is still a preview; these switches establish the modular behaviour before further layout refinement.
 
 Fonts use EUI's public font getters. The optional `_EDM_DB.profile.dm` and `_EDM_BarTextures` exports are read only and guarded; these are compatibility reads, not a promised public skinning contract. If unavailable, the skin uses EUI fonts with conservative meter defaults. No EUI or Details code/assets are bundled. The meter's special Blizzard/Classic/Forever border renderers are not copied. Meter-only setting changes can be picked up with `/euiskins refresh` if EUI does not broadcast a theme refresh.
 
@@ -30,4 +31,4 @@ Source inspection used the supplied upstream repositories' current default branc
 
 Run `python3 scripts/package.py`. It validates Lua syntax, executes all regression suites, checks TOC paths and includes all nineteen skins and the MIT license in the install-ready ZIP. Development files and upstream reference sources stay outside the package.
 
-The Details suite covers optional loading, new windows/rows, native return values/actions, untouched data/positions, theme changes, combat deferral, disabled skins, shared menu restoration and warm refresh reuse, independent modes, restoration after repeated toggles and disabled-skin reload recovery. No polling or combat parser hooks are introduced.
+The Details suite covers optional loading, new windows/rows, native return values/actions, untouched data/positions, theme changes, combat deferral, disabled skins, shared menu restoration and warm refresh reuse, independent modes, restoration after repeated toggles and disabled-skin reload recovery, hidden native title bars, toolbar redraws, timer changes and secret-value guards. No polling or combat parser hooks are introduced.

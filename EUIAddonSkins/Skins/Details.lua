@@ -25,6 +25,13 @@ local function Backup(instance, create)
         local info = instance.row_info
         saved[id] = {height = info.height, spacing = info.space.between, texture = info.texture, texture_file = info.texture_file}
     end
+    if create and saved[id] and instance.row_info and not saved[id].format then
+        local info = instance.row_info
+        local data = info.textR_show_data
+        saved[id].format = {multi = instance.use_multi_fontstrings,
+            custom = info.textR_enable_custom_text, bracket = info.textR_bracket,
+            separator = info.textR_separator, data = data and {data[1], data[2], data[3]}}
+    end
     return saved[id], saved, id
 end
 local function RestoreSettings(instance)
@@ -34,6 +41,12 @@ local function RestoreSettings(instance)
         info.height, info.texture, info.texture_file = old.height, old.texture, old.texture_file
         info.space.between = old.spacing
         instance.row_height = (old.height or 0) + (old.spacing or 0)
+        if old.format then
+            local format = old.format
+            instance.use_multi_fontstrings, info.textR_enable_custom_text = format.multi, format.custom
+            info.textR_bracket, info.textR_separator = format.bracket, format.separator
+            if format.data then info.textR_show_data = {format.data[1], format.data[2], format.data[3]} end
+        end
         saved[id] = nil
         return true
     end
@@ -80,13 +93,17 @@ local function Look(S)
     if EUI.ResolveTexturePath and textures then
         texture = EUI.ResolveTexturePath(textures, cfg.barTexture or "atrocity", WHITE)
     end
+    local r, g, b = S.GetAccentColor()
+    local title = cfg.hdrTextUseAccent == false and cfg.hdrTextColor or {r = r, g = g, b = b}
     return {font = font, flags = flags or "", texture = texture or WHITE,
         height = cfg.barHeight or 18, spacing = cfg.barSpacing or 2,
         leftSize = cfg.leftFontSize or cfg.fontSize or 11,
         rightSize = cfg.rightFontSize or cfg.fontSize or 11,
         bg = {cfg.bgR or 0, cfg.bgG or 0, cfg.bgB or 0, cfg.bgAlpha or 0.75},
         header = cfg.hdrBgColor or {r = 27/255, g = 27/255, b = 27/255},
-        headerAlpha = cfg.hdrBgAlpha or 1, headerHeight = cfg.hdrHeight or 22}
+        headerAlpha = cfg.hdrBgAlpha or 1, headerHeight = cfg.hdrHeight or 22,
+        headerSize = cfg.hdrFontSize or 11, iconSize = cfg.hdrIconSize or 22,
+        titleColor = {title and title.r or r, title and title.g or g, title and title.b or b, 1}}
 end
 
 local function Setup(C, refresh)
@@ -134,6 +151,7 @@ local function Setup(C, refresh)
             end
         end
         -- Details owns class/spec atlas coordinates, highlights and row actions.
+        if state.layout then state.layout.Row(row) end
     end
     local function Rows(instance)
         if state.applying or not ns.IsEnabled(C.module) or Busy() then return end
@@ -141,7 +159,9 @@ local function Setup(C, refresh)
     end
     state.Row = Row
     local function Fade(art)
-        if not H.Texture(art) then return end
+        if not H.Allowed(art) or not art.SetAlpha then return end
+        local kind = art:GetObjectType()
+        if kind ~= "Texture" and kind ~= "FontString" then return end
         if not state.textures[art] then
             state.textures[art] = {alpha = art:GetAlpha(), profile = Profile()}
             local painting = false
@@ -152,6 +172,7 @@ local function Setup(C, refresh)
         end
         art:SetAlpha(0)
     end
+    state.layout = ns.CreateDetailsLayout(H, function() return MeterWanted() and ns.IsEnabled(C.module) end, refresh, Fade)
     state.RestoreMeters = function()
         if Busy() then return end
         state.applying = true
@@ -161,6 +182,7 @@ local function Setup(C, refresh)
         end
         if not state.meterActive then state.applying = false; return end
         state.meterActive = false
+        state.layout.Restore()
         for _, entry in pairs(state.meters) do
             entry.bg:SetAlpha(0)
             if entry.header then entry.header:SetAlpha(0) end
@@ -220,8 +242,18 @@ local function Setup(C, refresh)
             end
         end
         -- Native setters maintain Details' row geometry. Do not change window
-        -- anchors, size, groups, segment, custom text, data or click scripts.
+        -- anchors, size, groups, segment, combat data or click scripts.
         local info = instance.row_info
+        if info and type(info.textR_show_data) == "table" and instance.SetBarRightTextSettings then
+            local data = info.textR_show_data
+            if instance.use_multi_fontstrings ~= false or info.textR_enable_custom_text
+                or not data[1] or not data[2] or data[3] or info.textR_bracket ~= "(" or info.textR_separator ~= "NONE" then
+                state.applying = true
+                instance.use_multi_fontstrings = false; info.textR_enable_custom_text = false
+                H.Safe(instance.SetBarRightTextSettings, instance, true, true, false, "(", "NONE")
+                state.applying = false
+            end
+        end
         local media = LibStub and LibStub("LibSharedMedia-3.0", true)
         local textureName
         if media and media.Register then media:Register("statusbar", MEDIA_NAME, look.texture); textureName = MEDIA_NAME end
@@ -233,6 +265,7 @@ local function Setup(C, refresh)
             state.applying = false
         end
         Rows(instance)
+        state.layout.Window(instance, look)
     end
 
     local function MenuTexts(frame, callback)
@@ -308,6 +341,12 @@ local function Setup(C, refresh)
         end)
     end
     H.Hook(D, "InstanceRefreshRows", Rows)
+    for _, method in ipairs({"RefreshTitleBarText", "TitleTextTickTimer", "SetTitleBarText"}) do
+        H.Hook(D, method, function(instance, other)
+            state.layout.Title(method == "TitleTextTickTimer" and other or instance)
+        end)
+    end
+    H.Hook(D, "RefreshMainWindow", function(_, instance) state.layout.Title(instance) end)
     for _, name in ipairs({"ChangeSkin", "SetBarSettings", "SetBarTextSettings", "ApplyProfile", "CreateInstance"}) do
         H.Hook(D, name, function() if not state.applying then refresh() end end)
     end
