@@ -1,6 +1,6 @@
 # PallyPower beta alpha
 
-Version: `1.3.0-alpha.1` on the untagged `pallypower-alpha` branch, based on `development` at `7e8eba3`. Includes the existing Altoholic alpha fixes. No CurseForge/Wago release or GitHub Release is created.
+Version: `1.3.0-alpha.2` on the untagged `pallypower-alpha` branch, based on `development` at `7e8eba3`. Includes the existing Altoholic alpha fixes. No CurseForge/Wago release or GitHub Release is created.
 
 ## Target
 
@@ -10,7 +10,7 @@ PallyPower and its libraries/assets are installed separately. None is bundled, c
 
 ## Styling
 
-- Assignment window: EUI shell, accent, fonts, close/resize controls, square spell/class icons and ordinary controls.
+- Assignment window: EUI shell without a top accent or native dividers, borderless buttons, fonts, close/resize controls, square spell/class icons and ordinary controls.
 - Native Ace options: standalone and embedded options, buttons, checkboxes, inputs, sliders and dropdowns; only PallyPower-owned frames are scanned.
 - Assignment popup menus: the existing owner-scoped LibUIDropDownMenu adapter.
 - Buff controls: EUI fonts and square icons, flat existing backdrop textures with softer borders. Native buff-status background colours, timer/severity colours, range/death indicators and spell icons are retained.

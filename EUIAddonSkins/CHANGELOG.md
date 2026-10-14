@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0-alpha.2 — PallyPower assignments (untagged)
+
+- Remove assignment dividers, the top accent bar and button outlines.
+- Keep button fills, hover feedback and spell/class icons.
+
 ## 1.3.0-alpha.1 — PallyPower beta (untagged)
 
 - Added skins for the supplied PallyPower beta's assignment window, Ace options and assignment menus.

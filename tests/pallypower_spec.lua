@@ -13,6 +13,9 @@ end
 local function texture(kind, parent)
     local t = {kind = kind or 'Texture', alpha = 1, path = 'native', parent = parent, points = {}}
     function t:GetObjectType() return self.kind end
+    function t:GetName() return self.name end
+    function t:GetWidth() return self.width or 0 end
+    function t:GetHeight() return self.height or 0 end
     function t:GetTexture() return self.path end
     function t:SetTexture(v) self.path = v end
     function t:GetAlpha() return self.alpha end
@@ -86,6 +89,13 @@ function S.Font(t, r, g, b) t:SetFont('eui'); if r then t:SetTextColor(r, g, b) 
 function S.Button(f, keys)
     local keep = {}; for _, key in ipairs(keys or {}) do keep[f[key] or false] = true end
     for _, t in ipairs(f.regions) do if t.kind == 'Texture' and not keep[t] then t:SetAlpha(0) end end
+    if not f.pixelBorder then
+        f.pixelBorder = frame('Frame', nil, f)
+        for i = 1, 4 do
+            local edge = f.pixelBorder:CreateTexture(); edge.layer = 'BORDER'; edge:SetSize(1, 24)
+            edge:SetColorTexture(1, 1, 1, 1)
+        end
+    end
     f.button = true
 end
 function S.SquareIcon(t, parent) if t:GetNumMaskTextures() > 0 then return end; t:SetTexCoord(0.08, 0.92, 0.08, 0.92); t.borderParent = parent end
@@ -149,6 +159,8 @@ local function Buff(name)
     return f
 end
 PallyPowerBlessingsFrame = frame('Frame', 'PallyPowerBlessingsFrame')
+local dividerGroup = frame('Frame', 'PallyPowerBlessingsFrameClassGroup1', PallyPowerBlessingsFrame)
+local divider = dividerGroup:CreateTexture(); divider.name = 'PallyPowerBlessingsFrameClassGroup1Line'
 local grid = frame('Button', 'PallyPowerBlessingsFramePlayer1Class1', PallyPowerBlessingsFrame)
 grid.Icon = icon(grid, 'PallyPowerBlessingsFramePlayer1Class1Icon'); grid.Text = label(grid, 'Paladin')
 grid.hooks.OnClick = function() grid.assignment = 'native-assignment' end
@@ -180,7 +192,10 @@ function PallyPower:OpenConfigWindow()
     return 'options-native'
 end
 modules.PallyPower.install(S, modules.PallyPower); flush()
-assert(PallyPowerBlessingsFrame.shellOptions.noTopBar and PallyPowerBlessingsFrame.accent)
+assert(PallyPowerBlessingsFrame.shellOptions.noTopBar and PallyPowerBlessingsFrame.shellOptions.noAccent and not PallyPowerBlessingsFrame.accent)
+assert(divider.alpha == 0, 'native white assignment divider remained visible')
+assert(not grid.Icon.borderParent, 'assignment icon received a black border')
+for _, edge in ipairs(grid.pixelBorder.regions) do assert(edge.color[4] == 0, 'assignment button outline remained visible') end
 assert(options.check == nil and not options.shell, 'embedded options received a nested shell')
 assert(grid.Icon.alpha == 1 and grid.Icon.path == 'spell-art' and grid.Icon.crop[1] == 0.08)
 grid.hooks.OnClick(); assert(grid.assignment == 'native-assignment')
@@ -191,6 +206,9 @@ assert(buff.icon.crop[1] == 0.08 and not buff.range.crop and buff.range.color[1]
 assert(buff.alpha == 0 and buff.width == 100 and buff.height == 34 and buff.spell == 123 and buff.unit == 'raid1')
 buff.hooks.OnClick(); buff.hooks.OnEnter(); assert(buff.casts == 1 and buff.expanded)
 assert(menus[PallyPower.menuFrame] and PallyPower.titleBar.panel and PallyPower.titleBar.accent)
+local optionButton = frame('Button', 'PallyPowerOptionsAction', options); optionButton.Text = label(optionButton, 'Option')
+modules.PallyPower.refresh(); flush()
+for _, edge in ipairs(optionButton.pixelBorder.regions) do assert(edge.color[4] == 1, 'assignment border removal leaked into other options') end
 assert(PallyPower:ApplySkin() == 'skin-native' and buff.backdrop.edgeSize == 1 and buff.color[2] == 0.9)
 assert(PallyPower:OpenConfigWindow() == 'options-native' and PallyPowerConfigFrame.shellOptions.noTopBar and PallyPowerConfigFrame.edit.input and PallyPowerConfigFrame.check.checkbox)
 dialog:Open('Other'); assert(not dialog.OpenFrames.Other.frame.shell and not dialog.OpenFrames.Other.frame.edit.input, 'PallyPower styling leaked to another Ace dialog')
@@ -210,6 +228,11 @@ for _, f in ipairs(events) do if f.events and f.events.PLAYER_REGEN_ENABLED then
 flush(); assert(waiting.backdrop.edgeSize == 1 and waiting.timer.font == 'eui')
 accent = 0.9; for _, look in ipairs(looks) do look() end; flush()
 assert(PallyPower.titleBar.text.textColor[1] == 0.9)
+assert(not PallyPowerBlessingsFrame.accent and divider.alpha == 0)
+for _, edge in ipairs(grid.pixelBorder.regions) do
+    edge:SetColorTexture(1, 1, 1, 1)
+    assert(edge.color[4] == 0, 'theme redraw restored an assignment border')
+end
 LibStub = nil; modules.PallyPower.refresh(); flush(); assert(menus[PallyPower.menuFrame], 'missing Ace library caused initialization failure')
 enabled = false; buff:SetBackdrop({bgFile = 'disabled-native', edgeSize = 8}); PallyPower:UpdateLayout(); flush()
 assert(buff.backdrop.edgeSize == 8 and PallyPower.opt.skin == 'native-profile', 'disabled skin changed the native profile or processed redraws')

@@ -38,6 +38,10 @@ end
 
 ns.RegisterScopedSkin("PallyPower", "PallyPower", {
     softBorders = true, preserveTextColors = true, immediateShow = true,
+    borderlessButtons = function(frame)
+        local name = frame.GetName and frame:GetName() or ""
+        return name:find("^PallyPowerBlessingsFrame") ~= nil
+    end,
     available = function() return type(_G.PallyPower) == "table" end,
     hooks = function(C, refresh)
         local P = _G.PallyPower
@@ -57,7 +61,7 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
                 seen[frame] = true; roots[#roots + 1] = {frame = frame, mode = mode, options = options}
             end
         end
-        Add(_G.PallyPowerBlessingsFrame, nil, {noTopBar = true})
+        Add(_G.PallyPowerBlessingsFrame, nil, {noTopBar = true, noAccent = true})
         Add(_G.PallyPowerConfigFrame, nil, {noTopBar = true})
         Add(P.configFrame, nil, {noTopBar = true})
         Add(P.optionsFrame, "controls")
@@ -84,7 +88,14 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
             return true
         end
         local name = frame.GetName and frame:GetName() or ""
-        if name == "PallyPowerBlessingsFrame" then ns.AttachAccent(S, frame) end
+        if name:find("^PallyPowerBlessingsFrame") then
+            -- Native class/aura divider textures are artwork, not shell borders.
+            for _, region in ipairs(H.Regions(frame)) do
+                local regionName = region.GetName and region:GetName() or ""
+                if H.Texture(region) and regionName:find("Line$") then H.Fade(region) end
+            end
+            if kind == "Button" and frame.SetBackdrop then frame:SetBackdrop(nil) end
+        end
         if name == "PallyPowerBlessingsFrameTitle" then
             Regions(C, frame); return true -- Keep drag, credits tooltip and native grid update.
         end
