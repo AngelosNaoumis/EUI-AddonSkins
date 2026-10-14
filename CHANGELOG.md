@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0-alpha.3 — PallyPower options (untagged)
+
+- Remove numbered assignment separators.
+- Remove the options accent bar and native heading/title artwork.
+- Style Ace options tabs immediately when changing pages and soften the status panel.
+
 ## 1.3.0-alpha.2 — PallyPower assignments (untagged)
 
 - Remove assignment dividers, the top accent bar and button outlines.

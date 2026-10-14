@@ -161,6 +161,7 @@ end
 PallyPowerBlessingsFrame = frame('Frame', 'PallyPowerBlessingsFrame')
 local dividerGroup = frame('Frame', 'PallyPowerBlessingsFrameClassGroup1', PallyPowerBlessingsFrame)
 local divider = dividerGroup:CreateTexture(); divider.name = 'PallyPowerBlessingsFrameClassGroup1Line'
+local numberedDivider = PallyPowerBlessingsFrame:CreateTexture(); numberedDivider.name = 'PallyPowerBlessingsFrameLine11'
 local grid = frame('Button', 'PallyPowerBlessingsFramePlayer1Class1', PallyPowerBlessingsFrame)
 grid.Icon = icon(grid, 'PallyPowerBlessingsFramePlayer1Class1Icon'); grid.Text = label(grid, 'Paladin')
 grid.hooks.OnClick = function() grid.assignment = 'native-assignment' end
@@ -172,7 +173,28 @@ local options, dialog = frame('Frame', 'PallyPowerOptions'), {OpenFrames = {}}
 function dialog:Open(app)
     self.OpenFrames[app] = self.OpenFrames[app] or {frame = frame('Frame')}
     local f = self.OpenFrames[app].frame
-    if not f.edit then f.edit = frame('EditBox', nil, f); f.check = frame('CheckButton', nil, f) end
+    if not f.edit then
+        f.edit = frame('EditBox', nil, f); f.check = frame('CheckButton', nil, f)
+        f.obj = {frame = f, type = 'Frame', titletext = label(f, 'Options')}
+        f.titleArt = f:CreateTexture(); f.titleArt:SetTexture(131080)
+        f.status = frame('Button', nil, f); f.status.obj = f.obj
+        f.obj.statustext = label(f.status, 'Status')
+        f.status:SetBackdrop({bgFile = 'native-status', edgeFile = 'native-border'})
+        f.heading = frame('Frame', nil, f); f.heading.obj = {frame = f.heading, type = 'Heading'}
+        f.heading.line = f.heading:CreateTexture(); f.heading.line:SetTexture(137057)
+        f.heading.text = label(f.heading, 'Settings')
+        f.tabs = frame('Frame', nil, f); f.tabs.obj = {frame = f.tabs, type = 'TabGroup', tabs = {}}
+        function f.tabs.obj:SetTabs()
+            for i = 1, 2 do
+                local tab = frame('Button', nil, self.frame); tab.selected = i == 1; self.tabs[i] = tab
+                tab.nativeArt = tab:CreateTexture()
+            end
+        end
+        function f.tabs.obj:SelectTab(index)
+            for i, tab in ipairs(self.tabs) do tab.selected = i == index; tab.nativeArt:SetAlpha(1) end
+        end
+        f.tabs.obj:SetTabs()
+    end
     return 'dialog-native'
 end
 LibStub = function(name) if name == 'AceConfigDialog-3.0' then return dialog end end
@@ -193,7 +215,7 @@ function PallyPower:OpenConfigWindow()
 end
 modules.PallyPower.install(S, modules.PallyPower); flush()
 assert(PallyPowerBlessingsFrame.shellOptions.noTopBar and PallyPowerBlessingsFrame.shellOptions.noAccent and not PallyPowerBlessingsFrame.accent)
-assert(divider.alpha == 0, 'native white assignment divider remained visible')
+assert(divider.alpha == 0 and numberedDivider.alpha == 0, 'native white assignment divider remained visible')
 assert(not grid.Icon.borderParent, 'assignment icon received a black border')
 for _, edge in ipairs(grid.pixelBorder.regions) do assert(edge.color[4] == 0, 'assignment button outline remained visible') end
 assert(options.check == nil and not options.shell, 'embedded options received a nested shell')
@@ -211,6 +233,15 @@ modules.PallyPower.refresh(); flush()
 for _, edge in ipairs(optionButton.pixelBorder.regions) do assert(edge.color[4] == 1, 'assignment border removal leaked into other options') end
 assert(PallyPower:ApplySkin() == 'skin-native' and buff.backdrop.edgeSize == 1 and buff.color[2] == 0.9)
 assert(PallyPower:OpenConfigWindow() == 'options-native' and PallyPowerConfigFrame.shellOptions.noTopBar and PallyPowerConfigFrame.edit.input and PallyPowerConfigFrame.check.checkbox)
+assert(not PallyPowerConfigFrame.accent and PallyPowerConfigFrame.shellOptions.noAccent)
+assert(PallyPowerConfigFrame.titleArt.alpha == 0 and PallyPowerConfigFrame.heading.line.alpha == 0)
+assert(PallyPowerConfigFrame.heading.text.font == 'eui' and PallyPowerConfigFrame.status.panel)
+local tabWidget = PallyPowerConfigFrame.tabs.obj
+assert(tabWidget.tabs[1].tab and tabWidget.tabs[1].selected and not tabWidget.tabs[1].button and tabWidget.tabs[1].nativeArt.alpha == 0)
+tabWidget:SelectTab(2); assert(tabWidget.tabs[2].tab and tabWidget.tabs[2].selected and not tabWidget.tabs[1].selected)
+tabWidget:SetTabs(); assert(tabWidget.tabs[1].tab, 'new option tabs were not styled synchronously')
+PallyPowerConfigFrame.heading.line:SetAlpha(1); numberedDivider:SetAlpha(1)
+assert(PallyPowerConfigFrame.heading.line.alpha == 0 and numberedDivider.alpha == 0, 'native redraw restored separator textures')
 dialog:Open('Other'); assert(not dialog.OpenFrames.Other.frame.shell and not dialog.OpenFrames.Other.frame.edit.input, 'PallyPower styling leaked to another Ace dialog')
 local later = Buff('PallyPowerC2'); PallyPower.classButtons[2] = later
 assert(PallyPower:CreateLayout() == 'layout-native' and later.backdrop.edgeSize == 1, 'late buff controls were not styled')

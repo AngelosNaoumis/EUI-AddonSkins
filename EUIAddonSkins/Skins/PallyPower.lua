@@ -62,11 +62,11 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
             end
         end
         Add(_G.PallyPowerBlessingsFrame, nil, {noTopBar = true, noAccent = true})
-        Add(_G.PallyPowerConfigFrame, nil, {noTopBar = true})
-        Add(P.configFrame, nil, {noTopBar = true})
+        Add(_G.PallyPowerConfigFrame, nil, {noTopBar = true, noAccent = true})
+        Add(P.configFrame, nil, {noTopBar = true, noAccent = true})
         Add(P.optionsFrame, "controls")
         local dialog = LibStub and LibStub("AceConfigDialog-3.0", true)
-        Add(dialog and dialog.OpenFrames and dialog.OpenFrames.PallyPower, nil, {noTopBar = true})
+        Add(dialog and dialog.OpenFrames and dialog.OpenFrames.PallyPower, nil, {noTopBar = true, noAccent = true})
         C.titleBar = P.titleBar or _G.PallyPowerTitleBar
         if C.H.Allowed(C.titleBar) then Add(C.titleBar, "controls") end
         -- Never shell/scan the secure buff hierarchy or its Forever flyout covers.
@@ -92,12 +92,51 @@ ns.RegisterScopedSkin("PallyPower", "PallyPower", {
             -- Native class/aura divider textures are artwork, not shell borders.
             for _, region in ipairs(H.Regions(frame)) do
                 local regionName = region.GetName and region:GetName() or ""
-                if H.Texture(region) and regionName:find("Line$") then H.Fade(region) end
+                if H.Texture(region) and regionName:find("Line%d*$") then H.Fade(region) end
             end
             if kind == "Button" and frame.SetBackdrop then frame:SetBackdrop(nil) end
         end
         if name == "PallyPowerBlessingsFrameTitle" then
             Regions(C, frame); return true -- Keep drag, credits tooltip and native grid update.
+        end
+        if C.optionTabs and C.optionTabs[frame] then return true end
+        local widget = frame.obj
+        if widget then
+            if widget.frame == frame then
+                if widget.type == "Heading" then
+                    for _, region in ipairs(H.Regions(frame)) do
+                        if H.Texture(region) then H.Fade(region) else H.Font(region) end
+                    end
+                    return true
+                end
+                if widget.type == "Frame" then
+                    for _, region in ipairs(H.Regions(frame)) do
+                        local path = region.GetTexture and region:GetTexture()
+                        if path == 131080 or type(path) == "string" and path:find("UI%-DialogBox%-Header") then H.Fade(region) end
+                    end
+                    if widget.sizer_se then H.Resize(widget.sizer_se, true) end
+                    H.Font(widget.titletext)
+                end
+                if widget.type == "TabGroup" then
+                    C.optionTabs = C.optionTabs or setmetatable({}, {__mode = "k"})
+                    for _, tab in pairs(widget.tabs or {}) do
+                        if H.Allowed(tab) then
+                            if not C.optionTabs[tab] then
+                                for _, region in ipairs(H.Regions(tab)) do
+                                    if H.Texture(region) then H.Fade(region) end
+                                end
+                                C.optionTabs[tab] = true
+                            end
+                            H.Tab(tab, tab.selected and true or false)
+                        end
+                    end
+                    H.Hook(widget, "SelectTab", C.RefreshNow)
+                    H.Hook(widget, "SetTabs", C.RefreshNow)
+                end
+            elseif widget.type == "Frame" and widget.statustext
+                and widget.statustext.GetParent and widget.statustext:GetParent() == frame then
+                C.Panel(frame); H.Font(widget.statustext); return true
+            end
         end
         if kind == "Slider" then H.LegacySlider(frame); return true end
         if kind == "Button" and name:find("CloseButton$") then S.CloseButton(frame); return true end
