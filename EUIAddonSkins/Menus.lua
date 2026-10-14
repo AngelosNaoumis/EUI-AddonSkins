@@ -6,6 +6,7 @@ local unpack = unpack or table.unpack
 local extraLists = setmetatable({}, {__mode = "k"})
 local applying = false
 local menuFonts, fontSerial = {}, 0
+local modernInitializers = setmetatable({}, {__mode = "k"})
 
 local function Allowed(f)
     return f and f.GetObjectType and not (f.IsForbidden and f:IsForbidden())
@@ -113,9 +114,18 @@ local function ModernFont(r, text, S)
         font:SetFont(path, size, flags); menuFonts[key] = font
     end
     local old = r.objectFonts[text]
-    if not old then old = {original = text:GetFontObject()}; r.objectFonts[text] = old end
+    local currentFont = text:GetFontObject()
+    if not old then old = {}; r.objectFonts[text] = old end
+    if currentFont ~= old.applied then old.original = currentFont end
     old.applied = font
-    if text:GetFontObject() ~= font then SetMenuFontObject(text, font) end
+    if currentFont ~= font then SetMenuFontObject(text, font) end
+end
+local function ModernRow(r, button, S)
+    if not Allowed(button) or button:GetObjectType() ~= "Button" then return end
+    ModernFont(r, button.GetFontString and button:GetFontString(), S)
+    for _, region in ipairs({button:GetRegions()}) do
+        if region.GetObjectType and region:GetObjectType() == "FontString" then ModernFont(r, region, S) end
+    end
 end
 local function ModernStyle(f, binding, owner)
     if not f.AttachTexture then Restore(f); return end
@@ -152,13 +162,30 @@ local function ModernStyle(f, binding, owner)
         end
     end
     for _, button in ipairs({f:GetChildren()}) do
-        if Allowed(button) and button:GetObjectType() == "Button" then
-            ModernFont(r, button.GetFontString and button:GetFontString(), S)
-            for _, region in ipairs({button:GetRegions()}) do
-                if region.GetObjectType and region:GetObjectType() == "FontString" then ModernFont(r, region, S) end
+        ModernRow(r, button, S)
+    end
+    if f.EnumerateElementDescriptions then
+        f:EnumerateElementDescriptions(function(_, description)
+            if not description.AddInitializer then return end
+            local context = modernInitializers[description]
+            if not context then
+                context = {}; modernInitializers[description] = context
+                -- Checkbox responses clear and reinitialize compositor rows.
+                -- Append after the native initializer; do not hook pooled row
+                -- scripts or setters that the compositor discards on refresh.
+                description:AddInitializer(function(button, _, menu)
+                    local list = context.list
+                    if menu and menu ~= list then return end
+                    local current = list and records[list]
+                    if not current or not current.modern or not current.active or not Enabled(current.binding)
+                        or list:GetOwnerRegion() ~= current.owner
+                        or list.euiAddonSkinsMenuFill ~= current.fill
+                        or (InCombatLockdown and InCombatLockdown()) then return end
+                    ModernRow(current, button, current.binding.S)
+                end)
             end
-            -- Keep compositor-owned checks, arrows and click handlers native.
-        end
+            context.list = f
+        end)
     end
 end
 local function Style(f, binding, owner)

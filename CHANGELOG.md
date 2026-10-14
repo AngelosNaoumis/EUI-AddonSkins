@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0-alpha.11 — ThreatClassic2 menu toggles (untagged)
+
+- Reapply EUI menu fonts after Lock and Test Mode rebuild their checkbox entries.
+- Use scoped menu initializers without duplicating callbacks or replacing native actions.
+
 ## 1.2.0-alpha.10 — ThreatClassic2 menu reuse (untagged)
 
 - Use supported font objects for Blizzard compositor menus; avoid forbidden SetFont calls.

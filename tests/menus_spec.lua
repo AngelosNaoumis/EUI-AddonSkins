@@ -192,14 +192,34 @@ function modernText:SetFontObject(value) self.fontObject = value; self.textColor
 modernRow.regions = {modernText}
 modernRow.GetFontString = function() return modernText end
 modernRow.callback = function() return 'modern-native-action' end
+local description = {initializers = {}}
+function description:AddInitializer(callback) self.initializers[#self.initializers + 1] = callback end
+function modern:EnumerateElementDescriptions(callback) callback(1, description) end
+local function toggleModern()
+    -- MenuResponse.Refresh clears pooled row state and runs native initializers
+    -- before addon initializers, without closing or reopening the menu.
+    modernText.fontObject = nativeFont
+    for _, initialize in ipairs(description.initializers) do initialize(modernRow, description, modern) end
+    return 'toggle-native'
+end
 ns.BindPopupList(S, emoteModule, emoteOwner, modern)
 assert(modern.NineSlice.alpha == 0, 'modern menu native border was left visible')
 assert(modernText:GetFont() == 'eui-font' and modernRow.callback() == 'modern-native-action', 'modern menu font/action lost')
 assert(modernText.textColor[1] == 0.5 and modernText.textColor[4] == 0.8, 'modern disabled/text colours were changed')
 assert(#modern.children == 2 and attached == 2, 'modern menu created an unmanaged overlay frame')
 ns.RefreshPopupMenusNow(); assert(attached == 2, 'warm modern menu refresh allocated duplicate regions')
+for _ = 1, 20 do
+    assert(toggleModern() == 'toggle-native' and modernText:GetFont() == 'eui-font', 'checkbox refresh reset the modern menu font')
+    ns.RefreshPopupMenusNow()
+end
+assert(#description.initializers == 1 and attached == 2, 'checkbox refresh duplicated initializers or menu regions')
+emoteModule.enabled = false; toggleModern()
+assert(modernText:GetFontObject() == nativeFont, 'disabled skin initializer still changed menu fonts')
+emoteModule.enabled = true; toggleModern()
+assert(modernText:GetFont() == 'eui-font')
 modern.owner = unrelated; ns.RefreshPopupMenusNow()
 assert(modern.NineSlice.alpha == 1, 'modern pooled menu retained another owner skin')
+toggleModern(); assert(modernText:GetFontObject() == nativeFont, 'old initializer styled another owner menu')
 modern.owner = emoteOwner; ns.RefreshPopupMenusNow()
 assert(modern.NineSlice.alpha == 0, 'modern menu failed to restyle for its owner')
 modern:Hide(); assert(modern.NineSlice.alpha == 1)

@@ -1,6 +1,6 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.10`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.11`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
