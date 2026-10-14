@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 — Details! and ThreatClassic2
+
+- Added Details! meter, options, breakdown/report window and pop-out menu skins.
+- Added independent Details meter, Tiny Threat and menus/options controls, accessible from the meter settings pop-out or `/euidetails`.
+- Added ThreatClassic2 meter, context menu and options skins while preserving native threat values, colours and layout.
+- Fixed header anchor cycles, restoration for missing Details windows, and raid-plugin menu switching/refreshes.
+- Fixed ThreatClassic2 menu reuse and font resets after Lock/Test Mode changes.
+
 ## 1.1.1 — Styling improvements
 
 - Softer window, panel and control styling, with darker outlines and clearer background contrast.

@@ -22,6 +22,8 @@ EllesmereUI skins for World of Warcraft addons.
 - AtlasLootClassic Continued
 - GTFO (settings controls)
 - Gargul (windows, dialogs and menus)
+- Details! (meter windows, options, breakdown/report windows and menus)
+- ThreatClassic2 (meter, context menu and options)
 
 Each skin is optional and only activates when its addon is loaded.
 
@@ -36,6 +38,8 @@ Install the addons you want to skin separately.
 ## Settings
 
 Toggle individual skins in **Blizzard Skins+ > Window Skins > Third-Party Addons**.
+Details appearance is opt-in. Hover its settings icon > **EUI AddonSkins** for independent Details meter, Tiny Threat and menus/options switches. The same controls are available through `/euidetails`.
+
 Skins follow EUI's theme and accent settings. Run `/reload` after disabling a skin.
 
 ## Commands

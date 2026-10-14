@@ -5,6 +5,8 @@ local hooks, lookHooks, queued = {}, {}, false
 local unpack = unpack or table.unpack
 local extraLists = setmetatable({}, {__mode = "k"})
 local applying = false
+local menuFonts, fontSerial = {}, 0
+local modernInitializers = setmetatable({}, {__mode = "k"})
 
 local function Allowed(f)
     return f and f.GetObjectType and not (f.IsForbidden and f:IsForbidden())
@@ -13,9 +15,25 @@ end
 local function Enabled(binding)
     return binding and ns.IsEnabled(binding.module)
 end
+local function SetMenuFontObject(text, font)
+    if text.GetTextColor and text.SetTextColor then
+        local red, green, blue, alpha = text:GetTextColor()
+        text:SetFontObject(font)
+        text:SetTextColor(red, green, blue, alpha)
+    else text:SetFontObject(font) end
+end
 local function Restore(f)
     local r = records[f]
     if not r or not r.active then return end
+    -- A released modern menu may already have recycled its regions. Never
+    -- restore an old acquisition's references into the next menu's controls.
+    if r.modern and f.euiAddonSkinsMenuFill ~= r.fill then
+        r.active = false; r.alpha, r.fonts, r.colors, r.objectFonts = {}, {}, {}, {}
+        return
+    end
+    for text, data in pairs(r.objectFonts or {}) do
+        if data.original and text:GetFontObject() == data.applied then SetMenuFontObject(text, data.original) end
+    end
     for object, value in pairs(r.alpha) do
         if object:GetAlpha() == 0 then object:SetAlpha(value) end
     end
@@ -34,6 +52,8 @@ local function Restore(f)
         if same then texture:SetVertexColor(unpack(value)) end
     end
     if r.layer then r.layer:SetAlpha(0) end
+    if r.fill then r.fill:SetAlpha(0) end
+    if r.accent then r.accent:SetAlpha(0) end
     for _, marker in pairs(r.markers or {}) do marker:SetAlpha(0) end
     r.active = false
 end
@@ -79,20 +99,111 @@ local function Marker(r, button, native, checked, S)
     marker:SetAlpha(native:IsShown() and 1 or 0)
     Fade(r, native)
 end
-local function Style(f, binding)
+local function ModernFont(r, text, S)
+    -- Compositor FontStrings forbid even indexing SetFont. Apply a standalone
+    -- FontObject through the supported API instead, retaining the native size.
+    if not text or not text.GetFont or not text.GetFontObject or not text.SetFontObject or not CreateFont then return end
+    local _, size = text:GetFont()
+    local path, flags = S.GetFont(); size, flags = size or 12, flags or ""
+    if issecretvalue and issecretvalue(size) then return end
+    local key = path .. "\031" .. tostring(size) .. "\031" .. flags
+    local font = menuFonts[key]
+    if not font then
+        fontSerial = fontSerial + 1
+        font = CreateFont("EUIAddonSkinsPopupFont" .. fontSerial)
+        font:SetFont(path, size, flags); menuFonts[key] = font
+    end
+    local old = r.objectFonts[text]
+    local currentFont = text:GetFontObject()
+    if not old then old = {}; r.objectFonts[text] = old end
+    if currentFont ~= old.applied then old.original = currentFont end
+    old.applied = font
+    if currentFont ~= font then SetMenuFontObject(text, font) end
+end
+local function ModernRow(r, button, S)
+    if not Allowed(button) or button:GetObjectType() ~= "Button" then return end
+    ModernFont(r, button.GetFontString and button:GetFontString(), S)
+    for _, region in ipairs({button:GetRegions()}) do
+        if region.GetObjectType and region:GetObjectType() == "FontString" then ModernFont(r, region, S) end
+    end
+end
+local function ModernStyle(f, binding, owner)
+    if not f.AttachTexture then Restore(f); return end
+    local fill = f.euiAddonSkinsMenuFill
+    local r = records[f]
+    if r and r.active and (r.binding ~= binding or r.owner ~= owner) then Restore(f) end
+    if not fill then
+        -- These regions belong to Blizzard's compositor and are recycled with
+        -- the menu. An unmanaged child frame can cover reused menu entries.
+        fill = f:AttachTexture(); fill:SetDrawLayer("BACKGROUND", -8); fill:SetAllPoints()
+        f.euiAddonSkinsMenuFill = fill
+        local accent = f:AttachTexture(); accent:SetDrawLayer("OVERLAY", 7)
+        accent:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -1); accent:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, -1); accent:SetHeight(2)
+        f.euiAddonSkinsMenuAccent = accent
+        f:HookScript("OnHide", function() Restore(f) end)
+    end
+    if not r or not r.active or r.fill ~= fill then
+        r = {modern = true, active = true, binding = binding, owner = owner, fill = fill,
+            accent = f.euiAddonSkinsMenuAccent, alpha = {}, fonts = {}, colors = {},
+            objectFonts = {}, appliedFonts = {}, appliedColors = {}}
+        records[f] = r
+    end
+    local S = binding.S
+    fill:SetColorTexture(S.GetPanelColor()); fill:SetAlpha(1)
+    local red, green, blue
+    if ns.AccentBarColor then red, green, blue = ns.AccentBarColor(S) else red, green, blue = S.GetAccentColor() end
+    r.accent:SetColorTexture(red, green, blue, 1)
+    r.accent:SetAlpha((not ns.AccentBarShown or ns.AccentBarShown()) and 1 or 0)
+    Fade(r, f.Backdrop); Fade(r, f.MenuBackdrop); Fade(r, f.NineSlice)
+    for _, region in ipairs({f:GetRegions()}) do
+        if region ~= fill and region ~= r.accent and region.GetDrawLayer then
+            local layer = region:GetDrawLayer()
+            if layer == "BACKGROUND" or layer == "BORDER" then Fade(r, region) end
+        end
+    end
+    for _, button in ipairs({f:GetChildren()}) do
+        ModernRow(r, button, S)
+    end
+    if f.EnumerateElementDescriptions then
+        f:EnumerateElementDescriptions(function(_, description)
+            if not description.AddInitializer then return end
+            local context = modernInitializers[description]
+            if not context then
+                context = {}; modernInitializers[description] = context
+                -- Checkbox responses clear and reinitialize compositor rows.
+                -- Append after the native initializer; do not hook pooled row
+                -- scripts or setters that the compositor discards on refresh.
+                description:AddInitializer(function(button, _, menu)
+                    local list = context.list
+                    if menu and menu ~= list then return end
+                    local current = list and records[list]
+                    if not current or not current.modern or not current.active or not Enabled(current.binding)
+                        or list:GetOwnerRegion() ~= current.owner
+                        or list.euiAddonSkinsMenuFill ~= current.fill
+                        or (InCombatLockdown and InCombatLockdown()) then return end
+                    ModernRow(current, button, current.binding.S)
+                end)
+            end
+            context.list = f
+        end)
+    end
+end
+local function Style(f, binding, owner)
     if not Allowed(f) or not Enabled(binding) then Restore(f); return end
     if InCombatLockdown and InCombatLockdown() then return end
+    if f.GetOwnerRegion then return ModernStyle(f, binding, owner or f:GetOwnerRegion()) end
     local r = records[f]
     if not r then
         r = {layers = {}, rowHooks = {}}; records[f] = r
         f:HookScript("OnHide", function() Restore(f); ns.RefreshPopupMenus() end)
         f:HookScript("OnShow", function() ns.RefreshPopupMenusNow() end)
     end
-    if r.active and (r.binding ~= binding or r.owner ~= f.dropdown) then Restore(f) end
+    owner = owner or f.dropdown
+    if r.active and (r.binding ~= binding or r.owner ~= owner) then Restore(f) end
     if not r.active then
         r.alpha, r.fonts, r.colors = {}, {}, {}
         r.appliedFonts, r.appliedColors = {}, {}
-        r.binding, r.owner, r.active = binding, f.dropdown, true
+        r.binding, r.owner, r.active = binding, owner, true
     end
     local S = binding.S
     local layer = r.layers[binding.module]
@@ -113,6 +224,7 @@ local function Style(f, binding)
     local name = f.GetName and f:GetName() or ""
     Fade(r, f.Backdrop or _G[name .. "Backdrop"])
     Fade(r, f.MenuBackdrop or _G[name .. "MenuBackdrop"])
+    if f.GetOwnerRegion then Fade(r, f.NineSlice) end
     -- Older dropdown implementations draw their border directly on the list.
     for _, region in ipairs({f:GetRegions()}) do
         if region.GetObjectType and region:GetObjectType() == "Texture" and region.GetDrawLayer then
@@ -145,8 +257,9 @@ local function Style(f, binding)
 end
 local function Apply()
     if InCombatLockdown and InCombatLockdown() then return end
-    for f in pairs(extraLists) do
-        if f.IsShown and f:IsShown() then Style(f, owners[f.dropdown]) else Restore(f) end
+    for f, expected in pairs(extraLists) do
+        local owner = f.GetOwnerRegion and f:GetOwnerRegion() or f.dropdown
+        if f.IsShown and f:IsShown() and owner == expected then Style(f, owners[owner], owner) else Restore(f) end
     end
     for _, prefix in ipairs({"DropDownList", "L_DropDownList", "L_DropDownListQuestie"}) do
         local root = _G[prefix .. "1"]
@@ -174,7 +287,7 @@ end
 function ns.BindPopupList(S, module, owner, list)
     if not Allowed(list) then return end
     ns.BindPopupOwner(S, module, owner)
-    extraLists[list] = true
+    extraLists[list] = owner
     Hook(list, "Toggle", ns.RefreshPopupMenusNow)
     ns.RefreshPopupMenusNow()
 end
