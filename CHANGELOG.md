@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.9 — ThreatClassic2 (untagged)
+
+- Reintroduced ThreatClassic2 with the shared Details-style meter palette, fonts and bar texture.
+- Added a matching header menu icon and styled context menus and Ace options.
+- Preserved native threat colours, values, columns, row geometry and window controls.
+
 ## 1.2.0-alpha.8 — Details input spacing and Designer (untagged)
 
 - Preserve native text-field geometry so backgrounds do not overlap descriptions.

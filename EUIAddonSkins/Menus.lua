@@ -79,7 +79,7 @@ local function Marker(r, button, native, checked, S)
     marker:SetAlpha(native:IsShown() and 1 or 0)
     Fade(r, native)
 end
-local function Style(f, binding)
+local function Style(f, binding, owner)
     if not Allowed(f) or not Enabled(binding) then Restore(f); return end
     if InCombatLockdown and InCombatLockdown() then return end
     local r = records[f]
@@ -88,11 +88,12 @@ local function Style(f, binding)
         f:HookScript("OnHide", function() Restore(f); ns.RefreshPopupMenus() end)
         f:HookScript("OnShow", function() ns.RefreshPopupMenusNow() end)
     end
-    if r.active and (r.binding ~= binding or r.owner ~= f.dropdown) then Restore(f) end
+    owner = owner or f.dropdown
+    if r.active and (r.binding ~= binding or r.owner ~= owner) then Restore(f) end
     if not r.active then
         r.alpha, r.fonts, r.colors = {}, {}, {}
         r.appliedFonts, r.appliedColors = {}, {}
-        r.binding, r.owner, r.active = binding, f.dropdown, true
+        r.binding, r.owner, r.active = binding, owner, true
     end
     local S = binding.S
     local layer = r.layers[binding.module]
@@ -113,6 +114,7 @@ local function Style(f, binding)
     local name = f.GetName and f:GetName() or ""
     Fade(r, f.Backdrop or _G[name .. "Backdrop"])
     Fade(r, f.MenuBackdrop or _G[name .. "MenuBackdrop"])
+    if f.GetOwnerRegion then Fade(r, f.NineSlice) end
     -- Older dropdown implementations draw their border directly on the list.
     for _, region in ipairs({f:GetRegions()}) do
         if region.GetObjectType and region:GetObjectType() == "Texture" and region.GetDrawLayer then
@@ -145,8 +147,9 @@ local function Style(f, binding)
 end
 local function Apply()
     if InCombatLockdown and InCombatLockdown() then return end
-    for f in pairs(extraLists) do
-        if f.IsShown and f:IsShown() then Style(f, owners[f.dropdown]) else Restore(f) end
+    for f, expected in pairs(extraLists) do
+        local owner = f.GetOwnerRegion and f:GetOwnerRegion() or f.dropdown
+        if f.IsShown and f:IsShown() and owner == expected then Style(f, owners[owner], owner) else Restore(f) end
     end
     for _, prefix in ipairs({"DropDownList", "L_DropDownList", "L_DropDownListQuestie"}) do
         local root = _G[prefix .. "1"]
@@ -174,7 +177,7 @@ end
 function ns.BindPopupList(S, module, owner, list)
     if not Allowed(list) then return end
     ns.BindPopupOwner(S, module, owner)
-    extraLists[list] = true
+    extraLists[list] = owner
     Hook(list, "Toggle", ns.RefreshPopupMenusNow)
     ns.RefreshPopupMenusNow()
 end

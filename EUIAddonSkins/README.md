@@ -23,6 +23,7 @@ EllesmereUI skins for World of Warcraft addons.
 - GTFO (settings controls)
 - Gargul (windows, dialogs and menus)
 - Details! (experimental: meter windows, options, breakdown/report windows and menus)
+- ThreatClassic2 (experimental: meter, context menu and options)
 
 Each skin is optional and only activates when its addon is loaded.
 

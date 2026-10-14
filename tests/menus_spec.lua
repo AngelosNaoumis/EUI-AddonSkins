@@ -157,6 +157,17 @@ assert(customRow.Check.alpha == 0.8 and customRow.regions[2].alpha == 0 and cust
 custom:Toggle(unrelated)
 assert(customText.font[1] == 'native-font' and custom.Backdrop.alpha == 1 and customLayer.alpha == 0, 'unrelated pool owner inherited skin')
 custom:Toggle(emoteOwner); assert(custom.Backdrop.alpha == 0)
+-- Modern Menu.GetManager() proxies expose their current owner publicly.
+local modern = frame('Frame'); modern.NineSlice = frame('Frame', nil, modern)
+modern.shown, modern.owner = true, emoteOwner
+function modern:GetOwnerRegion() return self.owner end
+ns.BindPopupList(S, emoteModule, emoteOwner, modern)
+assert(modern.NineSlice.alpha == 0, 'modern menu native border was left visible')
+modern.owner = unrelated; ns.RefreshPopupMenusNow()
+assert(modern.NineSlice.alpha == 1, 'modern pooled menu retained another owner skin')
+modern.owner = emoteOwner; ns.RefreshPopupMenusNow()
+assert(modern.NineSlice.alpha == 0, 'modern menu failed to restyle for its owner')
+modern:Hide(); assert(modern.NineSlice.alpha == 1)
 flush()
 assert(#errors == 0, table.concat(errors, '\n'))
 print('PASS: scoped legacy/library popup/submenu styling, native reuse/restoration, preserved emotes/actions/colors, live accents, independent toggles and combat deferral')

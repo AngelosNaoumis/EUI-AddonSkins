@@ -153,6 +153,7 @@ function ns.RegisterModule(id, _, available, install) modules[id] = {available =
 assert(loadfile('EUIAddonSkins/Scoped.lua'))('EUIAddonSkins', ns)
 Details = nil
 EUIAddonSkinsDB = nil; EllesmereUIDB = nil
+assert(loadfile('EUIAddonSkins/MeterStyle.lua'))('EUIAddonSkins', ns)
 assert(loadfile('EUIAddonSkins/DetailsLayout.lua'))('EUIAddonSkins', ns)
 assert(loadfile('EUIAddonSkins/DetailsSettings.lua'))('EUIAddonSkins', ns)
 assert(ns.DetailsSettings().meter == false and ns.DetailsSettings().menus == true, 'meter matching must be opt-in')
