@@ -1,6 +1,6 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.3`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.4`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
@@ -32,3 +32,5 @@ Source inspection used the supplied upstream repositories' current default branc
 Run `python3 scripts/package.py`. It validates Lua syntax, executes all regression suites, checks TOC paths and includes all nineteen skins and the MIT license in the install-ready ZIP. Development files and upstream reference sources stay outside the package.
 
 The Details suite covers optional loading, new windows/rows, native return values/actions, untouched data/positions, theme changes, combat deferral, disabled skins, shared menu restoration and warm refresh reuse, independent modes, restoration after repeated toggles and disabled-skin reload recovery, hidden native title bars, toolbar redraws, timer changes and secret-value guards. No polling or combat parser hooks are introduced.
+
+Header icons are drawn on the matching header independently of native button opacity. Native visibility, hover tooltips and click actions remain in use.

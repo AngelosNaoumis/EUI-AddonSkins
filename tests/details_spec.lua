@@ -21,7 +21,7 @@ local function texture(kind, parent)
     function t:SetColorTexture(...) self.color = {...}; self.path = 'solid' end
     function t:SetVertexColor(...) self.color = {...} end
     function t:SetPoint(...) self.points[#self.points + 1] = {...} end
-    function t:SetAllPoints() end
+    function t:SetAllPoints(anchor) self.anchor = anchor end
     function t:ClearAllPoints() self.points = {} end
     function t:SetShown(v) self.shown = v end
     function t:GetVertexColor() return table.unpack(self.color or {1, 1, 1, 1}) end
@@ -163,6 +163,8 @@ local function instance()
         local b = key == 'fechar' and obj.baseframe.cabecalho.fechar or frame('Button', nil, obj.baseframe)
         obj.baseframe.cabecalho[key] = key == 'fechar' and b or {widget = b}
         b.normal = b:CreateTexture(); b:SetPoint('BOTTOMRIGHT', obj.baseframe, 'TOPRIGHT', 5, -6)
+        -- Details can fade the button itself while its mouse scripts remain live.
+        b.alpha = key == 'reset' and 1 or 0
         b.hooks.OnClick = function() return key .. '-native' end
     end
     obj.baseframe.cabecalho.fechar.action = function() return 'close-native' end
@@ -234,6 +236,20 @@ assert(meter.use_multi_fontstrings == false and meter.row_info.textR_show_data[3
 local ownHeader
 for _, f in ipairs(meter.baseframe.children) do if f.regions[2] and f.regions[2].text == 'Damage Done' then ownHeader = f end end
 assert(ownHeader and not ownHeader.hidden and ownHeader.regions[3].text == ' (0:06)', 'independent header/timer missing')
+local icons = {}
+for _, key in ipairs({'modo_selecao', 'segmento', 'atributo', 'report', 'reset', 'fechar'}) do
+    local value = meter.baseframe.cabecalho[key]
+    local button = value.widget or value
+    for _, region in ipairs(ownHeader.regions) do
+        if region.kind == 'Texture' and region.anchor == button then icons[key] = region end
+    end
+    assert(icons[key] and icons[key].alpha == 1, 'toolbar icon must render independently of native button alpha: ' .. key)
+end
+local closeButton = meter.baseframe.cabecalho.fechar
+closeButton:Hide(); closeButton.hooks.OnHide()
+assert(icons.fechar.alpha == 0, 'hidden native button left a floating icon')
+closeButton:Show(); closeButton.hooks.OnShow(); flush()
+assert(icons.fechar.alpha == 1, 'shown native button did not recover its icon')
 assert(meter.baseframe.titleBar.hidden, 'native title-bar visibility should remain unchanged')
 assert(meter.baseframe.cabecalho.fechar.normal.alpha == 0 and meter.baseframe.cabecalho.fechar.points[1][1] == 'RIGHT')
 assert(meter.baseframe.cabecalho.reset.widget.hooks.OnClick() == 'reset-native', 'toolbar action changed')
@@ -290,6 +306,8 @@ assert(meter.baseframe.cabecalho.fechar.hooks.OnClick() == 'fechar-native', 'nat
 -- Independent controls: disabling meter matching restores its owned settings.
 ns.SetDetailsSetting('meter', false); flush()
 assert(meter.row_info.height == 24 and meter.row_info.space.between == 0 and meter.row_info.texture == 'native', 'meter settings not restored')
+for _, icon in pairs(icons) do assert(icon.alpha == 0, 'header icon survived disabling meter matching') end
+assert(meter.baseframe.cabecalho.modo_selecao.widget.alpha == 0, 'native button fade preference was changed')
 assert(meter.baseframe.cabecalho.ball.alpha == 1 and r.lineText1.font == 'native', 'meter artwork/fonts not restored')
 assert(ownHeader.hidden and meter.nativeTitle.alpha == 1 and meter.baseframe.cabecalho.fechar.normal.alpha == 1)
 assert(meter.baseframe.cabecalho.fechar.points[1][1] == 'BOTTOMRIGHT' and meter.use_multi_fontstrings and meter.row_info.textR_show_data[3] and meter.row_info.textR_bracket == '[' and meter.row_info.textR_enable_custom_text, 'format/control placement not restored')

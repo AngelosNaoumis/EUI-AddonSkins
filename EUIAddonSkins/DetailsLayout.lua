@@ -84,11 +84,25 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                 local control = entry.controls[button]
                 if not control then
                     control = {}; entry.controls[button] = control
-                    control.icon = button:CreateTexture(nil, "OVERLAY"); control.icon:SetAllPoints(button)
+                    -- Details fades native button frames separately from their
+                    -- hit areas. Keep our artwork on the owned header so those
+                    -- fades cannot leave an invisible but hoverable control.
+                    control.icon = entry.frame:CreateTexture(nil, "OVERLAY"); control.icon:SetAllPoints(button)
                     H.Script(button, "OnEnter", function() if active() then control.icon:SetVertexColor(1, 1, 1, 1) end end)
                     H.Script(button, "OnLeave", function() if active() then control.icon:SetVertexColor(0.55, 0.55, 0.55, 1) end end)
+                    H.Script(button, "OnHide", function()
+                        control.icon:SetAlpha(0)
+                        if active() then defer() end
+                    end)
+                    H.Script(button, "OnShow", function()
+                        if active() then
+                            control.icon:SetAlpha(control.hasMedia and 1 or 0)
+                            defer()
+                        end
+                    end)
                 end
                 local hasMedia = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EllesmereUIDamageMeters")
+                control.hasMedia = hasMedia
                 if hasMedia then
                     control.icon:SetTexture(MEDIA .. asset); control.icon:SetVertexColor(0.55, 0.55, 0.55, 1); control.icon:SetAlpha(1)
                     for _, getter in ipairs({"GetNormalTexture", "GetHighlightTexture", "GetPushedTexture", "GetDisabledTexture"}) do

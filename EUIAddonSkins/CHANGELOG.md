@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0-alpha.4 — Details header icons (untagged)
+
+- Keep toolbar icons visible independently of Details native button fades.
+- Keep icons synchronized with native button visibility and retain native actions.
+
 ## 1.2.0-alpha.3 — Details meter layout (untagged)
 
 - Added an independent dark header with EUI title styling and a segment combat timer.
