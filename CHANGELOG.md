@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0-alpha.8 — Details input spacing and Designer (untagged)
+
+- Preserve native text-field geometry so backgrounds do not overlap descriptions.
+- Populate the lazy Designer list once and style object controls and pooled labels immediately after native refreshes.
+
 ## 1.2.0-alpha.7 — Details options navigation (untagged)
 
 - Keep options categories consistently styled as EUI tabs through native template resets.

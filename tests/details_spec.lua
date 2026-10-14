@@ -103,7 +103,13 @@ function S.Tab(f) f.tab = true end
 function S.SetTabSelection(f, selected) f.selected = selected end
 function S.CloseButton(f) f.close = true end
 function S.Checkbox(f) f.checkbox = true end
-function S.EditBox(f, options) f.input = true; f.inputOptions = options end
+function S.EditBox(f, options)
+    f.input = true; f.inputOptions = options
+    if options.padInput and not f.padded then
+        f.padded = true
+        if f.points and f.points[1] then f.points[1][4] = (f.points[1][4] or 0) - 6 end
+    end
+end
 function S.Dropdown(f) f.dropdown = true end
 function S.FadeNineSlice() end
 SetPortraitTexture = function(t) t:SetTexture('player-face') end
@@ -330,6 +336,11 @@ for _, id in ipairs({1, 2, 3, 1, 3}) do
     assert(page.sectionButton.widget.selected, 'queued scan lost the selected category')
 end
 local input = frame('EditBox', nil, DetailsOptionsWindow)
+local description = font(DetailsOptionsWindow)
+local dfInput = frame('EditBox', nil, DetailsOptionsWindow)
+dfInput.MyObject = {type = 'textentry'}
+dfInput:SetPoint('LEFT', description, 'RIGHT', 2, 0); dfInput:SetSize(120, 18)
+dfInput.value = 'saved-value'; dfInput.commit = function() return 'commit-native' end
 local dropdown = frame('Button', nil, DetailsOptionsWindow); dropdown.MyObject = {type = 'dropdown', SetTemplate = function() end}
 dropdown.dropdownframe = frame('ScrollFrame', nil, dropdown); dropdown.statusbar = dropdown:CreateTexture()
 local check = frame('Button', nil, DetailsOptionsWindow); check.MyObject = {type = 'switch', checked_texture = check:CreateTexture(), SetTemplate = function() end}
@@ -337,7 +348,37 @@ check.action = function() return 'checkbox-native' end
 local infoBar = frame('StatusBar', nil, DetailsOptionsWindow); infoBar.value = 65; infoBar.SetStatusBarTexture = function(self, p) self.fill = p end
 modules.Details.refresh(); flush()
 assert(input.inputOptions.noBorder and dropdown.dropdown and check.button and check.action() == 'checkbox-native')
+assert(dfInput.inputOptions.padInput == false and not dfInput.padded and dfInput.points[1][4] == 2 and dfInput:GetWidth() == 120, 'DF field expanded across its description')
+assert(dfInput.value == 'saved-value' and dfInput.commit() == 'commit-native', 'DF input contents/commit changed')
 assert(infoBar.fill == 'eui-bar' and infoBar.value == 65)
+-- The designer is created after the options window and repopulates controls
+-- after object clicks. Native refreshes must finish with styled pooled rows.
+local editor = frame('Frame', 'DetailsOptionsDesignerEditor', DetailsOptionsWindow)
+local selector = frame('ScrollFrame', nil, editor)
+selector.lines = {}
+for i = 1, 2 do
+    local line = frame('Button', nil, selector); line.Label = font(line); line.Icon = line:CreateTexture()
+    selector.lines[i] = line
+end
+function selector:GetLines() return self.lines end
+function selector:Refresh()
+    for i, line in ipairs(self.lines) do line.Label:SetText('Object ' .. i); line.Label:SetFont('native', 12) end
+    return 'selector-native'
+end
+function selector:RefreshMe() self.initialRefreshes = (self.initialRefreshes or 0) + 1; self:Refresh() end
+function editor:GetObjectSelector() return selector end
+function editor:EditObject()
+    self.lazyControl = frame('Button', nil, self)
+    self.lazyControl.MyObject = {type = 'switch', checked_texture = self.lazyControl:CreateTexture()}
+    selector:Refresh()
+    return 'edit-native'
+end
+modules.Details.refresh(); flush()
+assert(selector.initialRefreshes == 1 and selector.lines[1].Label.text == 'Object 1', 'designer list was not populated once')
+assert(editor:EditObject() == 'edit-native' and editor.lazyControl.button, 'lazy designer controls waited for queued styling')
+assert(selector:Refresh() == 'selector-native' and selector.lines[1].Label.font == 'eui', 'selector row waited for queued font styling')
+for _ = 1, 3 do modules.Details.refresh(); flush() end
+assert(selector.initialRefreshes == 1 and not selector.lines[1].button, 'designer refresh was repeated or pooled row became an action button')
 -- Shared menu/submenu ownership must not leak to another addon.
 GameCooltip:SetHost(meter.baseframe.cabecalho.fechar); assert(GameCooltip:ShowCooltip() == 'menu-native')
 assert(tip1.backdrop.bgFile ~= 'native-tooltip' and tip2.border[1] == 0.055 and tip1.Lines[1].leftText.font == 'eui')

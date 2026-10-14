@@ -109,7 +109,7 @@ end
 local function Setup(C, refresh)
     if C.details then return C.details end
     local S, H, D = C.S, C.H, _G.Details
-    local state = {meters = {}, owners = {}, roots = {}, sections = {}, snapshots = {}, texts = {}, textures = {}, applying = false}
+    local state = {meters = {}, owners = {}, roots = {}, sections = {}, designerRows = {}, designers = {}, snapshots = {}, texts = {}, textures = {}, applying = false}
     C.details = state
     local function Busy()
         if InCombatLockdown and InCombatLockdown() then
@@ -145,6 +145,34 @@ local function Setup(C, refresh)
         else S.Button(button, {"Text", "text"}) end
         for _, text in ipairs(H.Regions(button)) do H.Font(text) end
         return true
+    end
+    state.DesignerRow = function(row)
+        if not state.designerRows[row] then return false end
+        H.Font(row.Label)
+        -- These are pooled object selectors, not ordinary action buttons.
+        -- Keep the native label, object icon, expand toggle and selection action.
+        return true
+    end
+    state.BindDesigner = function(editor)
+        if not H.Allowed(editor) or not Owned(editor) or ns.DetailsSettings().menus == false then return end
+        H.Hook(editor, "EditObject", C.RefreshNow)
+        H.Hook(editor, "RefreshDisabledOptions", C.RefreshNow)
+        local selector = editor.GetObjectSelector and editor:GetObjectSelector()
+        if not H.Allowed(selector) then return end
+        local function Rows()
+            if ns.DetailsSettings().menus == false or Busy() then return end
+            for _, row in pairs(selector.GetLines and selector:GetLines() or {}) do
+                if H.Allowed(row) then state.designerRows[row] = true; state.DesignerRow(row) end
+            end
+        end
+        H.Hook(selector, "Refresh", Rows)
+        if not state.designers[editor] then
+            state.designers[editor] = true
+            -- Populate from already registered objects once, using the editor's
+            -- native method. Do not force creation or poll for the designer.
+            if selector.RefreshMe then H.Safe(selector.RefreshMe, selector) end
+        end
+        Rows()
     end
     local function Row(row)
         if not MeterWanted() or not H.Allowed(row) or Busy() then return end
@@ -467,6 +495,7 @@ ns.RegisterScopedSkin("Details", "Details!", {
             for _, name in ipairs({"DetailsOptionsWindow", "DetailsPluginContainerWindow", "DetailsBreakdownWindow",
                 "DetailsReportWindow", "DetailsCopyPasteFrame2"}) do Add(_G[name]) end
             Add(_G.Details.BreakdownWindowFrame); Add(_G.Details.janela_report)
+            state.BindDesigner(_G.DetailsOptionsDesignerEditor)
         end
         state.Cooltip()
         return result
@@ -474,6 +503,7 @@ ns.RegisterScopedSkin("Details", "Details!", {
     visit = function(C, f, kind, refresh)
         local H, S = C.H, C.S
         if C.details.Section(f) then return true end
+        if C.details.DesignerRow(f) then return true end
         -- Preserve displayed values and semantic colours in breakdown bars.
         if kind == "StatusBar" then
             local texture = C.details.look.texture
@@ -482,6 +512,14 @@ ns.RegisterScopedSkin("Details", "Details!", {
             return true
         end
         local widget = f.MyObject
+        if kind == "EditBox" and type(widget) == "table" and widget.type == "textentry"
+            and not (f.IsMultiLine and f:IsMultiLine()) then
+            -- DF anchors the field just two pixels beyond its description.
+            -- Blizzard padding expands the field leftward across that label.
+            S.EditBox(f, {padInput = false})
+            for _, text in ipairs(H.Regions(f)) do H.Font(text) end
+            return true
+        end
         if type(widget) == "table" and widget.type == "switch" then
             f.euiDetailsCheck = widget.checked_texture
             S.Button(f, {"euiDetailsCheck", "text", "Text", "label"})

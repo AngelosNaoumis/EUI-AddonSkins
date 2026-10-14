@@ -1,6 +1,6 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.7`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.8`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
@@ -38,3 +38,5 @@ Header icons are drawn on the matching header independently of native button opa
 Details-owned Cooltip pop-outs and submenus use flat EUI panels, accent hover fills and subtle separators. Native rounded/background layers are suppressed only for Details; warning icons, arrows, status values and actions stay native. Original artwork, fonts and corner mode are restored on hide, owner transfer or disabling menu styling.
 
 Options category buttons use EUI tabs with native page visibility as their selected state. Scoped hooks on category template/icon updates and the native page-selection method keep navigation consistent during page switches. The regression suite simulates template resets around page OnShow and queued refreshes.
+
+DF text entries keep their native layout without Blizzard input expansion. The lazy Designer editor is bound only once it exists: its native selector populates once, selector refreshes style pooled labels directly, and object-selection/disabled-state refreshes synchronously style new controls. Input values, commit functions, editor actions and native lazy construction are retained.
