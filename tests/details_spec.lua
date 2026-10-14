@@ -45,8 +45,14 @@ local function frame(kind, name, parent)
     function f:GetObjectType() return self.kind end
     function f:SetPoint(...) self.points = self.points or {}; self.points[#self.points + 1] = {...} end
     function f:ClearAllPoints() self.points = {} end
-    function f:SetSize(w, h) self.width, self.height = w, h end
-    function f:SetWidth(w) self.width = w end
+    function f:SetSize(w, h)
+        local changed = self.width ~= w or self.height ~= h; self.width, self.height = w, h
+        if changed and self.hooks.OnSizeChanged then self.hooks.OnSizeChanged(self, w, h) end
+    end
+    function f:SetWidth(w)
+        local changed = self.width ~= w; self.width = w
+        if changed and self.hooks.OnSizeChanged then self.hooks.OnSizeChanged(self, w, self.height or 24) end
+    end
     function f:GetID() return self.id end
     function f:IsShown() return not self.hidden end
     function f:IsEnabled() return not self.disabled end
@@ -73,7 +79,7 @@ local function frame(kind, name, parent)
     function f:CreateFontString(_, _, template) local t = texture('FontString', self); t.font = template; self.regions[#self.regions + 1] = t; return t end
     function f:GetNormalTexture() return self.normal end
     function f:GetWidth() return self.width or 24 end
-    function f:GetHeight() return 24 end
+    function f:GetHeight() return self.height or 24 end
     function f:GetFontString() return self.label end
     if parent then parent.children[#parent.children + 1] = f end
     if name then _G[name] = f end
@@ -112,7 +118,10 @@ frame = function(...)
     function f:SetFrameLevel(level) self.level = level end
     function f:SetAllPoints() end
     function f:EnableMouse(value) self.mouse = value end
-    function f:SetHeight(h) self.height = h end
+    function f:SetHeight(h)
+        local changed = self.height ~= h; self.height = h
+        if changed and self.hooks.OnSizeChanged then self.hooks.OnSizeChanged(self, self.width or 24, h) end
+    end
     return f
 end
 local function font(parent)
@@ -241,9 +250,12 @@ for _, key in ipairs({'modo_selecao', 'segmento', 'atributo', 'report', 'reset',
     local value = meter.baseframe.cabecalho[key]
     local button = value.widget or value
     for _, region in ipairs(ownHeader.regions) do
-        if region.kind == 'Texture' and region.anchor == button then icons[key] = region end
+        if region.kind == 'Texture' and region.points[1] and region.points[1][2] == button then icons[key] = region end
     end
     assert(icons[key] and icons[key].alpha == 1, 'toolbar icon must render independently of native button alpha: ' .. key)
+    assert(icons[key].width == 22 and icons[key].height == 22, 'header icon size depends on native startup geometry: ' .. key)
+    button:SetWidth(12); button:SetHeight(12)
+    assert(button:GetWidth() == 22 and button:GetHeight() == 22, 'late startup dimensions shrank toolbar hit area: ' .. key)
 end
 local closeButton = meter.baseframe.cabecalho.fechar
 closeButton:Hide(); closeButton.hooks.OnHide()

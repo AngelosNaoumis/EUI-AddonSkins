@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0-alpha.5 — Details startup icon sizing (untagged)
+
+- Keep header artwork at its EUI size independently of native button dimensions.
+- Reapply button geometry after native size-change events, without opening options.
+
 ## 1.2.0-alpha.4 — Details header icons (untagged)
 
 - Keep toolbar icons visible independently of Details native button fades.

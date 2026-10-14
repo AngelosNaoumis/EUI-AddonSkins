@@ -87,7 +87,8 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                     -- Details fades native button frames separately from their
                     -- hit areas. Keep our artwork on the owned header so those
                     -- fades cannot leave an invisible but hoverable control.
-                    control.icon = entry.frame:CreateTexture(nil, "OVERLAY"); control.icon:SetAllPoints(button)
+                    control.icon = entry.frame:CreateTexture(nil, "OVERLAY")
+                    control.icon:SetPoint("CENTER", button, "CENTER", 0, 0)
                     H.Script(button, "OnEnter", function() if active() then control.icon:SetVertexColor(1, 1, 1, 1) end end)
                     H.Script(button, "OnLeave", function() if active() then control.icon:SetVertexColor(0.55, 0.55, 0.55, 1) end end)
                     H.Script(button, "OnHide", function()
@@ -103,6 +104,9 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                 end
                 local hasMedia = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EllesmereUIDamageMeters")
                 control.hasMedia = hasMedia
+                -- Native toolbar setup may write width/height separately after
+                -- our first pass. Artwork does not inherit those temporary sizes.
+                control.icon:SetSize(look.iconSize, look.iconSize)
                 if hasMedia then
                     control.icon:SetTexture(MEDIA .. asset); control.icon:SetVertexColor(0.55, 0.55, 0.55, 1); control.icon:SetAlpha(1)
                     for _, getter in ipairs({"GetNormalTexture", "GetHighlightTexture", "GetPushedTexture", "GetDisabledTexture"}) do
@@ -127,6 +131,7 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                     control.hooked = true
                     H.Hook(button, "SetPoint", function() control.align() end)
                     H.Hook(button, "SetSize", function() control.align() end)
+                    H.Script(button, "OnSizeChanged", function() control.align() end)
                 end
                 Align(); previous = button; count = count + 1
             end
