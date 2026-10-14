@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1-alpha.1 — Altoholic scrollbars and unused cells (local)
+
+- Remove native scrollbar border art and reduce vertical scrollbar thumbs.
+- Hide the two unused cells extending beyond summary realm headers.
+- Preserve scrolling, character columns and native row actions.
+
 ## 1.2.0 — Details! and ThreatClassic2
 
 - Added Details! meter, options, breakdown/report window and pop-out menu skins.

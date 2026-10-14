@@ -48,6 +48,8 @@ local function frame(kind, name, parent)
     function f:SetWidth(w) self.width = w end
     function f:GetID() return self.id end
     function f:IsShown() return not self.hidden end
+    function f:Show() self.hidden = false end
+    function f:Hide() self.hidden = true end
     function f:IsEnabled() return not self.disabled end
     function f:Enable() self.disabled = false end
     function f:Disable() self.disabled = true end
@@ -59,7 +61,7 @@ local function frame(kind, name, parent)
     function f:IsProtected() return self.protected end
     function f:GetChildren() return table.unpack(self.children) end
     function f:GetRegions() return table.unpack(self.regions) end
-    function f:HookScript(event, fn) self.hooks[event] = fn end
+    function f:HookScript(event, fn) local old = self.hooks[event]; self.hooks[event] = function(...) if old then old(...) end; fn(...) end end
     function f:RegisterEvent(e) self.events = self.events or {}; self.events[e] = true end
     function f:SetScript(e, fn) self.hooks[e] = fn end
     function f:GetBackdrop() return self.backdrop end
@@ -229,6 +231,56 @@ modules.Altoholic.install(S, modules.Altoholic); flush()
 assert(mixedRow.Icon.crop and mixedRow.button)
 assert(AltoholicFrame.shellOptions.noBorder, 'Altoholic soft chrome must stay scoped to its window')
 assert(owner:Initialize() == 'init-original' and owner:Toggle() == 'toggle-original' and bindings >= 3)
+do
+-- AddonFactory scroll borders live on the scrollframe, not the slider.
+local altoScroll = frame('ScrollFrame', nil, AltoholicFrame)
+for _, key in ipairs({'scrollBorderTop', 'scrollBorderMiddle', 'scrollBorderBottom', 'scrollFrameScrollBarBackground'}) do
+    altoScroll[key] = altoScroll:CreateTexture()
+end
+local altoBar = frame('Slider', nil, altoScroll); altoScroll.ScrollBar = altoBar
+local altoThumb = altoBar:CreateTexture(); altoThumb:SetSize(18, 24); altoThumb:SetTexCoord(0.2, 0.8, 0.125, 0.875)
+altoBar.GetThumbTexture = function() return altoThumb end
+altoBar.GetOrientation = function() return 'VERTICAL' end
+altoBar.ScrollUpButton, altoBar.ScrollDownButton = frame('Button', nil, altoBar), frame('Button', nil, altoBar)
+altoBar.value, altoBar.minimum, altoBar.maximum = 12, 0, 300
+altoBar:SetPoint('TOPRIGHT', altoScroll, 'TOPRIGHT', -20, -18)
+altoBar.ScrollUpButton.hooks.OnClick = function() altoBar.value = altoBar.value - 12; return 'scroll-up-native' end
+altoBar.ScrollDownButton.hooks.OnClick = function() altoBar.value = altoBar.value + 12; return 'scroll-down-native' end
+-- Realm rows leave their final two pooled cells visible; character rows need them.
+local realmRow = frame('Button', nil, AltoholicFrame); realmRow.Collapse = frame('Button', nil, realmRow)
+for i = 1, 12 do realmRow['Item' .. i] = frame('Button', nil, realmRow) end
+realmRow.DrawRealmLine = function(self)
+    self.character = nil; self.Collapse:Show()
+    for i = 2, 10 do self['Item' .. i]:Hide() end
+    return 'realm-native'
+end
+realmRow.DrawCharacterLine = function(self)
+    self.character = 'character'; self.Collapse:Hide()
+    for i = 1, 12 do self['Item' .. i]:Show() end
+    return 'character-native'
+end
+modules.Altoholic.refresh(); flush()
+for _, key in ipairs({'scrollBorderTop', 'scrollBorderMiddle', 'scrollBorderBottom', 'scrollFrameScrollBarBackground'}) do assert(altoScroll[key].alpha == 0, 'Altoholic retained native scroll border') end
+assert(altoThumb.width == 8 and altoThumb.height == 18 and altoThumb.crop[1] == 0 and altoThumb.crop[2] == 1 and altoThumb.path == 'solid')
+assert(altoBar.ScrollUpButton.glyph == '^' and altoBar.ScrollDownButton.glyph == 'v')
+altoBar.ScrollUpButton.hooks.OnClick(); assert(altoBar.value == 0, 'native scroll-up action changed')
+altoBar.ScrollDownButton.hooks.OnClick(); assert(altoBar.value == 12 and altoBar.maximum == 300 and altoBar.points[1][4] == -20, 'native scrolling range or anchors changed')
+assert(not realmRow.Item11:IsShown() and not realmRow.Item12:IsShown() and realmRow.Item1:IsShown())
+local realmHook, objectCount = realmRow.DrawRealmLine, #altoBar.regions
+for _ = 1, 3 do modules.Altoholic.refresh(); flush() end
+assert(realmRow.DrawRealmLine == realmHook and #altoBar.regions == objectCount, 'Altoholic hooks/textures duplicated')
+assert(realmRow:DrawCharacterLine() == 'character-native'); modules.Altoholic.refresh(); flush()
+assert(realmRow.Item11:IsShown() and realmRow.Item12:IsShown(), 'valid character cells were hidden')
+assert(realmRow:DrawRealmLine() == 'realm-native' and not realmRow.Item11:IsShown() and not realmRow.Item12:IsShown(), 'reused realm row exposed empty cells')
+combat = true; altoThumb:SetSize(18, 24); modules.Altoholic.refresh(); flush(); assert(altoThumb.width == 18)
+combat = false
+for _, f in ipairs(events) do if f.events and f.events.PLAYER_REGEN_ENABLED then f.hooks.OnEvent(f, 'PLAYER_REGEN_ENABLED') end end
+flush(); assert(altoThumb.width == 8)
+enabled = false; realmRow.Item11:Show(); realmRow.Item12:Show(); realmRow:DrawRealmLine()
+assert(realmRow.Item11:IsShown() and realmRow.Item12:IsShown(), 'disabled Altoholic skin processed realm rows')
+enabled = true
+end
+
 assert(loadfile('EUIAddonSkins/Skins/ForeverDungeonJournal.lua'))('EUIAddonSkins', ns)
 ForeverDungeonJournal_NS = {THEMES = {}, ToggleJournal = function() end}
 ForeverDungeonJournalFrame = frame('Frame')
