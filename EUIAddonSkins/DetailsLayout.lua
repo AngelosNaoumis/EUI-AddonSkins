@@ -73,7 +73,7 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
             local grip = f[side]; if grip then fade(grip.texture) end
         end
         if f.lock_button then fade(f.lock_button.label) end
-        local previous, count = nil, 0
+        local count = 0
         for i = #buttons, 1, -1 do
             local key, asset = buttons[i][1], buttons[i][2]
             local value = header[key]
@@ -115,14 +115,15 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                     -- DF buttons draw the foreground image in their own texture.
                     for _, key in ipairs({"texture", "icon", "leftTexture", "rightTexture", "centerTexture"}) do fade(button[key]) end
                 else control.icon:SetAlpha(0) end
-                control.previous = previous
+                control.offset = 4 + count * (look.iconSize + 4)
                 local function Align()
                     if control.aligning or not CanLayout(instance) then return end
                     control.aligning = true
                     button:ClearAllPoints(); button:SetSize(look.iconSize, look.iconSize)
                     button:SetFrameLevel(f:GetFrameLevel() + 7)
-                    if control.previous then button:SetPoint("RIGHT", control.previous, "LEFT", -4, 0)
-                    else button:SetPoint("RIGHT", entry.frame, "RIGHT", -4, 0) end
+                    -- Independent anchors avoid a cycle when Details briefly restores
+                    -- its own sibling-based button layout before our post-hook runs.
+                    button:SetPoint("RIGHT", entry.frame, "RIGHT", -control.offset, 0)
                     control.aligning = false
                 end
                 -- The closure installed once reads current layout through this slot.
@@ -133,7 +134,7 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
                     H.Hook(button, "SetSize", function() control.align() end)
                     H.Script(button, "OnSizeChanged", function() control.align() end)
                 end
-                Align(); previous = button; count = count + 1
+                Align(); count = count + 1
             end
         end
         -- Keep very narrow windows usable without crowding their controls.
@@ -161,8 +162,9 @@ function ns.CreateDetailsLayout(H, active, defer, fade)
             entry.frame:Hide()
             for _, control in pairs(entry.controls) do control.icon:SetAlpha(0) end
         end
+        -- Drop the entire custom anchor graph before rebuilding native links.
+        for f in pairs(originals) do f:ClearAllPoints() end
         for f, old in pairs(originals) do
-            f:ClearAllPoints()
             for _, point in ipairs(old.points) do f:SetPoint(unpack(point)) end
             if old.width and old.height and f.SetSize then f:SetSize(old.width, old.height) end
             if old.level and f.SetFrameLevel then f:SetFrameLevel(old.level) end

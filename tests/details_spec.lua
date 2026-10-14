@@ -44,7 +44,20 @@ end
 local function frame(kind, name, parent)
     local f = {kind = kind or 'Frame', name = name, parent = parent, regions = {}, children = {}, hooks = {}}
     function f:GetObjectType() return self.kind end
-    function f:SetPoint(...) self.points = self.points or {}; self.points[#self.points + 1] = {...} end
+    function f:SetPoint(...)
+        local point = {...}
+        local function Depends(region, target, visited)
+            if region == target then return true end
+            if type(region) ~= 'table' or visited[region] then return false end
+            visited[region] = true
+            for _, anchor in ipairs(region.points or {}) do
+                if Depends(anchor[2], target, visited) then return true end
+            end
+            return false
+        end
+        assert(not Depends(point[2], self, {}), 'Cannot anchor to a region dependent on it')
+        self.points = self.points or {}; self.points[#self.points + 1] = point
+    end
     function f:ClearAllPoints() self.points = {} end
     function f:SetSize(w, h)
         local changed = self.width ~= w or self.height ~= h; self.width, self.height = w, h
@@ -210,6 +223,21 @@ Details = {
     ChangeSkin = function() return 'skin-native' end,
     ApplyProfile = function() return 'profile-native' end,
 }
+-- Source-shaped native raid-plugin menu: Cooltip injects Host as self.
+Details.RaidTables = {IsAvailable = function(_, id, host) return id == 'compare' or id == 'vanguard' end}
+function Details.RaidTables:switch(fixed, id, host)
+    local fromMenu = not self
+    self = self or Details.RaidTables
+    assert(self:IsAvailable(id, host))
+    host.selectedPlugin, host.menuRefreshed = id, fromMenu
+    return 'switch-native', fixed
+end
+local unrelatedAction = function() return 'unrelated-native' end
+function Details:MontaRaidOption(host)
+    GameCooltip.FunctionsTableMain = {unrelatedAction, self.RaidTables.switch, self.RaidTables.switch}
+    GameCooltip.ParametersTableMain = {{}, {'compare', host}, {'vanguard', host}}
+    return 'raid-menu-native'
+end
 Details.instances = {instance()}
 local meter = Details.instances[1]
 local function row()
@@ -563,6 +591,57 @@ assert(not meter.skinResets and meter.row_info.height == 35, 'closed instance re
 meter.baseframe = existingFrame
 ns.SetDetailsSetting('meter', true); flush()
 assert(meter.row_info.height == 18, 'restored window could not be styled again')
+-- Native header redraws must never introduce sibling anchor cycles.
+local isolated = instance()
+local activeLayout = true
+local helper = ns.CreateSkinHelper(S, modules.Details)
+local layout = ns.CreateDetailsLayout(helper, function() return activeLayout end, function() end, function() end)
+local controls = {}
+for _, key in ipairs({'modo_selecao', 'segmento', 'atributo', 'report', 'reset', 'fechar'}) do
+    local obj = isolated.baseframe.cabecalho[key]
+    controls[#controls + 1] = obj.widget or obj
+end
+local nativePrevious = isolated.baseframe
+for _, b in ipairs(controls) do b:ClearAllPoints(); b:SetPoint('RIGHT', nativePrevious, 'LEFT', -4, 0); nativePrevious = b end
+layout.Window(isolated, ns.GetMeterStyle(S))
+-- Native order reverses our old sibling chain: this failed before the fix.
+controls[2]:ClearAllPoints(); controls[2]:SetPoint('RIGHT', controls[1], 'LEFT', -4, 0)
+assert(controls[1].points[1][2] == controls[2].points[1][2], 'custom buttons should anchor independently to the header')
+local clearing, firstRestorePoint = {}, true
+activeLayout = false
+for _, b in ipairs(controls) do
+    local clear, set = b.ClearAllPoints, b.SetPoint
+    b.ClearAllPoints = function(self) clearing[self] = true; clear(self) end
+    b.SetPoint = function(self, ...)
+        if firstRestorePoint then
+            for _, other in ipairs(controls) do assert(clearing[other], 'restoring anchors before all custom links were cleared') end
+            firstRestorePoint = false
+        end
+        return set(self, ...)
+    end
+end
+layout.Restore()
+for i, b in ipairs(controls) do assert(b.points[1][2] == (i == 1 and isolated.baseframe or controls[i-1]), 'native anchor graph was not restored') end
+-- Release EUI anchors before native ChangeSkin starts rebuilding its graph.
+local nativeResetChecked = false
+meter.ChangeSkin = function(self)
+    local button = self.baseframe.cabecalho.modo_selecao.widget
+    assert(button.points[1][2] == self.baseframe, 'native renderer ran before releasing the custom layout')
+    nativeResetChecked = true
+    return 'skin-native'
+end
+ns.SetDetailsSetting('meter', false); flush()
+assert(nativeResetChecked, 'restoration did not rebuild the live native skin')
+-- Adapt only the exact native raid callbacks; retain arguments and other actions.
+for _ = 1, 3 do
+    assert(Details:MontaRaidOption(meter) == 'raid-menu-native')
+    assert(GameCooltip.FunctionsTableMain[1] == unrelatedAction)
+    for index, id in ipairs({'compare', 'vanguard'}) do
+        local callback = GameCooltip.FunctionsTableMain[index + 1]
+        local result, fixed = callback(meter.baseframe.cabecalho.atributo.widget, 'fixed-native', id, meter)
+        assert(result == 'switch-native' and fixed == 'fixed-native' and meter.selectedPlugin == id and meter.menuRefreshed, 'raid callback lost its native receiver/arguments/menu refresh')
+    end
+end
 local currentSettings = EUIAddonSkinsDB.details
 EUIAddonSkinsDB.details = {meter = true, menus = false}
 assert(ns.DetailsSettings().tiny == true, 'existing meter users lost Tiny Threat appearance during migration')

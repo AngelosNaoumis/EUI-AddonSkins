@@ -1,6 +1,6 @@
 # Details development alpha
 
-Version: `1.2.0-alpha.13`. This is an **untagged** development build on `details-alpha`.
+Version: `1.2.0-alpha.14`. This is an **untagged** development build on `details-alpha`.
 Do not create a Git tag or GitHub Release until CurseForge distribution is wanted.
 The existing tag-only CurseForge webhook does not package this branch push.
 
@@ -43,3 +43,5 @@ Options category buttons use EUI tabs with native page visibility as their selec
 DF text entries keep their native layout without Blizzard input expansion. The lazy Designer editor is bound only once it exists: its native selector populates once, selector refreshes style pooled labels directly, and object-selection/disabled-state refreshes synchronously style new controls. Input values, commit functions, editor actions and native lazy construction are retained.
 
 Tiny Threat uses its native plugin ID and host window to select the appropriate styling switch. Native threat text, colours, row anchors and actions remain unchanged. Switching a host between a normal meter and Tiny Threat restores its captured appearance before applying the selected style. Quick controls append to the native settings pop-out; they do not replace its entries. Regression tests cover independent combinations, plugin redraws, view changes, repeated menu builds, restoration and combat deferral.
+
+Header buttons anchor independently to the EUI header, preventing sibling dependency cycles during native redraws. Restoration clears all managed anchors before restoring the original graph, ahead of native skin resets. A scoped adapter corrects Cooltip's receiver for exact native raid-plugin switch callbacks produced by `MontaRaidOption`; plugin selection logic and menu parameters remain native. Regression fixtures reproduce the previous anchor cycle and callback receiver failure.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0-alpha.14 — Details toolbar and plugin menus (untagged)
+
+- Anchor header controls independently and clear custom anchors before restoring native layouts.
+- Release the custom layout before Details resets its window skin.
+- Correct the receiver passed to native raid-plugin menu callbacks, including Compare and Vanguard.
+
 ## 1.2.0-alpha.13 — Details restoration guard (untagged)
 
 - Restore saved appearance settings without resetting a Details window that does not exist.
